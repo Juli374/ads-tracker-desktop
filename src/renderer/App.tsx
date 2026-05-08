@@ -1,5 +1,7 @@
 import React from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './components/MainLayout';
 import { TokenPasteScreen } from './components/TokenPasteScreen';
 import { Loader2 } from 'lucide-react';
@@ -19,7 +21,11 @@ const Gate: React.FC = () => {
 };
 
 export const App: React.FC = () => (
-  <AuthProvider>
-    <Gate />
-  </AuthProvider>
+  <ErrorBoundary>
+    <ToastProvider>
+      <AuthProvider>
+        <Gate />
+      </AuthProvider>
+    </ToastProvider>
+  </ErrorBoundary>
 );

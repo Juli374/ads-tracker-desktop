@@ -12,12 +12,12 @@ import {
   RangePicker,
   Card,
   Kpi,
-  ErrorBanner,
   EmptyState,
   LoadingRow,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { useToast } from '../contexts/ToastContext';
 
 type SortKey = NonNullable<SearchTermsFilters['sortBy']>;
 
@@ -33,10 +33,10 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 const PER_PAGE = 50;
 
 export const SearchTermsPage: React.FC = () => {
+  const toast = useToast();
   const [range, setRange] = useState<RangeId>('30d');
   const [data, setData] = useState<SearchTermsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('clicks');
@@ -64,12 +64,11 @@ export const SearchTermsPage: React.FC = () => {
   const load = useMemo(
     () => async () => {
       setLoading(true);
-      setError(null);
       try {
         const res = await searchTermsApi.list(filters);
         setData(res);
       } catch (err) {
-        setError(
+        toast.error(
           err instanceof ApiError
             ? err.message
             : 'Не удалось загрузить поисковые запросы',
@@ -78,7 +77,7 @@ export const SearchTermsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [filters],
+    [filters, toast],
   );
 
   useEffect(() => {
@@ -115,8 +114,6 @@ export const SearchTermsPage: React.FC = () => {
           />
         }
       />
-
-      {error && <ErrorBanner message={error} />}
 
       <div className="grid grid-cols-4 gap-3">
         <Kpi

@@ -6,17 +6,17 @@ import {
   Kpi,
   PageHeader,
   RangePicker,
-  ErrorBanner,
   EmptyState,
   LoadingRow,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { useToast } from '../contexts/ToastContext';
 
 export const DashboardPage: React.FC = () => {
+  const toast = useToast();
   const [range, setRange] = useState<RangeId>('7d');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<BookSummary | null>(null);
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
@@ -24,17 +24,16 @@ export const DashboardPage: React.FC = () => {
   const load = useMemo(
     () => async () => {
       setLoading(true);
-      setError(null);
       try {
         const data = await metricsApi.summaryByBook({ from, to, attribution: '7d' });
         setSummary(data);
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Не удалось загрузить данные');
+        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить данные');
       } finally {
         setLoading(false);
       }
     },
-    [from, to],
+    [from, to, toast],
   );
 
   useEffect(() => {
@@ -76,8 +75,6 @@ export const DashboardPage: React.FC = () => {
           />
         }
       />
-
-      {error && <ErrorBanner message={error} />}
 
       <div className="grid grid-cols-4 gap-3">
         <Kpi label="Spend" value={totals ? fmtMoney(totals.cost) : '—'} loading={loading} />

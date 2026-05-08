@@ -11,7 +11,8 @@ import {
   Check,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Card, PageHeader, ErrorBanner } from '../components/ui';
+import { useToast } from '../contexts/ToastContext';
+import { Card, PageHeader } from '../components/ui';
 import { AppInfo } from '../../shared/ipc';
 
 interface ConnectionInfo {
@@ -19,17 +20,16 @@ interface ConnectionInfo {
   apiBaseUrl: string | null;
   hasToken: boolean;
   loading: boolean;
-  error: string | null;
 }
 
 export const SettingsPage: React.FC = () => {
   const { user, signOut } = useAuth();
+  const toast = useToast();
   const [info, setInfo] = useState<ConnectionInfo>({
     appInfo: null,
     apiBaseUrl: null,
     hasToken: false,
     loading: true,
-    error: null,
   });
   const [tokenPreview, setTokenPreview] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -49,30 +49,26 @@ export const SettingsPage: React.FC = () => {
           apiBaseUrl,
           hasToken: !!token,
           loading: false,
-          error: null,
         });
         if (token) {
-          // Префикс для опознания типа ключа, но без полного значения.
           setTokenPreview(maskToken(token));
         }
       } catch (err) {
         if (cancelled) return;
-        setInfo((s) => ({
-          ...s,
-          loading: false,
-          error: err instanceof Error ? err.message : 'Не удалось загрузить данные',
-        }));
+        setInfo((s) => ({ ...s, loading: false }));
+        toast.error(err instanceof Error ? err.message : 'Не удалось загрузить данные');
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [toast]);
 
   const handleCopyUrl = async () => {
     if (!info.apiBaseUrl) return;
     await navigator.clipboard.writeText(info.apiBaseUrl);
     setCopied(true);
+    toast.success('Скопировано');
     setTimeout(() => setCopied(false), 1500);
   };
 
@@ -82,8 +78,6 @@ export const SettingsPage: React.FC = () => {
         title="Настройки"
         subtitle="API-доступ, информация об установке."
       />
-
-      {info.error && <ErrorBanner message={info.error} />}
 
       {/* Account */}
       <Card title="Учётная запись">

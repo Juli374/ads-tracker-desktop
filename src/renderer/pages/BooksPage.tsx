@@ -7,12 +7,12 @@ import {
   RangePicker,
   Card,
   Kpi,
-  ErrorBanner,
   EmptyState,
   LoadingRow,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { useToast } from '../contexts/ToastContext';
 
 interface BookGroup {
   book_id: number;
@@ -34,9 +34,9 @@ interface BookGroup {
 type SortKey = 'spend' | 'sales' | 'orders' | 'acos';
 
 export const BooksPage: React.FC = () => {
+  const toast = useToast();
   const [range, setRange] = useState<RangeId>('30d');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<BookSummary | null>(null);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('spend');
@@ -47,7 +47,6 @@ export const BooksPage: React.FC = () => {
   const load = useMemo(
     () => async () => {
       setLoading(true);
-      setError(null);
       try {
         const data = await metricsApi.summaryByBook({
           from,
@@ -56,12 +55,12 @@ export const BooksPage: React.FC = () => {
         });
         setSummary(data);
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Не удалось загрузить данные');
+        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить данные');
       } finally {
         setLoading(false);
       }
     },
-    [from, to],
+    [from, to, toast],
   );
 
   useEffect(() => {
@@ -170,8 +169,6 @@ export const BooksPage: React.FC = () => {
           />
         }
       />
-
-      {error && <ErrorBanner message={error} />}
 
       <div className="grid grid-cols-4 gap-3">
         <Kpi label="Книг" value={fmtNumber(filtered.length)} loading={loading} />

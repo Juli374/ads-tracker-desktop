@@ -11,12 +11,12 @@ import {
   RangePicker,
   Card,
   Kpi,
-  ErrorBanner,
   EmptyState,
   LoadingRow,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { useToast } from '../contexts/ToastContext';
 
 type SortKey = 'cost' | 'sales' | 'acos' | 'orders' | 'clicks';
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -28,10 +28,10 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 ];
 
 export const CampaignsPage: React.FC = () => {
+  const toast = useToast();
   const [range, setRange] = useState<RangeId>('30d');
   const [summary, setSummary] = useState<CampaignSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('cost');
   const [marketplace, setMarketplace] = useState<string>('all');
@@ -43,7 +43,6 @@ export const CampaignsPage: React.FC = () => {
   const load = useMemo(
     () => async () => {
       setLoading(true);
-      setError(null);
       try {
         const data = await metricsApi.summaryByCampaign({
           from,
@@ -53,12 +52,12 @@ export const CampaignsPage: React.FC = () => {
         });
         setSummary(data);
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Не удалось загрузить кампании');
+        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить кампании');
       } finally {
         setLoading(false);
       }
     },
-    [from, to, activeOnly],
+    [from, to, activeOnly, toast],
   );
 
   useEffect(() => {
@@ -131,8 +130,6 @@ export const CampaignsPage: React.FC = () => {
           />
         }
       />
-
-      {error && <ErrorBanner message={error} />}
 
       <div className="grid grid-cols-4 gap-3">
         <Kpi label="Кампаний" value={fmtNumber(filtered.length)} loading={loading} />
