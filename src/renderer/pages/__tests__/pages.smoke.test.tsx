@@ -86,7 +86,8 @@ describe('page smoke renders', () => {
     );
     expect(screen.getByText('Отчёты')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText('Динамика')).toBeInTheDocument();
+      expect(screen.getByText('Динамика по дням')).toBeInTheDocument();
+      expect(screen.getByText('Сводка')).toBeInTheDocument();
       expect(screen.getByText('По маркетплейсам')).toBeInTheDocument();
     });
   });

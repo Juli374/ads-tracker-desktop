@@ -16,7 +16,21 @@ import {
   Kpi,
   EmptyState,
   LoadingRow,
+  ChartTooltip,
+  ChartTooltipRow,
 } from '../components/ui';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar,
+} from 'recharts';
 import { dateRangeFor, RangeId, RANGES } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { toCsv, downloadCsv } from '../lib/csv';
@@ -164,12 +178,72 @@ export const ReportsPage: React.FC = () => {
         <Kpi label="TACoS" value={fmtPct(totals.tacos)} loading={loading} />
       </div>
 
+      {/* Daily spend/sales line chart */}
+      <Card
+        title={
+          <div className="flex items-center gap-2">
+            <BarChart3 size={14} className="text-zinc-400" />
+            Динамика по дням
+          </div>
+        }
+      >
+        {loading && !daily ? (
+          <LoadingRow />
+        ) : !daily || daily.daily.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="px-2 py-3 h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={daily.daily}
+                margin={{ top: 8, right: 24, bottom: 8, left: 8 }}
+              >
+                <CartesianGrid stroke="#f4f4f5" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: '#a1a1aa' }}
+                  tickLine={false}
+                  axisLine={{ stroke: '#e4e4e7' }}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: '#a1a1aa' }}
+                  tickLine={false}
+                  axisLine={{ stroke: '#e4e4e7' }}
+                  width={48}
+                />
+                <Tooltip content={<DailyTooltip />} cursor={{ stroke: '#e4e4e7' }} />
+                <Legend
+                  iconType="plainline"
+                  wrapperStyle={{ fontSize: 11, color: '#52525b' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="spend"
+                  name="Spend"
+                  stroke="#3f3f46"
+                  strokeWidth={1.5}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="sales"
+                  name="Sales"
+                  stroke="#a1a1aa"
+                  strokeWidth={1.5}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
+
       {/* Periodic breakdown */}
       <Card
         title={
           <div className="flex items-center gap-2">
             <BarChart3 size={14} className="text-zinc-400" />
-            Динамика
+            Сводка
           </div>
         }
         rightSlot={
@@ -270,7 +344,44 @@ export const ReportsPage: React.FC = () => {
         ) : !byMp || Object.keys(byMp.marketplaces).length === 0 ? (
           <EmptyState />
         ) : (
-          <table className="w-full text-sm">
+          <>
+            <div className="px-2 py-3 h-[220px] border-b border-zinc-100">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  layout="vertical"
+                  data={Object.entries(byMp.marketplaces)
+                    .map(([code, m]) => ({
+                      code,
+                      spend: m.cost,
+                      sales: m.sales,
+                    }))
+                    .sort((a, b) => b.spend - a.spend)}
+                  margin={{ top: 8, right: 24, bottom: 8, left: 8 }}
+                >
+                  <CartesianGrid stroke="#f4f4f5" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 10, fill: '#a1a1aa' }}
+                    tickLine={false}
+                    axisLine={{ stroke: '#e4e4e7' }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="code"
+                    tick={{ fontSize: 10, fill: '#a1a1aa' }}
+                    tickLine={false}
+                    axisLine={{ stroke: '#e4e4e7' }}
+                    width={48}
+                  />
+                  <Tooltip
+                    content={<MarketplaceTooltip />}
+                    cursor={{ fill: '#f4f4f5' }}
+                  />
+                  <Bar dataKey="spend" fill="#3f3f46" radius={[2, 2, 2, 2]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <table className="w-full text-sm">
             <thead>
               <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
                 <th className="text-left px-5 py-2 font-medium">MP</th>
@@ -313,10 +424,44 @@ export const ReportsPage: React.FC = () => {
                 ))}
             </tbody>
           </table>
+          </>
         )}
       </Card>
     </div>
   );
+};
+
+interface TooltipPayload {
+  payload: Record<string, unknown>;
+  color?: string;
+  name?: string;
+  dataKey?: string;
+}
+
+interface RechartsTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
+const DailyTooltip: React.FC<RechartsTooltipProps> = ({ active, payload, label }) => {
+  if (!active || !payload || payload.length === 0) return null;
+  const rows: ChartTooltipRow[] = payload.map((p) => ({
+    label: p.name ?? String(p.dataKey),
+    value: fmtMoney(Number(p.payload[String(p.dataKey)] ?? 0)),
+    color: p.color,
+  }));
+  return <ChartTooltip active title={label} rows={rows} />;
+};
+
+const MarketplaceTooltip: React.FC<RechartsTooltipProps> = ({ active, payload }) => {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0].payload as { code: string; spend: number; sales: number };
+  const rows: ChartTooltipRow[] = [
+    { label: 'Spend', value: fmtMoney(data.spend), color: '#3f3f46' },
+    { label: 'Sales', value: fmtMoney(data.sales), color: '#a1a1aa' },
+  ];
+  return <ChartTooltip active title={data.code} rows={rows} />;
 };
 
 const GranularityToggle: React.FC<{
