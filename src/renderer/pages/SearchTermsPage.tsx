@@ -1,11 +1,430 @@
-import React from 'react';
-import { PagePlaceholder } from '../components/PagePlaceholder';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ApiError } from '../api/client';
+import {
+  searchTermsApi,
+  SearchTermsResponse,
+  SearchTermItem,
+  SearchTermsFilters,
+} from '../api/searchTerms';
+import {
+  PageHeader,
+  RangePicker,
+  Card,
+  Kpi,
+  ErrorBanner,
+  EmptyState,
+  LoadingRow,
+} from '../components/ui';
+import { dateRangeFor, RangeId } from '../lib/dateRange';
+import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+
+type SortKey = NonNullable<SearchTermsFilters['sortBy']>;
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'clicks', label: 'Clicks' },
+  { value: 'cost', label: 'Spend' },
+  { value: 'sales', label: 'Sales' },
+  { value: 'orders', label: 'Orders' },
+  { value: 'acos', label: 'ACOS' },
+  { value: 'impressions', label: 'Impr.' },
+];
+
+const PER_PAGE = 50;
 
 export const SearchTermsPage: React.FC = () => {
+  const [range, setRange] = useState<RangeId>('30d');
+  const [data, setData] = useState<SearchTermsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('clicks');
+  const [termType, setTermType] = useState<'all' | 'keywords' | 'asins'>('all');
+  const [minClicks, setMinClicks] = useState<number>(0);
+  const [page, setPage] = useState(1);
+
+  const { from, to } = useMemo(() => dateRangeFor(range), [range]);
+
+  const filters: SearchTermsFilters = useMemo(
+    () => ({
+      dateFrom: from,
+      dateTo: to,
+      sortBy: sortKey,
+      sortOrder: 'desc',
+      page,
+      perPage: PER_PAGE,
+      termType: termType === 'all' ? undefined : termType,
+      minClicks: minClicks > 0 ? minClicks : undefined,
+      search: search || undefined,
+    }),
+    [from, to, sortKey, page, termType, minClicks, search],
+  );
+
+  const load = useMemo(
+    () => async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await searchTermsApi.list(filters);
+        setData(res);
+      } catch (err) {
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : 'Не удалось загрузить поисковые запросы',
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters],
+  );
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Сброс на первую страницу при смене любого фильтра кроме самой страницы
+  useEffect(() => {
+    setPage(1);
+  }, [from, to, sortKey, termType, minClicks, search]);
+
+  const totals = data?.summary;
+
+  const onSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearch(searchInput.trim());
+  };
+
   return (
-    <PagePlaceholder
-      title="Поисковые запросы"
-      description="Search terms аналитика: фильтры, харвестинг, негативы."
+    <div className="space-y-6">
+      <PageHeader
+        title="Поисковые запросы"
+        subtitle={
+          data
+            ? `${from} → ${to} · ${fmtNumber(data.total)} запросов`
+            : 'Загрузка…'
+        }
+        rightSlot={
+          <RangePicker
+            value={range}
+            onChange={setRange}
+            onRefresh={() => load()}
+            refreshing={loading}
+          />
+        }
+      />
+
+      {error && <ErrorBanner message={error} />}
+
+      <div className="grid grid-cols-4 gap-3">
+        <Kpi
+          label="Запросов"
+          value={totals ? fmtNumber(totals.termsCount) : '—'}
+          loading={loading}
+        />
+        <Kpi
+          label="Spend"
+          value={totals ? fmtMoney(totals.totalCost) : '—'}
+          loading={loading}
+        />
+        <Kpi
+          label="Orders"
+          value={totals ? fmtNumber(totals.totalOrders) : '—'}
+          loading={loading}
+        />
+        <Kpi
+          label="ACOS"
+          value={totals ? fmtPct(totals.avgAcos) : '—'}
+          loading={loading}
+          tone={totals && totals.avgAcos > 100 ? 'negative' : 'default'}
+        />
+      </div>
+
+      <Card
+        title="Запросы"
+        rightSlot={
+          <div className="flex items-center gap-2">
+            <TypeToggle value={termType} onChange={setTermType} />
+            <MinClicksFilter value={minClicks} onChange={setMinClicks} />
+            <SortSelect value={sortKey} onChange={setSortKey} />
+            <form onSubmit={onSearchSubmit}>
+              <SearchInput
+                value={searchInput}
+                onChange={setSearchInput}
+                onClear={() => {
+                  setSearchInput('');
+                  setSearch('');
+                }}
+              />
+            </form>
+          </div>
+        }
+      >
+        {loading && !data ? (
+          <LoadingRow />
+        ) : !data || data.items.length === 0 ? (
+          <EmptyState
+            title={
+              search
+                ? 'Ничего не нашлось.'
+                : 'Нет запросов за выбранный период.'
+            }
+            hint={search && 'Попробуй другой запрос или расширить диапазон.'}
+          />
+        ) : (
+          <>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
+                  <th className="text-left px-5 py-2 font-medium">Запрос</th>
+                  <th className="text-left px-3 py-2 font-medium">Кампания</th>
+                  <th className="text-left px-3 py-2 font-medium">MP</th>
+                  <th className="text-right px-3 py-2 font-medium">Impr.</th>
+                  <th className="text-right px-3 py-2 font-medium">Clicks</th>
+                  <th className="text-right px-3 py-2 font-medium">Spend</th>
+                  <th className="text-right px-3 py-2 font-medium">Sales</th>
+                  <th className="text-right px-3 py-2 font-medium">Orders</th>
+                  <th className="text-right px-5 py-2 font-medium">ACOS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.items.map((item) => (
+                  <TermRow
+                    key={`${item.id}-${item.keywordId ?? item.searchTerm}`}
+                    item={item}
+                  />
+                ))}
+              </tbody>
+            </table>
+
+            <Pagination
+              page={data.page}
+              pages={data.pages}
+              total={data.total}
+              perPage={data.per_page}
+              onChange={setPage}
+              loading={loading}
+            />
+          </>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+const TermRow: React.FC<{ item: SearchTermItem }> = ({ item }) => (
+  <tr className="border-t border-zinc-100 hover:bg-zinc-50/60">
+    <td className="px-5 py-2.5 max-w-[260px]">
+      <div className="text-xs text-zinc-900 truncate" title={item.searchTerm}>
+        {item.searchTerm}
+      </div>
+      {item.keywordText && item.keywordText !== item.searchTerm && (
+        <div className="text-[10px] text-zinc-400 mt-0.5 truncate">
+          ↳ {item.keywordText} · {item.matchType}
+        </div>
+      )}
+    </td>
+    <td className="px-3 py-2.5 max-w-[180px]">
+      <div className="text-xs text-zinc-600 truncate" title={item.campaignName}>
+        {item.campaignName || '—'}
+      </div>
+      {item.bookTitle && (
+        <div className="text-[10px] text-zinc-400 mt-0.5 truncate">
+          {item.bookTitle}
+        </div>
+      )}
+    </td>
+    <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase">
+      {item.marketplace || '—'}
+    </td>
+    <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+      {fmtNumber(item.impressions)}
+    </td>
+    <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+      {fmtNumber(item.clicks)}
+    </td>
+    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+      {fmtMoney(item.cost, item.currency)}
+    </td>
+    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+      {fmtMoney(item.sales, item.currency)}
+    </td>
+    <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+      {item.orders}
+    </td>
+    <td className="px-5 py-2.5 text-xs text-right tabular-nums">
+      <span className={item.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
+        {item.acos > 0 ? fmtPct(item.acos) : '—'}
+      </span>
+    </td>
+  </tr>
+);
+
+const SearchInput: React.FC<{
+  value: string;
+  onChange: (v: string) => void;
+  onClear: () => void;
+}> = ({ value, onChange, onClear }) => (
+  <div className="relative">
+    <Search
+      size={12}
+      className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400"
     />
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Поиск… (Enter)"
+      className="
+        w-52 h-7 pl-7 pr-7 text-xs rounded-md
+        border border-zinc-200 bg-white
+        text-zinc-900 placeholder:text-zinc-400
+        focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+      "
+    />
+    {value && (
+      <button
+        type="button"
+        onClick={onClear}
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 text-xs"
+      >
+        ×
+      </button>
+    )}
+  </div>
+);
+
+const TypeToggle: React.FC<{
+  value: 'all' | 'keywords' | 'asins';
+  onChange: (v: 'all' | 'keywords' | 'asins') => void;
+}> = ({ value, onChange }) => {
+  const options = [
+    { value: 'all' as const, label: 'Все' },
+    { value: 'keywords' as const, label: 'Слова' },
+    { value: 'asins' as const, label: 'ASINs' },
+  ];
+  return (
+    <div className="inline-flex items-center bg-white border border-zinc-200 rounded-md p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          className={`
+            px-2 h-6 text-[11px] font-medium rounded
+            transition-colors
+            ${value === o.value
+              ? 'bg-zinc-100 text-zinc-900'
+              : 'text-zinc-500 hover:text-zinc-900'}
+          `}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+const MinClicksFilter: React.FC<{
+  value: number;
+  onChange: (v: number) => void;
+}> = ({ value, onChange }) => {
+  const options = [
+    { value: 0, label: '≥0' },
+    { value: 1, label: '≥1' },
+    { value: 5, label: '≥5' },
+    { value: 10, label: '≥10' },
+    { value: 50, label: '≥50' },
+  ];
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="
+        h-7 px-2 pr-6 text-xs rounded-md
+        border border-zinc-200 bg-white
+        text-zinc-700
+        focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+        cursor-pointer
+      "
+      title="Min clicks"
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          clicks {o.label}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+const SortSelect: React.FC<{
+  value: SortKey;
+  onChange: (v: SortKey) => void;
+}> = ({ value, onChange }) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(e.target.value as SortKey)}
+    className="
+      h-7 px-2 pr-6 text-xs rounded-md
+      border border-zinc-200 bg-white
+      text-zinc-700
+      focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+      cursor-pointer
+    "
+  >
+    {SORT_OPTIONS.map((o) => (
+      <option key={o.value} value={o.value}>
+        sort: {o.label}
+      </option>
+    ))}
+  </select>
+);
+
+const Pagination: React.FC<{
+  page: number;
+  pages: number;
+  total: number;
+  perPage: number;
+  onChange: (page: number) => void;
+  loading: boolean;
+}> = ({ page, pages, total, perPage, onChange, loading }) => {
+  if (pages <= 1) return null;
+  const from = (page - 1) * perPage + 1;
+  const to = Math.min(page * perPage, total);
+  return (
+    <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-between">
+      <div className="text-[11px] text-zinc-500">
+        {from}–{to} из {fmtNumber(total)}
+      </div>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onChange(Math.max(1, page - 1))}
+          disabled={loading || page <= 1}
+          className="
+            h-7 w-7 flex items-center justify-center rounded-md
+            text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100
+            disabled:opacity-40 disabled:cursor-not-allowed transition-colors
+          "
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <div className="text-[11px] text-zinc-700 tabular-nums px-2">
+          {page} / {pages}
+        </div>
+        <button
+          onClick={() => onChange(Math.min(pages, page + 1))}
+          disabled={loading || page >= pages}
+          className="
+            h-7 w-7 flex items-center justify-center rounded-md
+            text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100
+            disabled:opacity-40 disabled:cursor-not-allowed transition-colors
+          "
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+    </div>
   );
 };

@@ -1,7 +1,7 @@
 # План миграции Ads Tracker → Electron Desktop App
 
 **Дата создания:** 2026-04-30
-**Последнее обновление:** 2026-05-07
+**Последнее обновление:** 2026-05-09
 **Текущий трек:** **Personal-use first** (см. ниже)
 
 ---
@@ -14,11 +14,31 @@
 |---|---|---|
 | 0. Решения | ✅ закрыта | ✅ закрыта |
 | 1. Backend cleanup (API-key middleware, разделение PPC/royalty) | ⏸ отложено | обязательно |
-| 2. Electron skeleton | ✅ в работе | обязательно |
+| 2. Electron skeleton | ✅ закрыта (security baseline, IPC, auth, API client) | обязательно |
 | 3. Локальный royalty слой (SQLite + Node-парсер xlsx) | ⏸ отложено — TOS не нарушается, royalty остаётся в Railway | обязательно |
-| 4. Фронт-интеграция (страница за страницей) | в работе | обязательно |
+| 4. Фронт-интеграция (страница за страницей) | ✅ закрыта (Dashboard + Books + Campaigns + SearchTerms + Reports + Settings) | обязательно |
 | 5. Packaging + signing + auto-update | ⏸ отложено | обязательно |
 | 6. Pilot | ⏸ отложено | обязательно |
+
+### Прогресс personal-use трека (2026-05-09)
+
+**Закрыто.** Все 5 placeholder-страниц заменены на работающие. Стэк UI: Tailwind 3 + lucide-react + общие примитивы из `src/renderer/components/ui/` (Card, Kpi, RangePicker, PageHeader, ErrorBanner, LoadingRow, EmptyState). Форматтеры в `src/renderer/lib/format.ts`, диапазоны в `src/renderer/lib/dateRange.ts`.
+
+| Страница | Backend endpoints | Что есть |
+|---|---|---|
+| Dashboard | `/api/metrics/summary/by-book` | KPI + таблица книг (без изменений с прошлой сессии) |
+| Books | `/api/metrics/summary/by-book` | KPI + группировка по `book_id`, drill-down по маркетплейсам, поиск, сортировка |
+| Campaigns | `/api/metrics/summary/by-campaign` | KPI + таблица, фильтры MP / тип / active-only, сортировка, поиск по названию/книге |
+| SearchTerms | `/api/search-terms` | KPI + пагинация, фильтры keywords/asins, min-clicks, поиск, сортировка |
+| Reports | `/api/metrics/summary/{daily,weekly,by-marketplace}` | KPI + переключатель day/week, разрез по MP, CSV-экспорт |
+| Settings | `/api/auth/verify` (через AuthContext), `app.getInfo`, `app.getApiBaseUrl` | Профиль, превью токена, base URL, версия, sign-out |
+
+**Что осталось до polishing-релиза:**
+- Drill-down: книга → кампании этой книги (модал/нав)
+- Глобальные фильтры (book/MP/account) выше уровня страницы
+- Графики (recharts) для динамики в Reports
+- Command palette (топ-бар уже имеет stub)
+- Глобальный error boundary + toast для IPC-ошибок
 
 **Что строим сейчас:** Electron-обёртка в новом визуальном стиле (Tailwind + lucide, без Cloudscape) над существующим Railway backend'ом. Auth — текущий JWT, royalty остаётся в Neon PostgreSQL как сейчас, никаких миграций данных. Срок до полной функциональности — ~1–2 недели.
 
