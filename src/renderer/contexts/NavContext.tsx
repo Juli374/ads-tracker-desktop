@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -27,9 +28,6 @@ interface NavContextValue {
   page: ViewId;
   filters: NavFilters;
   navigate(page: ViewId, filters?: NavFilters): void;
-  // Используется страницей-получателем чтобы пометить filters прочитанными
-  // и предотвратить повторное применение при ре-рендере.
-  consumeFilters(): NavFilters;
 }
 
 const NavContext = createContext<NavContextValue | null>(null);
@@ -46,21 +44,32 @@ export const NavProvider: React.FC<{
     setFilters(nextFilters);
   }, []);
 
-  const consumeFilters = useCallback((): NavFilters => {
-    const snapshot = filters;
-    if (Object.keys(snapshot).length > 0) {
-      setFilters({});
-    }
-    return snapshot;
-  }, [filters]);
-
   const value = useMemo<NavContextValue>(
-    () => ({ page, filters, navigate, consumeFilters }),
-    [page, filters, navigate, consumeFilters],
+    () => ({ page, filters, navigate }),
+    [page, filters, navigate],
   );
 
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>;
 };
+
+// Хук для страницы-получателя: читает filters один раз при mount и потом
+// сбрасывает их в контексте через useEffect (после рендера, безопасно для React).
+// Возвращает снапшот, который можно использовать как initial state.
+export function useInitialFilters(): NavFilters {
+  const ctx = useContext(NavContext);
+  if (!ctx) throw new Error('useInitialFilters must be used within NavProvider');
+  // Снимок при первом рендере — не меняется при перерендерах
+  const [snapshot] = useState(() => ctx.filters);
+  // После mount сбрасываем filters в контексте, чтобы повторный mount страницы
+  // (через cmd+K или sidebar) не унаследовал старые фильтры.
+  useEffect(() => {
+    if (Object.keys(snapshot).length > 0) {
+      ctx.navigate(ctx.page, {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return snapshot;
+}
 
 export function useNav(): NavContextValue {
   const ctx = useContext(NavContext);

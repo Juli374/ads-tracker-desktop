@@ -18,7 +18,7 @@ import {
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
-import { useNav } from '../contexts/NavContext';
+import { useInitialFilters } from '../contexts/NavContext';
 
 type SortKey = NonNullable<SearchTermsFilters['sortBy']>;
 
@@ -35,8 +35,7 @@ const PER_PAGE = 50;
 
 export const SearchTermsPage: React.FC = () => {
   const toast = useToast();
-  const { consumeFilters } = useNav();
-  const [incomingFilters] = useState(() => consumeFilters());
+  const incomingFilters = useInitialFilters();
   const [range, setRange] = useState<RangeId>('30d');
   const [data, setData] = useState<SearchTermsResponse | null>(null);
   const [loading, setLoading] = useState(true);

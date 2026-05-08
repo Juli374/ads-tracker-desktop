@@ -18,7 +18,11 @@ export const fmtMoney = (n: number, currency?: string | null) => {
 
 export const fmtMoneyPrecise = (n: number, currency?: string | null) => {
   const sign = n < 0 ? '-' : '';
-  return `${sign}${symbolFor(currency)}${fmtNumber(Math.abs(n), 2)}`;
+  const formatted = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Math.abs(n));
+  return `${sign}${symbolFor(currency)}${formatted}`;
 };
 
 export const fmtPct = (n: number, digits = 1) =>

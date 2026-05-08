@@ -17,7 +17,7 @@ import {
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
-import { useNav } from '../contexts/NavContext';
+import { useNav, useInitialFilters } from '../contexts/NavContext';
 
 type SortKey = 'cost' | 'sales' | 'acos' | 'orders' | 'clicks';
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -30,8 +30,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 export const CampaignsPage: React.FC = () => {
   const toast = useToast();
-  const { navigate, consumeFilters } = useNav();
-  const [incomingFilters] = useState(() => consumeFilters());
+  const { navigate } = useNav();
+  const incomingFilters = useInitialFilters();
   const [range, setRange] = useState<RangeId>('30d');
   const [summary, setSummary] = useState<CampaignSummary | null>(null);
   const [loading, setLoading] = useState(true);
