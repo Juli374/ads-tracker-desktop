@@ -20,6 +20,7 @@ import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav, useInitialFilters } from '../contexts/NavContext';
 import { useMarketplaces } from '../contexts/MarketplacesContext';
+import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 
 type SortKey = 'cost' | 'sales' | 'acos' | 'orders' | 'clicks';
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -36,6 +37,7 @@ export const CampaignsPage: React.FC = () => {
   const toast = useToast();
   const { navigate } = useNav();
   const { list: globalMarketplaces } = useMarketplaces();
+  const { filters: globalFilters } = useGlobalFilters();
   const incomingFilters = useInitialFilters();
   const [range, setRange] = useState<RangeId>('30d');
   const [summary, setSummary] = useState<CampaignSummary | null>(null);
@@ -68,6 +70,9 @@ export const CampaignsPage: React.FC = () => {
           to,
           attribution: '7d',
           activeOnly,
+          marketplaces: globalFilters.marketplaces.length
+            ? globalFilters.marketplaces
+            : undefined,
         });
         setSummary(data);
       } catch (err) {
@@ -76,7 +81,7 @@ export const CampaignsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [from, to, activeOnly, toast],
+    [from, to, activeOnly, toast, globalFilters.marketplaces],
   );
 
   useEffect(() => {

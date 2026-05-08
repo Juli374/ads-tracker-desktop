@@ -20,6 +20,7 @@ import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useInitialFilters } from '../contexts/NavContext';
+import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 
 type SortKey = NonNullable<SearchTermsFilters['sortBy']>;
 
@@ -36,6 +37,7 @@ const PER_PAGE = 50;
 
 export const SearchTermsPage: React.FC = () => {
   const toast = useToast();
+  const { filters: globalFilters } = useGlobalFilters();
   const incomingFilters = useInitialFilters();
   const [range, setRange] = useState<RangeId>('30d');
   const [data, setData] = useState<SearchTermsResponse | null>(null);
@@ -73,8 +75,24 @@ export const SearchTermsPage: React.FC = () => {
       search: search || undefined,
       localCampaignId: campaignFilter?.localId,
       campaignId: campaignFilter?.amazonId,
+      // Backend этого endpoint принимает только одиночный marketplace.
+      // Используем первый из глобальных фильтров если он есть.
+      marketplace:
+        globalFilters.marketplaces.length === 1
+          ? globalFilters.marketplaces[0]
+          : undefined,
     }),
-    [from, to, sortKey, page, termType, minClicks, search, campaignFilter],
+    [
+      from,
+      to,
+      sortKey,
+      page,
+      termType,
+      minClicks,
+      search,
+      campaignFilter,
+      globalFilters.marketplaces,
+    ],
   );
 
   const load = useMemo(

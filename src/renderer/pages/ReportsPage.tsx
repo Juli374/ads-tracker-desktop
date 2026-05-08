@@ -35,6 +35,7 @@ import { dateRangeFor, RangeId, RANGES } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { toCsv, downloadCsv } from '../lib/csv';
 import { useToast } from '../contexts/ToastContext';
+import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 
 type Granularity = 'daily' | 'weekly';
 
@@ -52,6 +53,7 @@ interface PeriodRow {
 
 export const ReportsPage: React.FC = () => {
   const toast = useToast();
+  const { filters: globalFilters } = useGlobalFilters();
   const [range, setRange] = useState<RangeId>('30d');
   const [granularity, setGranularity] = useState<Granularity>('weekly');
   const [daily, setDaily] = useState<DailySummary | null>(null);
@@ -64,11 +66,19 @@ export const ReportsPage: React.FC = () => {
   const load = useMemo(
     () => async () => {
       setLoading(true);
+      const mps = globalFilters.marketplaces.length
+        ? globalFilters.marketplaces
+        : undefined;
       try {
         const [d, w, mp] = await Promise.all([
-          metricsApi.summaryDaily({ from, to, attribution: '7d' }),
-          metricsApi.summaryWeekly({ from, to, attribution: '7d' }),
-          metricsApi.summaryByMarketplace({ from, to, attribution: '7d' }),
+          metricsApi.summaryDaily({ from, to, attribution: '7d', marketplaces: mps }),
+          metricsApi.summaryWeekly({ from, to, attribution: '7d', marketplaces: mps }),
+          metricsApi.summaryByMarketplace({
+            from,
+            to,
+            attribution: '7d',
+            marketplaces: mps,
+          }),
         ]);
         setDaily(d);
         setWeekly(w);
@@ -81,7 +91,7 @@ export const ReportsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [from, to, toast],
+    [from, to, toast, globalFilters.marketplaces],
   );
 
   useEffect(() => {

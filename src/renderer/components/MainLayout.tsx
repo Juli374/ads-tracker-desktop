@@ -18,6 +18,7 @@ import { ReportsPage } from '../pages/ReportsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
+import { GlobalFilters } from './GlobalFilters';
 
 interface NavItem {
   id: ViewId;
@@ -176,7 +177,8 @@ const Layout: React.FC = () => {
           <span className="text-xs text-zinc-400 ml-1">v0.1.0</span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <GlobalFilters />
           <button
             onClick={() => setPaletteOpen(true)}
             className="

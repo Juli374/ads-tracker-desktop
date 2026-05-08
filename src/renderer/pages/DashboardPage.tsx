@@ -12,9 +12,11 @@ import {
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
+import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 
 export const DashboardPage: React.FC = () => {
   const toast = useToast();
+  const { filters: globalFilters } = useGlobalFilters();
   const [range, setRange] = useState<RangeId>('7d');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<BookSummary | null>(null);
@@ -25,7 +27,14 @@ export const DashboardPage: React.FC = () => {
     () => async () => {
       setLoading(true);
       try {
-        const data = await metricsApi.summaryByBook({ from, to, attribution: '7d' });
+        const data = await metricsApi.summaryByBook({
+          from,
+          to,
+          attribution: '7d',
+          marketplaces: globalFilters.marketplaces.length
+            ? globalFilters.marketplaces
+            : undefined,
+        });
         setSummary(data);
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить данные');
@@ -33,7 +42,7 @@ export const DashboardPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [from, to, toast],
+    [from, to, toast, globalFilters.marketplaces],
   );
 
   useEffect(() => {

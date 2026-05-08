@@ -14,6 +14,7 @@ import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
+import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 
 interface BookGroup {
   book_id: number;
@@ -37,6 +38,7 @@ type SortKey = 'spend' | 'sales' | 'orders' | 'acos';
 export const BooksPage: React.FC = () => {
   const toast = useToast();
   const { navigate } = useNav();
+  const { filters: globalFilters } = useGlobalFilters();
   const [range, setRange] = useState<RangeId>('30d');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<BookSummary | null>(null);
@@ -54,6 +56,9 @@ export const BooksPage: React.FC = () => {
           from,
           to,
           attribution: '7d',
+          marketplaces: globalFilters.marketplaces.length
+            ? globalFilters.marketplaces
+            : undefined,
         });
         setSummary(data);
       } catch (err) {
@@ -62,7 +67,7 @@ export const BooksPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [from, to, toast],
+    [from, to, toast, globalFilters.marketplaces],
   );
 
   useEffect(() => {
