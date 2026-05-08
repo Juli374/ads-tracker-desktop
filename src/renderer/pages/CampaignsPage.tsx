@@ -13,6 +13,7 @@ import {
   Kpi,
   EmptyState,
   LoadingRow,
+  Pagination,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
@@ -27,6 +28,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'acos', label: 'ACOS' },
   { value: 'clicks', label: 'Clicks' },
 ];
+
+const PER_PAGE = 50;
 
 export const CampaignsPage: React.FC = () => {
   const toast = useToast();
@@ -45,8 +48,14 @@ export const CampaignsPage: React.FC = () => {
   const [bookFilter, setBookFilter] = useState<number | null>(
     incomingFilters.bookId ?? null,
   );
+  const [page, setPage] = useState(1);
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
+
+  // Сброс на первую страницу при смене любого фильтра
+  useEffect(() => {
+    setPage(1);
+  }, [from, to, search, sortKey, marketplace, campaignType, activeOnly, bookFilter]);
 
   const load = useMemo(
     () => async () => {
@@ -112,6 +121,12 @@ export const CampaignsPage: React.FC = () => {
       `book #${bookFilter}`
     );
   }, [bookFilter, summary]);
+
+  const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE),
+    [filtered, page],
+  );
 
   const totals = useMemo(() => {
     const acc = filtered.reduce(
@@ -232,7 +247,7 @@ export const CampaignsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
+              {paginated.map((c) => (
                 <CampaignRow
                   key={c.campaign_id ?? c.amazon_campaign_id}
                   c={c}
@@ -247,6 +262,14 @@ export const CampaignsPage: React.FC = () => {
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          pages={pages}
+          total={filtered.length}
+          perPage={PER_PAGE}
+          onChange={setPage}
+          disabled={loading}
+        />
       </Card>
     </div>
   );

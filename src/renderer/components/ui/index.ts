@@ -5,3 +5,4 @@ export { PageHeader } from './PageHeader';
 export { ErrorBanner, LoadingRow, EmptyState } from './States';
 export { ChartTooltip } from './ChartTooltip';
 export type { ChartTooltipRow } from './ChartTooltip';
+export { Pagination } from './Pagination';

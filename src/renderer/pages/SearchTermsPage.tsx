@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { ApiError } from '../api/client';
 import {
   searchTermsApi,
@@ -14,6 +14,7 @@ import {
   Kpi,
   EmptyState,
   LoadingRow,
+  Pagination,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
@@ -237,7 +238,7 @@ export const SearchTermsPage: React.FC = () => {
               total={data.total}
               perPage={data.per_page}
               onChange={setPage}
-              loading={loading}
+              disabled={loading}
             />
           </>
         )}
@@ -414,49 +415,3 @@ const SortSelect: React.FC<{
   </select>
 );
 
-const Pagination: React.FC<{
-  page: number;
-  pages: number;
-  total: number;
-  perPage: number;
-  onChange: (page: number) => void;
-  loading: boolean;
-}> = ({ page, pages, total, perPage, onChange, loading }) => {
-  if (pages <= 1) return null;
-  const from = (page - 1) * perPage + 1;
-  const to = Math.min(page * perPage, total);
-  return (
-    <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-between">
-      <div className="text-[11px] text-zinc-500">
-        {from}–{to} из {fmtNumber(total)}
-      </div>
-      <div className="flex items-center gap-1">
-        <button
-          onClick={() => onChange(Math.max(1, page - 1))}
-          disabled={loading || page <= 1}
-          className="
-            h-7 w-7 flex items-center justify-center rounded-md
-            text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100
-            disabled:opacity-40 disabled:cursor-not-allowed transition-colors
-          "
-        >
-          <ChevronLeft size={14} />
-        </button>
-        <div className="text-[11px] text-zinc-700 tabular-nums px-2">
-          {page} / {pages}
-        </div>
-        <button
-          onClick={() => onChange(Math.min(pages, page + 1))}
-          disabled={loading || page >= pages}
-          className="
-            h-7 w-7 flex items-center justify-center rounded-md
-            text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100
-            disabled:opacity-40 disabled:cursor-not-allowed transition-colors
-          "
-        >
-          <ChevronRight size={14} />
-        </button>
-      </div>
-    </div>
-  );
-};
