@@ -18,6 +18,7 @@ import {
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
+import { useNav } from '../contexts/NavContext';
 
 type SortKey = NonNullable<SearchTermsFilters['sortBy']>;
 
@@ -34,6 +35,8 @@ const PER_PAGE = 50;
 
 export const SearchTermsPage: React.FC = () => {
   const toast = useToast();
+  const { consumeFilters } = useNav();
+  const [incomingFilters] = useState(() => consumeFilters());
   const [range, setRange] = useState<RangeId>('30d');
   const [data, setData] = useState<SearchTermsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,6 +46,17 @@ export const SearchTermsPage: React.FC = () => {
   const [termType, setTermType] = useState<'all' | 'keywords' | 'asins'>('all');
   const [minClicks, setMinClicks] = useState<number>(0);
   const [page, setPage] = useState(1);
+  const [campaignFilter, setCampaignFilter] = useState<{
+    localId?: number;
+    amazonId?: string;
+  } | null>(
+    incomingFilters.localCampaignId || incomingFilters.amazonCampaignId
+      ? {
+          localId: incomingFilters.localCampaignId,
+          amazonId: incomingFilters.amazonCampaignId,
+        }
+      : null,
+  );
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
 
@@ -57,8 +71,10 @@ export const SearchTermsPage: React.FC = () => {
       termType: termType === 'all' ? undefined : termType,
       minClicks: minClicks > 0 ? minClicks : undefined,
       search: search || undefined,
+      localCampaignId: campaignFilter?.localId,
+      campaignId: campaignFilter?.amazonId,
     }),
-    [from, to, sortKey, page, termType, minClicks, search],
+    [from, to, sortKey, page, termType, minClicks, search, campaignFilter],
   );
 
   const load = useMemo(
@@ -87,7 +103,7 @@ export const SearchTermsPage: React.FC = () => {
   // Сброс на первую страницу при смене любого фильтра кроме самой страницы
   useEffect(() => {
     setPage(1);
-  }, [from, to, sortKey, termType, minClicks, search]);
+  }, [from, to, sortKey, termType, minClicks, search, campaignFilter]);
 
   const totals = data?.summary;
 
@@ -140,7 +156,27 @@ export const SearchTermsPage: React.FC = () => {
       </div>
 
       <Card
-        title="Запросы"
+        title={
+          <div className="flex items-center gap-2">
+            <span>Запросы</span>
+            {campaignFilter && (
+              <button
+                onClick={() => setCampaignFilter(null)}
+                className="
+                  inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md
+                  text-[11px] font-medium bg-zinc-100 text-zinc-700
+                  hover:bg-zinc-200 transition-colors
+                "
+                title="Сбросить фильтр по кампании"
+              >
+                <span className="max-w-[200px] truncate">
+                  🎯 кампания #{campaignFilter.localId ?? campaignFilter.amazonId}
+                </span>
+                <span className="text-zinc-500">×</span>
+              </button>
+            )}
+          </div>
+        }
         rightSlot={
           <div className="flex items-center gap-2">
             <TypeToggle value={termType} onChange={setTermType} />

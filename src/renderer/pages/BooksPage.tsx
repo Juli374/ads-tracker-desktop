@@ -13,6 +13,7 @@ import {
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
+import { useNav } from '../contexts/NavContext';
 
 interface BookGroup {
   book_id: number;
@@ -35,6 +36,7 @@ type SortKey = 'spend' | 'sales' | 'orders' | 'acos';
 
 export const BooksPage: React.FC = () => {
   const toast = useToast();
+  const { navigate } = useNav();
   const [range, setRange] = useState<RangeId>('30d');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<BookSummary | null>(null);
@@ -217,6 +219,9 @@ export const BooksPage: React.FC = () => {
                   group={g}
                   expanded={expanded.has(g.book_id)}
                   onToggle={() => toggle(g.book_id)}
+                  onDrillDown={(marketplace) =>
+                    navigate('campaigns', { bookId: g.book_id, marketplace })
+                  }
                 />
               ))}
             </tbody>
@@ -231,17 +236,29 @@ const BookGroupRows: React.FC<{
   group: BookGroup;
   expanded: boolean;
   onToggle: () => void;
-}> = ({ group, expanded, onToggle }) => {
+  onDrillDown: (marketplace?: string) => void;
+}> = ({ group, expanded, onToggle, onDrillDown }) => {
   const Chevron = expanded ? ChevronDown : ChevronRight;
   return (
     <>
       <tr
-        className="border-t border-zinc-100 hover:bg-zinc-50/60 cursor-pointer"
-        onClick={onToggle}
+        className="border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
+        onClick={() => onDrillDown()}
+        title="Открыть кампании этой книги"
       >
         <td className="px-5 py-2.5">
           <div className="flex items-center gap-2.5">
-            <Chevron size={14} className="text-zinc-400 flex-shrink-0" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+              className="flex-shrink-0 p-0.5 -m-0.5 rounded hover:bg-zinc-200 transition-colors"
+              title={expanded ? 'Свернуть' : 'Раскрыть маркетплейсы'}
+              aria-label={expanded ? 'Свернуть' : 'Раскрыть маркетплейсы'}
+            >
+              <Chevron size={14} className="text-zinc-400" />
+            </button>
             {group.cover_image ? (
               <img
                 src={group.cover_image}
@@ -286,7 +303,9 @@ const BookGroupRows: React.FC<{
         group.rows.map((row) => (
           <tr
             key={`${row.book_id}-${row.marketplace}`}
-            className="border-t border-zinc-100 bg-zinc-50/40"
+            className="border-t border-zinc-100 bg-zinc-50/40 hover:bg-zinc-100/60 cursor-pointer transition-colors"
+            onClick={() => onDrillDown(row.marketplace ?? undefined)}
+            title="Открыть кампании этой книги в этом MP"
           >
             <td className="pl-14 pr-5 py-2 text-[11px] text-zinc-600">
               <span className="font-mono uppercase">{row.marketplace || '—'}</span>

@@ -17,6 +17,7 @@ import {
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
+import { useNav } from '../contexts/NavContext';
 
 type SortKey = 'cost' | 'sales' | 'acos' | 'orders' | 'clicks';
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -29,14 +30,21 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 export const CampaignsPage: React.FC = () => {
   const toast = useToast();
+  const { navigate, consumeFilters } = useNav();
+  const [incomingFilters] = useState(() => consumeFilters());
   const [range, setRange] = useState<RangeId>('30d');
   const [summary, setSummary] = useState<CampaignSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('cost');
-  const [marketplace, setMarketplace] = useState<string>('all');
+  const [marketplace, setMarketplace] = useState<string>(
+    incomingFilters.marketplace ?? 'all',
+  );
   const [campaignType, setCampaignType] = useState<string>('all');
   const [activeOnly, setActiveOnly] = useState(false);
+  const [bookFilter, setBookFilter] = useState<number | null>(
+    incomingFilters.bookId ?? null,
+  );
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
 
@@ -82,6 +90,7 @@ export const CampaignsPage: React.FC = () => {
     if (!summary) return [];
     const q = search.trim().toLowerCase();
     let list = summary.campaigns.filter((c) => {
+      if (bookFilter != null && c.book_id !== bookFilter) return false;
       if (marketplace !== 'all' && c.marketplace !== marketplace) return false;
       if (campaignType !== 'all' && c.campaign_type !== campaignType) return false;
       if (q) {
@@ -94,7 +103,15 @@ export const CampaignsPage: React.FC = () => {
     });
     list = [...list].sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
     return list;
-  }, [summary, search, sortKey, marketplace, campaignType]);
+  }, [summary, search, sortKey, marketplace, campaignType, bookFilter]);
+
+  const bookFilterTitle = useMemo(() => {
+    if (bookFilter == null || !summary) return null;
+    return (
+      summary.campaigns.find((c) => c.book_id === bookFilter)?.book_title ??
+      `book #${bookFilter}`
+    );
+  }, [bookFilter, summary]);
 
   const totals = useMemo(() => {
     const acc = filtered.reduce(
@@ -145,8 +162,22 @@ export const CampaignsPage: React.FC = () => {
 
       <Card
         title={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <span>Список</span>
+            {bookFilterTitle && (
+              <button
+                onClick={() => setBookFilter(null)}
+                className="
+                  inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md
+                  text-[11px] font-medium bg-zinc-100 text-zinc-700
+                  hover:bg-zinc-200 transition-colors
+                "
+                title="Сбросить фильтр по книге"
+              >
+                <span className="max-w-[180px] truncate">📕 {bookFilterTitle}</span>
+                <span className="text-zinc-500">×</span>
+              </button>
+            )}
           </div>
         }
         rightSlot={
@@ -201,24 +232,35 @@ export const CampaignsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(0, 500).map((c) => (
-                <CampaignRow key={c.campaign_id ?? c.amazon_campaign_id} c={c} />
+              {filtered.map((c) => (
+                <CampaignRow
+                  key={c.campaign_id ?? c.amazon_campaign_id}
+                  c={c}
+                  onDrillDown={() =>
+                    navigate('search_terms', {
+                      localCampaignId: c.campaign_id,
+                      amazonCampaignId: c.amazon_campaign_id,
+                    })
+                  }
+                />
               ))}
             </tbody>
           </table>
-        )}
-        {filtered.length > 500 && (
-          <div className="px-5 py-3 border-t border-zinc-100 text-[11px] text-zinc-400">
-            Показаны первые 500 из {filtered.length}. Уточни фильтры, чтобы сузить список.
-          </div>
         )}
       </Card>
     </div>
   );
 };
 
-const CampaignRow: React.FC<{ c: CampaignAnalyticsItem }> = ({ c }) => (
-  <tr className="border-t border-zinc-100 hover:bg-zinc-50/60">
+const CampaignRow: React.FC<{
+  c: CampaignAnalyticsItem;
+  onDrillDown: () => void;
+}> = ({ c, onDrillDown }) => (
+  <tr
+    className="border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
+    onClick={onDrillDown}
+    title="Открыть поисковые запросы этой кампании"
+  >
     <td className="px-5 py-2.5 max-w-[280px]">
       <div className="text-xs text-zinc-900 truncate" title={c.campaign_name}>
         {c.campaign_name}
