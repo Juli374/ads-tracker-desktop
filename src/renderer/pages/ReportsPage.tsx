@@ -162,6 +162,7 @@ export const ReportsPage: React.FC = () => {
             onRefresh={() => load()}
             refreshing={loading}
             ranges={RANGES}
+            autoRefresh={{ storageKey: 'auto-refresh-reports' }}
           />
         }
       />

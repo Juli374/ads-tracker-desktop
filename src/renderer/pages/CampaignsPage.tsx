@@ -164,6 +164,7 @@ export const CampaignsPage: React.FC = () => {
             onChange={setRange}
             onRefresh={() => load()}
             refreshing={loading}
+            autoRefresh={{ storageKey: 'auto-refresh-campaigns' }}
           />
         }
       />
