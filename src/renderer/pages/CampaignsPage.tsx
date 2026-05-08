@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, ArrowDownUp } from 'lucide-react';
+import { Search, ArrowDownUp, Pencil } from 'lucide-react';
 import { ApiError } from '../api/client';
 import {
   metricsApi,
   CampaignSummary,
   CampaignAnalyticsItem,
 } from '../api/metrics';
+import { EditCampaignModal } from '../components/EditCampaignModal';
 import {
   PageHeader,
   RangePicker,
@@ -53,6 +54,7 @@ export const CampaignsPage: React.FC = () => {
     incomingFilters.bookId ?? null,
   );
   const [page, setPage] = useState(1);
+  const [editing, setEditing] = useState<CampaignAnalyticsItem | null>(null);
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
 
@@ -254,7 +256,8 @@ export const CampaignsPage: React.FC = () => {
                 <th className="text-right px-3 py-2 font-medium">Sales</th>
                 <th className="text-right px-3 py-2 font-medium">Orders</th>
                 <th className="text-right px-3 py-2 font-medium">CTR</th>
-                <th className="text-right px-5 py-2 font-medium">ACOS</th>
+                <th className="text-right px-3 py-2 font-medium">ACOS</th>
+                <th className="px-3 py-2 w-9"></th>
               </tr>
             </thead>
             <tbody>
@@ -268,6 +271,7 @@ export const CampaignsPage: React.FC = () => {
                       amazonCampaignId: c.amazon_campaign_id,
                     })
                   }
+                  onEdit={() => setEditing(c)}
                 />
               ))}
             </tbody>
@@ -282,6 +286,14 @@ export const CampaignsPage: React.FC = () => {
           disabled={loading}
         />
       </Card>
+
+      {editing && (
+        <EditCampaignModal
+          campaign={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => load()}
+        />
+      )}
     </div>
   );
 };
@@ -289,9 +301,10 @@ export const CampaignsPage: React.FC = () => {
 const CampaignRow: React.FC<{
   c: CampaignAnalyticsItem;
   onDrillDown: () => void;
-}> = ({ c, onDrillDown }) => (
+  onEdit: () => void;
+}> = ({ c, onDrillDown, onEdit }) => (
   <tr
-    className="border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
+    className="group border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
     onClick={onDrillDown}
     title="Открыть поисковые запросы этой кампании"
   >
@@ -328,10 +341,27 @@ const CampaignRow: React.FC<{
     <td className="px-3 py-2.5 text-xs text-zinc-600 text-right tabular-nums">
       {c.ctr > 0 ? fmtPct(c.ctr, 2) : '—'}
     </td>
-    <td className="px-5 py-2.5 text-xs text-right tabular-nums">
+    <td className="px-3 py-2.5 text-xs text-right tabular-nums">
       <span className={c.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
         {c.acos > 0 ? fmtPct(c.acos) : '—'}
       </span>
+    </td>
+    <td className="px-3 py-2.5 text-right">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit();
+        }}
+        className="
+          h-6 w-6 flex items-center justify-center rounded
+          text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200
+          opacity-0 group-hover:opacity-100 transition-opacity
+        "
+        title="Редактировать"
+        aria-label="Редактировать кампанию"
+      >
+        <Pencil size={11} />
+      </button>
     </td>
   </tr>
 );
