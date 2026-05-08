@@ -66,8 +66,8 @@ export function useInitialFilters(): NavFilters {
     if (Object.keys(snapshot).length > 0) {
       ctx.navigate(ctx.page, {});
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Run once on mount; ctx-based deps would re-trigger on every navigate.
+  }, []); // eslint-disable-line
   return snapshot;
 }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   LayoutDashboard,
   BookOpen,
@@ -43,8 +43,59 @@ export const MainLayout: React.FC = () => (
   </NavProvider>
 );
 
+// Хоткеи: 'g' включает pending-режим на 1.5 сек, следующая буква в HOTKEY_MAP
+// переключает страницу. Игнорируется в input/textarea/contenteditable, при
+// активном модификаторе и при открытом модале (data-modal-open на body).
+const HOTKEY_MAP: Record<string, ViewId> = {
+  o: 'dashboard',
+  b: 'books',
+  s: 'search_terms',
+  c: 'campaigns',
+  r: 'reports',
+};
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (target.isContentEditable) return true;
+  return false;
+}
+
 const Layout: React.FC = () => {
   const { page, navigate } = useNav();
+  const pendingG = useRef(false);
+  const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingTarget(e.target)) return;
+      if (document.body.dataset.modalOpen === 'true') return;
+
+      const key = e.key.toLowerCase();
+      if (key === 'g') {
+        pendingG.current = true;
+        if (pendingTimer.current) clearTimeout(pendingTimer.current);
+        pendingTimer.current = setTimeout(() => {
+          pendingG.current = false;
+        }, 1500);
+        return;
+      }
+
+      if (pendingG.current && HOTKEY_MAP[key]) {
+        e.preventDefault();
+        navigate(HOTKEY_MAP[key]);
+        pendingG.current = false;
+        if (pendingTimer.current) clearTimeout(pendingTimer.current);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      if (pendingTimer.current) clearTimeout(pendingTimer.current);
+    };
+  }, [navigate]);
 
   const renderContent = () => {
     switch (page) {
