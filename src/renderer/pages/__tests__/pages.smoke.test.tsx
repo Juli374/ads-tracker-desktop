@@ -11,13 +11,16 @@ import { SettingsPage } from '../SettingsPage';
 import { ToastProvider } from '../../contexts/ToastContext';
 import { NavProvider } from '../../contexts/NavContext';
 import { AuthProvider } from '../../contexts/AuthContext';
+import { MarketplacesProvider } from '../../contexts/MarketplacesContext';
 
 import { installMockApi, mockApiResponses } from '../../../test/mockApi';
 
 const Wrap: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <NavProvider>
     <ToastProvider>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        <MarketplacesProvider>{children}</MarketplacesProvider>
+      </AuthProvider>
     </ToastProvider>
   </NavProvider>
 );

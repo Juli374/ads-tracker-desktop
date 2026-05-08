@@ -6,6 +6,7 @@ import React from 'react';
 import { MainLayout } from '../MainLayout';
 import { ToastProvider } from '../../contexts/ToastContext';
 import { AuthProvider } from '../../contexts/AuthContext';
+import { MarketplacesProvider } from '../../contexts/MarketplacesContext';
 
 import { installMockApi, mockApiResponses } from '../../../test/mockApi';
 
@@ -17,7 +18,9 @@ const renderApp = () =>
   render(
     <ToastProvider>
       <AuthProvider>
-        <MainLayout />
+        <MarketplacesProvider>
+          <MainLayout />
+        </MarketplacesProvider>
       </AuthProvider>
     </ToastProvider>,
   );

@@ -19,6 +19,7 @@ import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav, useInitialFilters } from '../contexts/NavContext';
+import { useMarketplaces } from '../contexts/MarketplacesContext';
 
 type SortKey = 'cost' | 'sales' | 'acos' | 'orders' | 'clicks';
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -34,6 +35,7 @@ const PER_PAGE = 50;
 export const CampaignsPage: React.FC = () => {
   const toast = useToast();
   const { navigate } = useNav();
+  const { list: globalMarketplaces } = useMarketplaces();
   const incomingFilters = useInitialFilters();
   const [range, setRange] = useState<RangeId>('30d');
   const [summary, setSummary] = useState<CampaignSummary | null>(null);
@@ -81,12 +83,15 @@ export const CampaignsPage: React.FC = () => {
     load();
   }, [load]);
 
+  // Сначала глобальный список из /api/marketplaces (всегда полный),
+  // если ещё не загрузился — собираем из текущих данных как fallback.
   const marketplaceOptions = useMemo(() => {
+    if (globalMarketplaces.length > 0) return globalMarketplaces;
     if (!summary) return [];
     const set = new Set<string>();
     summary.campaigns.forEach((c) => c.marketplace && set.add(c.marketplace));
     return [...set].sort();
-  }, [summary]);
+  }, [summary, globalMarketplaces]);
 
   const typeOptions = useMemo(() => {
     if (!summary) return [];

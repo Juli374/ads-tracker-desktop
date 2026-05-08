@@ -1,6 +1,7 @@
 import React from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { MarketplacesProvider } from './contexts/MarketplacesContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './components/MainLayout';
 import { TokenPasteScreen } from './components/TokenPasteScreen';
@@ -24,7 +25,9 @@ export const App: React.FC = () => (
   <ErrorBoundary>
     <ToastProvider>
       <AuthProvider>
-        <Gate />
+        <MarketplacesProvider>
+          <Gate />
+        </MarketplacesProvider>
       </AuthProvider>
     </ToastProvider>
   </ErrorBoundary>

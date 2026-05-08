@@ -194,9 +194,6 @@ export function mockApiResponses(): Record<string, unknown> {
       inboxCounts: {},
       classificationCounts: {},
     },
-    '/api/marketplaces': [
-      { code: 'USA', name: 'United States', currency: 'USD' },
-      { code: 'UK', name: 'United Kingdom', currency: 'GBP' },
-    ],
+    '/api/marketplaces': ['USA', 'UK', 'CA', 'AU', 'DE', 'FR', 'ES', 'IT'],
   };
 }
