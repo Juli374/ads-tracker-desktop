@@ -19,6 +19,7 @@ import {
 } from '../components/ui';
 import { dateRangeFor, RangeId, RANGES } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { toCsv, downloadCsv } from '../lib/csv';
 import { useToast } from '../contexts/ToastContext';
 
 type Granularity = 'daily' | 'weekly';
@@ -102,7 +103,7 @@ export const ReportsPage: React.FC = () => {
   }, [rows]);
 
   const handleExport = () => {
-    const headers = [
+    const columns = [
       'period',
       'range',
       'spend',
@@ -113,32 +114,22 @@ export const ReportsPage: React.FC = () => {
       'royalty',
       'profit',
     ];
-    const lines = [headers.join(',')];
-    for (const r of rows) {
-      lines.push(
-        [
-          r.label,
-          r.range,
-          r.spend.toFixed(2),
-          r.sales.toFixed(2),
-          r.orders,
-          r.clicks,
-          r.acos.toFixed(2),
-          (r.royalty ?? 0).toFixed(2),
-          (r.profit ?? 0).toFixed(2),
-        ].join(','),
-      );
-    }
-    const csv = lines.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ads-tracker-${granularity}-${from}-${to}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const data = rows.map((r) => ({
+      period: r.label,
+      range: r.range,
+      spend: r.spend.toFixed(2),
+      sales: r.sales.toFixed(2),
+      orders: r.orders,
+      clicks: r.clicks,
+      acos: r.acos.toFixed(2),
+      royalty: (r.royalty ?? 0).toFixed(2),
+      profit: (r.profit ?? 0).toFixed(2),
+    }));
+    downloadCsv(
+      `ads-tracker-${granularity}-${from}-${to}.csv`,
+      toCsv(data, columns),
+    );
+    toast.success(`Экспортировано: ${rows.length} ${granularity === 'daily' ? 'дней' : 'недель'}`);
   };
 
   return (
