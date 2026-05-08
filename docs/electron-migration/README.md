@@ -33,12 +33,35 @@
 | Reports | `/api/metrics/summary/{daily,weekly,by-marketplace}` | KPI + переключатель day/week, разрез по MP, CSV-экспорт |
 | Settings | `/api/auth/verify` (через AuthContext), `app.getInfo`, `app.getApiBaseUrl` | Профиль, превью токена, base URL, версия, sign-out |
 
-**Что осталось до polishing-релиза:**
-- Drill-down: книга → кампании этой книги (модал/нав)
-- Глобальные фильтры (book/MP/account) выше уровня страницы
-- Графики (recharts) для динамики в Reports
-- Command palette (топ-бар уже имеет stub)
-- Глобальный error boundary + toast для IPC-ошибок
+### Сессия 2026-05-09 (вторая итерация, ~95%)
+
+В одной серии коммитов закрыты следующие пункты усиления приложения:
+
+| # | Что | Где |
+|---|---|---|
+| 1 | Удалён неиспользуемый `PagePlaceholder.tsx` | — |
+| 2 | `DashboardPage` отрефакторен на общие примитивы из `components/ui/` и `lib/` | DashboardPage.tsx |
+| 3 | Глобальный error handling: `ErrorBoundary` + `ToastProvider` (`useToast()`); все страницы кидают сетевые ошибки в toast | App.tsx, contexts/ToastContext.tsx, ErrorBoundary.tsx |
+| 4 | `lib/csv.ts` (csvEscape по RFC 4180, toCsv, downloadCsv); ReportsPage экспорт переехал | lib/csv.ts, ReportsPage.tsx |
+| 5 | `NavContext` + drill-down Books → Campaigns → SearchTerms; chip-фильтры с кнопкой сброса | contexts/NavContext.tsx, BooksPage.tsx, CampaignsPage.tsx, SearchTermsPage.tsx |
+| 6 | Vitest 1.6 + RTL 14 + jsdom 23. **40 тестов** (lib units + page smoke + drill-down integration + hotkeys) | `npm test` |
+| 7 | Recharts 3.8: LineChart spend/sales по дням, BarChart spend по MPs; кастомный `ChartTooltip` в стиле UI | components/ui/ChartTooltip.tsx, ReportsPage.tsx |
+| 8 | Клиентская пагинация в CampaignsPage; общий `Pagination` примитив (используется и в SearchTerms) | components/ui/Pagination.tsx |
+| 9 | `marketplacesApi` + `MarketplacesProvider` с in-memory кэшем, инвалидация на sign-out | api/marketplaces.ts, contexts/MarketplacesContext.tsx |
+| 10 | Хоткеи навигации `g + o/b/s/c/r`; защита от input/textarea/contenteditable, blocked при modal-open | MainLayout.tsx + hotkeys.test.tsx |
+| 11 | Cmd+K / Ctrl+K командная палитра (~210 строк руками, без cmdk): 6 переходов + reload + copy URL + sign-out | components/CommandPalette.tsx |
+| 12 | Auto-refresh toggle в `RangePicker` (настраиваемый interval, persist в localStorage per-page) | components/ui/RangePicker.tsx |
+| 13 | Глобальные фильтры в topbar (multi-select MPs); все страницы передают в API | contexts/GlobalFiltersContext.tsx, components/GlobalFilters.tsx |
+| 14 | Edit campaign модал: status (paused/enabled), daily budget; PUT `/api/campaigns/:id` | components/EditCampaignModal.tsx, api/campaigns.ts |
+
+**Что отложено** (не закрыто этой сессией):
+- Глобальный book selector (есть только MP) и account фильтр
+- Локальный SQLite слой для royalty (Phase 3 public-release трека)
+- Порт парсера xlsx на Node, code signing/notarization/auto-update, Sentry
+- Полные модули Negative Keywords / Targets / KeywordDiscovery / Alerts /
+  Action Center / Notifications / Automation / AdminPage / OperationsCenter Kanban / AIManagement
+- Login через email+password (сейчас только JWT/at_live токен через TokenPasteScreen)
+- Multi-machine sync
 
 **Что строим сейчас:** Electron-обёртка в новом визуальном стиле (Tailwind + lucide, без Cloudscape) над существующим Railway backend'ом. Auth — текущий JWT, royalty остаётся в Neon PostgreSQL как сейчас, никаких миграций данных. Срок до полной функциональности — ~1–2 недели.
 
