@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard,
   BookOpen,
@@ -17,6 +17,7 @@ import { CampaignsPage } from '../pages/CampaignsPage';
 import { ReportsPage } from '../pages/ReportsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
+import { CommandPalette } from './CommandPalette';
 
 interface NavItem {
   id: ViewId;
@@ -64,8 +65,21 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 const Layout: React.FC = () => {
   const { page, navigate } = useNav();
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const pendingG = useRef(false);
   const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cmd+K / Ctrl+K — открыть палитру
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -164,11 +178,13 @@ const Layout: React.FC = () => {
 
         <div className="flex items-center gap-1">
           <button
+            onClick={() => setPaletteOpen(true)}
             className="
               flex items-center gap-2 h-7 px-2.5 rounded-md
               text-xs text-zinc-500 hover:text-zinc-900
               hover:bg-zinc-100 transition-colors
             "
+            aria-label="Открыть командную палитру"
           >
             <Command size={12} strokeWidth={2} />
             <span>Поиск</span>
@@ -213,6 +229,8 @@ const Layout: React.FC = () => {
           <div className="max-w-6xl mx-auto px-8 py-8">{renderContent()}</div>
         </main>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 };
