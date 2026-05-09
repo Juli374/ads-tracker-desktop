@@ -39,7 +39,7 @@ describe('KeywordsPage', () => {
       </Wrap>,
     );
     expect(
-      await screen.findByRole('heading', { name: 'Ключевые слова' }),
+      await screen.findByTestId('keywords-page'),
     ).toBeInTheDocument();
     expect(await screen.findByText('test keyword')).toBeInTheDocument();
   });
@@ -62,7 +62,7 @@ describe('KeywordsPage', () => {
     await screen.findByTestId('dashboard-page');
     await user.keyboard('gk');
     expect(
-      await screen.findByRole('heading', { name: 'Ключевые слова' }),
+      await screen.findByTestId('keywords-page'),
     ).toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, ArrowDownUp } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
   metricsApi,
@@ -28,7 +29,6 @@ import {
 } from '../contexts/GlobalFiltersContext';
 import { useBooks } from '../contexts/BooksContext';
 
-// Только числовые поля KeywordAnalyticsItem допустимы для сортировки.
 type SortKey = 'cost' | 'sales' | 'orders' | 'clicks' | 'acos' | 'bid';
 const NUMERIC_KEY: Record<SortKey, keyof KeywordAnalyticsItem> = {
   cost: 'cost',
@@ -38,18 +38,12 @@ const NUMERIC_KEY: Record<SortKey, keyof KeywordAnalyticsItem> = {
   acos: 'acos',
   bid: 'bid',
 };
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: 'cost', label: 'Spend' },
-  { value: 'sales', label: 'Sales' },
-  { value: 'orders', label: 'Orders' },
-  { value: 'acos', label: 'ACOS' },
-  { value: 'clicks', label: 'Clicks' },
-  { value: 'bid', label: 'Bid' },
-];
+const SORT_KEYS: SortKey[] = ['cost', 'sales', 'orders', 'acos', 'clicks', 'bid'];
 
 const PER_PAGE = 100;
 
 export const KeywordsPage: React.FC = () => {
+  const { t } = useTranslation('keywords');
   const toast = useToast();
   const { navigate } = useNav();
   const { filters: globalFilters } = useGlobalFilters();
@@ -87,12 +81,12 @@ export const KeywordsPage: React.FC = () => {
         });
         setSummary(data);
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить ключи');
+        toast.error(err instanceof ApiError ? err.message : t('errors.load'));
       } finally {
         setLoading(false);
       }
     },
-    [from, to, toast, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
+    [from, to, toast, t, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
   );
 
   useEffect(() => {
@@ -151,7 +145,7 @@ export const KeywordsPage: React.FC = () => {
 
   const onSaveBid = async (item: KeywordAnalyticsItem, next: number) => {
     if (item.target_id == null) {
-      toast.error('У этого ключа нет target_id (auto-target?), bid править нельзя');
+      toast.error(t('errors.noTargetId'));
       throw new Error('no target_id');
     }
     try {
@@ -167,19 +161,24 @@ export const KeywordsPage: React.FC = () => {
           : prev,
       );
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось обновить bid');
+      toast.error(err instanceof ApiError ? err.message : t('errors.updateBid'));
       throw err;
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="keywords-page">
       <PageHeader
-        title="Ключевые слова"
+        title={t('title')}
         subtitle={
           summary
-            ? `${summary.date_from} → ${summary.date_to} · ${filtered.length} из ${summary.total_count} ключей`
-            : 'Загрузка…'
+            ? t('subtitle', {
+                from: summary.date_from,
+                to: summary.date_to,
+                filtered: filtered.length,
+                total: summary.total_count,
+              })
+            : t('loading')
         }
         rightSlot={
           <RangePicker
@@ -195,11 +194,11 @@ export const KeywordsPage: React.FC = () => {
       <ActiveFiltersBar chips={chips} />
 
       <div className="grid grid-cols-4 gap-3">
-        <Kpi label="Ключей" value={fmtNumber(filtered.length)} loading={loading} />
-        <Kpi label="Spend" value={fmtMoney(totals.cost)} loading={loading} />
-        <Kpi label="Sales" value={fmtMoney(totals.sales)} loading={loading} />
+        <Kpi label={t('kpi.keywords')} value={fmtNumber(filtered.length)} loading={loading} />
+        <Kpi label={t('kpi.spend')} value={fmtMoney(totals.cost)} loading={loading} />
+        <Kpi label={t('kpi.sales')} value={fmtMoney(totals.sales)} loading={loading} />
         <Kpi
-          label="ACOS"
+          label={t('kpi.acos')}
           value={fmtPct(totals.acos)}
           loading={loading}
           tone={totals.acos > 100 ? 'negative' : 'default'}
@@ -207,14 +206,14 @@ export const KeywordsPage: React.FC = () => {
       </div>
 
       <Card
-        title="Список"
+        title={t('card.title')}
         rightSlot={
           <div className="flex items-center gap-2">
             <Select
               value={matchFilter}
               onChange={setMatchFilter}
               options={[
-                { value: 'all', label: 'Все match' },
+                { value: 'all', label: t('filters.matchAll') },
                 ...matchOptions.map((m) => ({ value: m, label: m })),
               ]}
             />
@@ -222,9 +221,9 @@ export const KeywordsPage: React.FC = () => {
               value={statusFilter}
               onChange={setStatusFilter}
               options={[
-                { value: 'all', label: 'Все статусы' },
-                { value: 'enabled', label: 'Enabled' },
-                { value: 'paused', label: 'Paused' },
+                { value: 'all', label: t('filters.statusAll') },
+                { value: 'enabled', label: t('filters.statusEnabled') },
+                { value: 'paused', label: t('filters.statusPaused') },
               ]}
             />
             <SortSelect value={sortKey} onChange={setSortKey} />
@@ -236,22 +235,22 @@ export const KeywordsPage: React.FC = () => {
           <LoadingRow />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title={search ? 'Ничего не нашлось.' : 'Нет ключей за выбранный период.'}
+            title={search ? t('empty.noResults') : t('empty.noPeriod')}
           />
         ) : (
           <table className="w-full text-sm table-sticky-head">
             <thead>
               <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-2 font-medium">Ключ</th>
-                <th className="text-left px-3 py-2 font-medium">Match</th>
-                <th className="text-left px-3 py-2 font-medium">Кампания</th>
-                <th className="text-left px-3 py-2 font-medium">MP</th>
-                <th className="text-right px-3 py-2 font-medium">Bid</th>
-                <th className="text-right px-3 py-2 font-medium">Spend</th>
-                <th className="text-right px-3 py-2 font-medium">Sales</th>
-                <th className="text-right px-3 py-2 font-medium">Orders</th>
-                <th className="text-right px-3 py-2 font-medium">CTR</th>
-                <th className="text-right px-5 py-2 font-medium">ACOS</th>
+                <th className="text-left px-5 py-2 font-medium">{t('th.keyword')}</th>
+                <th className="text-left px-3 py-2 font-medium">{t('th.match')}</th>
+                <th className="text-left px-3 py-2 font-medium">{t('th.campaign')}</th>
+                <th className="text-left px-3 py-2 font-medium">{t('th.marketplace')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.bid')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.spend')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.sales')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.orders')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.ctr')}</th>
+                <th className="text-right px-5 py-2 font-medium">{t('th.acos')}</th>
               </tr>
             </thead>
             <tbody>
@@ -286,79 +285,85 @@ const KeywordRow: React.FC<{
   k: KeywordAnalyticsItem;
   onCampaignClick: () => void;
   onSaveBid: (next: number) => Promise<void>;
-}> = ({ k, onCampaignClick, onSaveBid }) => (
-  <tr className="border-t border-zinc-100 hover:bg-zinc-50/60">
-    <td className="px-5 py-2.5 text-xs">
-      <div className="text-zinc-900 font-mono truncate max-w-[280px]">
-        {k.keyword_text || '—'}
-      </div>
-      <div className="text-[10px] text-zinc-400 truncate max-w-[280px]">
-        {k.book_title}
-      </div>
-    </td>
-    <td className="px-3 py-2.5 text-[11px] text-zinc-600">{k.match_type || '—'}</td>
-    <td className="px-3 py-2.5 text-xs">
-      <button
-        type="button"
-        onClick={onCampaignClick}
-        className="text-zinc-700 hover:text-zinc-900 hover:underline truncate max-w-[200px] inline-block text-left"
-        title={k.campaign_name}
-      >
-        {k.campaign_name}
-      </button>
-    </td>
-    <td className="px-3 py-2.5 text-[11px] text-zinc-600 uppercase">{k.marketplace}</td>
-    <td className="px-3 py-2.5 text-xs text-right">
-      {k.bid != null && k.target_id != null ? (
-        <EditableNumber
-          value={k.bid}
-          onSave={onSaveBid}
-          format={(n) => fmtMoney(n)}
-          min={0.02}
-          step={0.01}
-          ariaLabel={`Bid для ${k.keyword_text}`}
-        />
-      ) : (
-        <span className="text-zinc-400">—</span>
-      )}
-    </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
-      {fmtMoney(k.cost, k.currency)}
-    </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
-      {fmtMoney(k.sales, k.currency)}
-    </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">{k.orders}</td>
-    <td className="px-3 py-2.5 text-xs text-zinc-600 text-right tabular-nums">
-      {k.ctr > 0 ? fmtPct(k.ctr, 2) : '—'}
-    </td>
-    <td className="px-5 py-2.5 text-xs text-right tabular-nums">
-      <span className={k.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
-        {k.acos > 0 ? fmtPct(k.acos) : '—'}
-      </span>
-    </td>
-  </tr>
-);
+}> = ({ k, onCampaignClick, onSaveBid }) => {
+  const { t } = useTranslation('keywords');
+  return (
+    <tr className="border-t border-zinc-100 hover:bg-zinc-50/60">
+      <td className="px-5 py-2.5 text-xs">
+        <div className="text-zinc-900 font-mono truncate max-w-[280px]">
+          {k.keyword_text || '—'}
+        </div>
+        <div className="text-[10px] text-zinc-400 truncate max-w-[280px]">
+          {k.book_title}
+        </div>
+      </td>
+      <td className="px-3 py-2.5 text-[11px] text-zinc-600">{k.match_type || '—'}</td>
+      <td className="px-3 py-2.5 text-xs">
+        <button
+          type="button"
+          onClick={onCampaignClick}
+          className="text-zinc-700 hover:text-zinc-900 hover:underline truncate max-w-[200px] inline-block text-left"
+          title={k.campaign_name}
+        >
+          {k.campaign_name}
+        </button>
+      </td>
+      <td className="px-3 py-2.5 text-[11px] text-zinc-600 uppercase">{k.marketplace}</td>
+      <td className="px-3 py-2.5 text-xs text-right">
+        {k.bid != null && k.target_id != null ? (
+          <EditableNumber
+            value={k.bid}
+            onSave={onSaveBid}
+            format={(n) => fmtMoney(n)}
+            min={0.02}
+            step={0.01}
+            ariaLabel={t('row.bidAria', { keyword: k.keyword_text })}
+          />
+        ) : (
+          <span className="text-zinc-400">—</span>
+        )}
+      </td>
+      <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+        {fmtMoney(k.cost, k.currency)}
+      </td>
+      <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+        {fmtMoney(k.sales, k.currency)}
+      </td>
+      <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">{k.orders}</td>
+      <td className="px-3 py-2.5 text-xs text-zinc-600 text-right tabular-nums">
+        {k.ctr > 0 ? fmtPct(k.ctr, 2) : '—'}
+      </td>
+      <td className="px-5 py-2.5 text-xs text-right tabular-nums">
+        <span className={k.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
+          {k.acos > 0 ? fmtPct(k.acos) : '—'}
+        </span>
+      </td>
+    </tr>
+  );
+};
 
 const SearchInput: React.FC<{ value: string; onChange: (v: string) => void }> = ({
   value,
   onChange,
-}) => (
-  <div className="relative">
-    <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400" />
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="Ключ / кампания / книга…"
-      className="
-        h-7 pl-7 pr-2 w-56 text-xs rounded-md
-        border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400
-        focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
-      "
-    />
-  </div>
-);
+}) => {
+  const { t } = useTranslation('keywords');
+  return (
+    <div className="relative">
+      <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400" />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t('filters.search.placeholder')}
+        className="
+          h-7 pl-7 pr-2 w-56 text-xs rounded-md
+          border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400
+          focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+        "
+      />
+    </div>
+  );
+};
 
 const Select: React.FC<{
   value: string;
@@ -385,27 +390,30 @@ const Select: React.FC<{
 const SortSelect: React.FC<{
   value: SortKey;
   onChange: (v: SortKey) => void;
-}> = ({ value, onChange }) => (
-  <div className="relative">
-    <ArrowDownUp
-      size={11}
-      className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400"
-    />
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as SortKey)}
-      className="
-        h-7 pl-7 pr-7 text-xs rounded-md cursor-pointer
-        border border-zinc-200 bg-white text-zinc-700
-        focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
-      "
-      aria-label="Сортировка"
-    >
-      {SORT_OPTIONS.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+}> = ({ value, onChange }) => {
+  const { t } = useTranslation('keywords');
+  return (
+    <div className="relative">
+      <ArrowDownUp
+        size={11}
+        className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400"
+      />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as SortKey)}
+        className="
+          h-7 pl-7 pr-7 text-xs rounded-md cursor-pointer
+          border border-zinc-200 bg-white text-zinc-700
+          focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+        "
+        aria-label={t('filters.sort.ariaLabel')}
+      >
+        {SORT_KEYS.map((key) => (
+          <option key={key} value={key}>
+            {t(`filters.sort.${key}` as 'filters.sort.cost')}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};

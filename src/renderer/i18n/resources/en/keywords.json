@@ -1,0 +1,56 @@
+{
+  "title": "Keywords",
+  "loading": "Loading…",
+  "subtitle": "{from} → {to} · {filtered} of {total, plural, one {# keyword} other {# keywords}}",
+  "errors": {
+    "load": "Failed to load keywords",
+    "noTargetId": "This keyword has no target_id (auto-target?), bid is not editable",
+    "updateBid": "Failed to update bid"
+  },
+  "kpi": {
+    "keywords": "Keywords",
+    "spend": "Spend",
+    "sales": "Sales",
+    "acos": "ACOS"
+  },
+  "card": {
+    "title": "List"
+  },
+  "filters": {
+    "matchAll": "All match",
+    "statusAll": "All statuses",
+    "statusEnabled": "Enabled",
+    "statusPaused": "Paused",
+    "search": {
+      "placeholder": "Keyword / campaign / book…"
+    },
+    "sort": {
+      "ariaLabel": "Sort",
+      "cost": "Spend",
+      "sales": "Sales",
+      "orders": "Orders",
+      "acos": "ACOS",
+      "clicks": "Clicks",
+      "bid": "Bid"
+    }
+  },
+  "th": {
+    "keyword": "Keyword",
+    "match": "Match",
+    "campaign": "Campaign",
+    "marketplace": "MP",
+    "bid": "Bid",
+    "spend": "Spend",
+    "sales": "Sales",
+    "orders": "Orders",
+    "ctr": "CTR",
+    "acos": "ACOS"
+  },
+  "row": {
+    "bidAria": "Bid for {keyword}"
+  },
+  "empty": {
+    "noResults": "Nothing found.",
+    "noPeriod": "No keywords in the selected period."
+  }
+}
