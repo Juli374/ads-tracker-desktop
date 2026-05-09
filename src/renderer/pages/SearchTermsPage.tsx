@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Search, Ban, Loader2 } from 'lucide-react';
 import { ApiError } from '../api/client';
 import {
   searchTermsApi,
   SearchTermsResponse,
   SearchTermItem,
   SearchTermsFilters,
+  NegativeMatchType,
 } from '../api/searchTerms';
 import {
   PageHeader,
@@ -48,6 +49,7 @@ export const SearchTermsPage: React.FC = () => {
   const [termType, setTermType] = useState<'all' | 'keywords' | 'asins'>('all');
   const [minClicks, setMinClicks] = useState<number>(0);
   const [page, setPage] = useState(1);
+  const [hidden, setHidden] = useState<Set<number>>(new Set());
   const [campaignFilter, setCampaignFilter] = useState<{
     localId?: number;
     amazonId?: string;
@@ -243,16 +245,22 @@ export const SearchTermsPage: React.FC = () => {
                   <th className="text-right px-3 py-2 font-medium">Spend</th>
                   <th className="text-right px-3 py-2 font-medium">Sales</th>
                   <th className="text-right px-3 py-2 font-medium">Orders</th>
-                  <th className="text-right px-5 py-2 font-medium">ACOS</th>
+                  <th className="text-right px-3 py-2 font-medium">ACOS</th>
+                  <th className="px-3 py-2 w-9"></th>
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((item) => (
-                  <TermRow
-                    key={`${item.id}-${item.keywordId ?? item.searchTerm}`}
-                    item={item}
-                  />
-                ))}
+                {data.items
+                  .filter((item) => !hidden.has(item.id))
+                  .map((item) => (
+                    <TermRow
+                      key={`${item.id}-${item.keywordId ?? item.searchTerm}`}
+                      item={item}
+                      onAddedNegative={() =>
+                        setHidden((prev) => new Set(prev).add(item.id))
+                      }
+                    />
+                  ))}
               </tbody>
             </table>
 
@@ -271,8 +279,11 @@ export const SearchTermsPage: React.FC = () => {
   );
 };
 
-const TermRow: React.FC<{ item: SearchTermItem }> = ({ item }) => (
-  <tr className="border-t border-zinc-100 hover:bg-zinc-50/60">
+const TermRow: React.FC<{
+  item: SearchTermItem;
+  onAddedNegative: () => void;
+}> = ({ item, onAddedNegative }) => (
+  <tr className="group border-t border-zinc-100 hover:bg-zinc-50/60">
     <td className="px-5 py-2.5 max-w-[260px]">
       <div className="text-xs text-zinc-900 truncate" title={item.searchTerm}>
         {item.searchTerm}
@@ -311,13 +322,99 @@ const TermRow: React.FC<{ item: SearchTermItem }> = ({ item }) => (
     <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
       {item.orders}
     </td>
-    <td className="px-5 py-2.5 text-xs text-right tabular-nums">
+    <td className="px-3 py-2.5 text-xs text-right tabular-nums">
       <span className={item.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
         {item.acos > 0 ? fmtPct(item.acos) : '—'}
       </span>
     </td>
+    <td className="px-3 py-2.5 text-right">
+      <NegativeQuickAction item={item} onAdded={onAddedNegative} />
+    </td>
   </tr>
 );
+
+const NegativeQuickAction: React.FC<{
+  item: SearchTermItem;
+  onAdded: () => void;
+}> = ({ item, onAdded }) => {
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const canAdd = item.localCampaignId != null && !!item.searchTerm;
+
+  const submit = async (matchType: NegativeMatchType) => {
+    if (!canAdd || submitting) return;
+    setSubmitting(true);
+    try {
+      await searchTermsApi.addNegativeByText({
+        keywordText: item.searchTerm,
+        campaignId: item.localCampaignId as number,
+        matchType,
+      });
+      toast.success(`Добавлено как negative (${matchType})`);
+      onAdded();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Не удалось добавить');
+    } finally {
+      setSubmitting(false);
+      setOpen(false);
+    }
+  };
+
+  if (!canAdd) return null;
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="
+          h-6 w-6 flex items-center justify-center rounded
+          text-zinc-400 hover:text-red-600 hover:bg-red-50
+          opacity-0 group-hover:opacity-100 transition-opacity
+        "
+        title="Добавить как negative"
+        aria-label="Добавить как negative"
+      >
+        {submitting ? <Loader2 size={11} className="animate-spin" /> : <Ban size={11} />}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-7 z-30 w-44 bg-white border border-zinc-200 rounded-md shadow-card overflow-hidden">
+          <div className="px-3 py-1.5 border-b border-zinc-100 text-[10px] text-zinc-500 uppercase tracking-wider">
+            Match type
+          </div>
+          {(['Exact', 'Phrase'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => submit(m)}
+              disabled={submitting}
+              className="
+                w-full text-left px-3 h-8 text-xs text-zinc-700
+                hover:bg-zinc-50 transition-colors
+                disabled:opacity-50
+              "
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const SearchInput: React.FC<{
   value: string;

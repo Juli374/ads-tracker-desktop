@@ -97,6 +97,19 @@ function toQuery(
   };
 }
 
+export type NegativeMatchType = 'Exact' | 'Phrase';
+
+export interface AddNegativeByTextResult {
+  success: boolean;
+  found_in_reports: boolean;
+  search_term_id: number | null;
+  negative_id: number | null;
+  archived_status: boolean;
+  related_statuses_archived: number;
+  saved_to_list: boolean;
+  error?: string;
+}
+
 export const searchTermsApi = {
   list(filters: SearchTermsFilters): Promise<SearchTermsResponse> {
     return apiClient.get<SearchTermsResponse>('/api/search-terms', toQuery(filters));
@@ -110,5 +123,22 @@ export const searchTermsApi = {
       date_to: filters.dateTo,
       book_id: filters.bookId,
     });
+  },
+
+  addNegativeByText(params: {
+    keywordText: string;
+    campaignId: number;
+    matchType?: NegativeMatchType;
+  }): Promise<AddNegativeByTextResult> {
+    return apiClient.post<AddNegativeByTextResult>(
+      '/api/search-terms/add-negative-by-text',
+      {
+        keyword_text: params.keywordText,
+        campaign_id: params.campaignId,
+        match_type: params.matchType ?? 'Exact',
+        level: 'campaign',
+        sync_to_amazon: true,
+      },
+    );
   },
 };
