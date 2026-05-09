@@ -42,7 +42,7 @@ describe('page smoke renders', () => {
         <DashboardPage />
       </Wrap>,
     );
-    expect(await screen.findByRole('heading', { name: 'Обзор' })).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-page')).toBeInTheDocument();
     // KPI labels встречаются и в заголовках таблицы — findAllByText.
     expect((await screen.findAllByText('Spend')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Sales')).length).toBeGreaterThan(0);

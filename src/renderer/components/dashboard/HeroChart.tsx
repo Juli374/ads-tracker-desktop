@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
   Line,
@@ -100,6 +101,7 @@ export const HeroChart: React.FC<HeroChartProps> = ({
   onActiveChange,
   onLimitReached,
 }) => {
+  const { t } = useTranslation('dashboard');
   const [internalActive, setInternalActive] = useState<MetricId[]>(loadActive);
   const active = controlled ?? internalActive;
 
@@ -216,7 +218,7 @@ export const HeroChart: React.FC<HeroChartProps> = ({
       <div className="h-72 w-full">
         {chartData.length === 0 ? (
           <div className="h-full flex items-center justify-center text-sm text-zinc-400">
-            {loading ? 'Загрузка…' : 'Нет данных за период'}
+            {loading ? t('hero.loading') : t('hero.noData')}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">

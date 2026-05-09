@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DollarSign, ShoppingCart, Target as TargetIcon, TrendingDown } from 'lucide-react';
 import {
   metricsApi,
@@ -34,6 +35,7 @@ import { FunnelChart } from '../components/dashboard/FunnelChart';
 import { AlertsWidget } from '../components/dashboard/AlertsWidget';
 
 export const DashboardPage: React.FC = () => {
+  const { t } = useTranslation('dashboard');
   const toast = useToast();
   const { filters: globalFilters } = useGlobalFilters();
   const { list: booksList } = useBooks();
@@ -98,14 +100,12 @@ export const DashboardPage: React.FC = () => {
       // Если упали ОБА главных endpoint'а — это явная проблема, кидаем toast.
       if (ovRes.status === 'rejected' && bookRes.status === 'rejected') {
         const err = bookRes.reason;
-        toast.error(
-          err instanceof ApiError ? err.message : 'Не удалось загрузить данные',
-        );
+        toast.error(err instanceof ApiError ? err.message : t('loadFailed'));
       }
 
       setLoading(false);
     },
-    [filterParams, toast],
+    [filterParams, toast, t],
   );
 
   useEffect(() => {
@@ -116,15 +116,23 @@ export const DashboardPage: React.FC = () => {
   const ch = overview?.changes;
 
   const subtitle = overview
-    ? `${overview.date_from} → ${overview.date_to} · окно атрибуции ${overview.attribution_window}`
+    ? t('subtitle.withDates', {
+        from: overview.date_from,
+        to: overview.date_to,
+        window: overview.attribution_window,
+      })
     : bookSummary
-    ? `${bookSummary.date_from} → ${bookSummary.date_to} · окно атрибуции ${bookSummary.attribution_window}`
-    : 'Загрузка…';
+    ? t('subtitle.withDates', {
+        from: bookSummary.date_from,
+        to: bookSummary.date_to,
+        window: bookSummary.attribution_window,
+      })
+    : t('subtitle.loading');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="dashboard-page">
       <PageHeader
-        title="Обзор"
+        title={t('title')}
         subtitle={subtitle}
         rightSlot={
           <RangePicker
@@ -175,11 +183,9 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       <Card
-        title="Эффективность"
+        title={t('cards.performance')}
         rightSlot={
-          <span className="text-xs text-zinc-400">
-            клик по метрике — линия на графике (макс. 6)
-          </span>
+          <span className="text-xs text-zinc-400">{t('metrics.clickHint')}</span>
         }
         bodyClassName="px-5 py-4"
       >
@@ -187,19 +193,19 @@ export const DashboardPage: React.FC = () => {
           data={daily?.daily ?? []}
           loading={loading && !daily}
           targetAcos={25}
-          onLimitReached={() => toast.info('Максимум 6 метрик одновременно')}
+          onLimitReached={() => toast.info(t('metrics.limitReached'))}
         />
       </Card>
 
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2">
-          <Card title="Лидеры по прибыли" bodyClassName="px-5 py-4">
+          <Card title={t('cards.topPerformers')} bodyClassName="px-5 py-4">
             <TopPerformers data={topPerf} loading={loading && !topPerf} />
           </Card>
         </div>
 
         <div className="space-y-4">
-          <Card title="Оповещения" bodyClassName="px-5 py-3">
+          <Card title={t('cards.alerts')} bodyClassName="px-5 py-3">
             <AlertsWidget
               from={from}
               to={to}
@@ -210,21 +216,23 @@ export const DashboardPage: React.FC = () => {
             />
           </Card>
 
-          <Card title="Воронка" bodyClassName="px-5 py-4">
+          <Card title={t('cards.funnel')} bodyClassName="px-5 py-4">
             <FunnelChart data={cur ?? null} loading={loading && !overview} />
           </Card>
         </div>
       </div>
 
-      <Card title="Распределение по маркетплейсам" bodyClassName="px-5 py-4">
+      <Card title={t('cards.marketplaceShare')} bodyClassName="px-5 py-4">
         <MarketplaceDistribution summary={mpSummary} loading={loading && !mpSummary} />
       </Card>
 
       <Card
-        title="Книги"
+        title={t('cards.books')}
         rightSlot={
           <div className="text-xs text-zinc-500">
-            {bookSummary ? `${bookSummary.books.length} всего` : null}
+            {bookSummary
+              ? t('books.totalSuffix', { count: bookSummary.books.length })
+              : null}
           </div>
         }
       >
@@ -236,7 +244,7 @@ export const DashboardPage: React.FC = () => {
           <table className="w-full text-sm table-sticky-head">
             <thead>
               <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-2 font-medium">Книга</th>
+                <th className="text-left px-5 py-2 font-medium">{t('books.th.book')}</th>
                 <th className="text-left px-3 py-2 font-medium">MP</th>
                 <th className="text-right px-3 py-2 font-medium">Spend</th>
                 <th className="text-right px-3 py-2 font-medium">Sales</th>

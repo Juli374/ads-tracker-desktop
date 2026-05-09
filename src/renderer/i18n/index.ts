@@ -4,6 +4,7 @@ import ICU from 'i18next-icu';
 
 import enCommon from './resources/en/common.json';
 import enNav from './resources/en/nav.json';
+import enDashboard from './resources/en/dashboard.json';
 
 void i18next
   .use(ICU)
@@ -12,9 +13,13 @@ void i18next
     lng: 'en',
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['common', 'nav'],
+    ns: ['common', 'nav', 'dashboard'],
     resources: {
-      en: { common: enCommon, nav: enNav },
+      en: {
+        common: enCommon,
+        nav: enNav,
+        dashboard: enDashboard,
+      },
     },
     interpolation: { escapeValue: false },
     returnNull: false,

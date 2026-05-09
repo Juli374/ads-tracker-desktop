@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { fmtNumber, fmtPct } from '../../lib/format';
 import type { PeriodMetrics } from '../../api/metrics';
 
@@ -7,33 +8,31 @@ interface Props {
   loading?: boolean;
 }
 
+type StepId = 'impressions' | 'clicks' | 'orders';
+
 interface Step {
-  label: string;
+  id: StepId;
   value: number;
   conversion: number | null; // % от предыдущего шага
   color: string;
 }
 
 export const FunnelChart: React.FC<Props> = ({ data, loading }) => {
+  const { t } = useTranslation('dashboard');
   const impressions = data?.impressions ?? 0;
   const clicks = data?.clicks ?? 0;
   const orders = data?.orders ?? 0;
 
   const steps: Step[] = [
+    { id: 'impressions', value: impressions, conversion: null, color: 'bg-zinc-300' },
     {
-      label: 'Показы',
-      value: impressions,
-      conversion: null,
-      color: 'bg-zinc-300',
-    },
-    {
-      label: 'Клики',
+      id: 'clicks',
       value: clicks,
       conversion: impressions > 0 ? (clicks / impressions) * 100 : null,
       color: 'bg-zinc-500',
     },
     {
-      label: 'Заказы',
+      id: 'orders',
       value: orders,
       conversion: clicks > 0 ? (orders / clicks) * 100 : null,
       color: 'bg-zinc-900',
@@ -45,16 +44,16 @@ export const FunnelChart: React.FC<Props> = ({ data, loading }) => {
   return (
     <div className="space-y-2.5">
       {loading && !data ? (
-        <div className="text-xs text-zinc-400 py-3 text-center">Загрузка…</div>
+        <div className="text-xs text-zinc-400 py-3 text-center">{t('funnel.loading')}</div>
       ) : impressions === 0 ? (
-        <div className="text-xs text-zinc-400 py-3 text-center">Нет данных за период</div>
+        <div className="text-xs text-zinc-400 py-3 text-center">{t('funnel.noData')}</div>
       ) : (
         steps.map((s) => {
           const pct = max > 0 ? (s.value / max) * 100 : 0;
           return (
-            <div key={s.label}>
+            <div key={s.id}>
               <div className="flex items-baseline justify-between text-[11px] mb-1">
-                <span className="text-zinc-600 font-medium">{s.label}</span>
+                <span className="text-zinc-600 font-medium">{t(`funnel.steps.${s.id}`)}</span>
                 <span className="text-zinc-900 tabular-nums font-medium">
                   {fmtNumber(s.value)}
                 </span>
@@ -67,7 +66,7 @@ export const FunnelChart: React.FC<Props> = ({ data, loading }) => {
               </div>
               {s.conversion != null && (
                 <div className="text-[10px] text-zinc-500 mt-0.5 tabular-nums">
-                  {fmtPct(s.conversion, 2)} конверсия
+                  {t('funnel.conversion', { value: fmtPct(s.conversion, 2) })}
                 </div>
               )}
             </div>

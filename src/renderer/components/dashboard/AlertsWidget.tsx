@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertCircle, AlertTriangle, Info, BellOff } from 'lucide-react';
 import { metricsApi, type AlertItem } from '../../api/metrics';
 import { ApiError } from '../../api/client';
@@ -29,6 +30,7 @@ export const AlertsWidget: React.FC<Props> = ({
   bookIds,
   accounts,
 }) => {
+  const { t } = useTranslation('dashboard');
   const [alerts, setAlerts] = useState<AlertItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [unsupported, setUnsupported] = useState(false);
@@ -70,16 +72,14 @@ export const AlertsWidget: React.FC<Props> = ({
     return (
       <div className="text-xs text-zinc-400 py-3 text-center flex flex-col items-center gap-1.5">
         <BellOff size={14} />
-        Оповещения недоступны
+        {t('alerts.unavailable')}
       </div>
     );
   }
 
   if (!alerts || alerts.length === 0) {
     return (
-      <div className="text-xs text-zinc-400 py-3 text-center">
-        Нет активных оповещений
-      </div>
+      <div className="text-xs text-zinc-400 py-3 text-center">{t('alerts.empty')}</div>
     );
   }
 
@@ -100,7 +100,7 @@ export const AlertsWidget: React.FC<Props> = ({
       ))}
       {alerts.length > 5 && (
         <li className="text-[11px] text-zinc-400 pt-1">
-          + ещё {alerts.length - 5}
+          {t('alerts.moreCount', { count: alerts.length - 5 })}
         </li>
       )}
     </ul>

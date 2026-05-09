@@ -36,7 +36,7 @@ describe('drill-down navigation', () => {
     const user = userEvent.setup();
     renderApp();
 
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.click(screen.getByTestId('nav-books'));
 
     await screen.findByRole('heading', { name: 'Книги' });
@@ -55,7 +55,7 @@ describe('drill-down navigation', () => {
     const user = userEvent.setup();
     renderApp();
 
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.click(screen.getByTestId('nav-campaigns'));
     await screen.findByRole('heading', { name: 'Кампании' });
 

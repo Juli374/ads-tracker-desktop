@@ -31,7 +31,7 @@ const renderApp = () =>
   );
 
 const goToDetails = async (user: ReturnType<typeof userEvent.setup>) => {
-  await screen.findByRole('heading', { name: 'Обзор' });
+  await screen.findByTestId('dashboard-page');
   await user.click(screen.getByTestId('nav-campaigns'));
   await screen.findByRole('heading', { name: 'Кампании' });
   const row = await screen.findByText('Test Campaign');

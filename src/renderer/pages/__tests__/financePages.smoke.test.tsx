@@ -96,7 +96,7 @@ describe('Hotkeys G Y / G T / G F', () => {
   it('G Y → Royalty', async () => {
     const user = userEvent.setup();
     renderApp();
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.keyboard('gy');
     expect(
       await screen.findByRole('heading', { name: 'Royalty' }),
@@ -106,7 +106,7 @@ describe('Hotkeys G Y / G T / G F', () => {
   it('G T → Операционный центр', async () => {
     const user = userEvent.setup();
     renderApp();
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.keyboard('gt');
     expect(
       await screen.findByRole('heading', { name: 'Операционный центр' }),
@@ -116,7 +116,7 @@ describe('Hotkeys G Y / G T / G F', () => {
   it('G F → Бухгалтерия', async () => {
     const user = userEvent.setup();
     renderApp();
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.keyboard('gf');
     expect(
       await screen.findByRole('heading', { name: 'Бухгалтерия' }),

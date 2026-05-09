@@ -104,7 +104,7 @@ describe('Хоткеи G A / G U / G L', () => {
   it('G A → Центр действий', async () => {
     const user = userEvent.setup();
     renderApp();
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.keyboard('ga');
     expect(
       await screen.findByRole('heading', { name: 'Центр действий' }),
@@ -114,7 +114,7 @@ describe('Хоткеи G A / G U / G L', () => {
   it('G U → Автоматизация', async () => {
     const user = userEvent.setup();
     renderApp();
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.keyboard('gu');
     expect(
       await screen.findByRole('heading', { name: 'Автоматизация' }),
@@ -124,7 +124,7 @@ describe('Хоткеи G A / G U / G L', () => {
   it('G L → Мониторинг', async () => {
     const user = userEvent.setup();
     renderApp();
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.keyboard('gl');
     expect(
       await screen.findByRole('heading', { name: 'Мониторинг' }),

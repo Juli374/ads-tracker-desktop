@@ -1,0 +1,61 @@
+{
+  "title": "Overview",
+  "subtitle": {
+    "withDates": "{from} → {to} · attribution window {window}",
+    "loading": "Loading…"
+  },
+  "loadFailed": "Failed to load data",
+  "metrics": {
+    "limitReached": "Maximum 6 metrics at once",
+    "clickHint": "click a metric — line on the chart (max 6)"
+  },
+  "cards": {
+    "performance": "Performance",
+    "topPerformers": "Top performers by profit",
+    "alerts": "Alerts",
+    "funnel": "Funnel",
+    "marketplaceShare": "Marketplace distribution",
+    "books": "Books"
+  },
+  "books": {
+    "totalSuffix": "{count} total",
+    "th": {
+      "book": "Book"
+    }
+  },
+  "hero": {
+    "noData": "No data for this period",
+    "loading": "Loading…"
+  },
+  "topPerformers": {
+    "tab": {
+      "books": "Books",
+      "campaigns": "Campaigns"
+    },
+    "ariaTab": {
+      "books": "Top performers by books",
+      "campaigns": "Top performers by campaigns"
+    },
+    "winners": "Top",
+    "losers": "Underperformers",
+    "empty": "Not enough data for this period"
+  },
+  "funnel": {
+    "loading": "Loading…",
+    "noData": "No data for this period",
+    "steps": {
+      "impressions": "Impressions",
+      "clicks": "Clicks",
+      "orders": "Orders"
+    },
+    "conversion": "{value} conversion"
+  },
+  "marketplaceShare": {
+    "empty": "No marketplace data"
+  },
+  "alerts": {
+    "unavailable": "Alerts unavailable",
+    "empty": "No active alerts",
+    "moreCount": "+ {count} more"
+  }
+}

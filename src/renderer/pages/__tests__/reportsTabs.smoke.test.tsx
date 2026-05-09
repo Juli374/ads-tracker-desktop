@@ -89,7 +89,7 @@ describe('ComparisonPage', () => {
         </AuthProvider>
       </ToastProvider>,
     );
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.keyboard('gp');
     expect(
       await screen.findByRole('heading', { name: 'Сравнение' }),

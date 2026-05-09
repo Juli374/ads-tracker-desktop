@@ -36,7 +36,7 @@ describe('DashboardPage (Phase 1 redesign)', () => {
         <DashboardPage />
       </Wrap>,
     );
-    expect(await screen.findByRole('heading', { name: 'Обзор' })).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-page')).toBeInTheDocument();
     // KpiDelta labels — теперь Profit/ACOS/Sales/Spend (не TACoS)
     expect((await screen.findAllByText('Profit')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('ACOS')).length).toBeGreaterThan(0);
@@ -50,16 +50,11 @@ describe('DashboardPage (Phase 1 redesign)', () => {
         <DashboardPage />
       </Wrap>,
     );
-    expect(
-      await screen.findByText('Эффективность'),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('Лидеры по прибыли'),
-    ).toBeInTheDocument();
-    expect(await screen.findByText('Воронка')).toBeInTheDocument();
-    expect(
-      await screen.findByText('Распределение по маркетплейсам'),
-    ).toBeInTheDocument();
+    // Mock react-i18next возвращает key, поэтому assertим на ключи namespace.
+    expect(await screen.findByText('cards.performance')).toBeInTheDocument();
+    expect(await screen.findByText('cards.topPerformers')).toBeInTheDocument();
+    expect(await screen.findByText('cards.funnel')).toBeInTheDocument();
+    expect(await screen.findByText('cards.marketplaceShare')).toBeInTheDocument();
   });
 
   it('renders top performers winners from mock', async () => {
@@ -81,10 +76,10 @@ describe('DashboardPage (Phase 1 redesign)', () => {
       </Wrap>,
     );
     expect(
-      await screen.findByRole('button', { name: 'Лидеры по книгам' }),
+      await screen.findByRole('button', { name: 'topPerformers.ariaTab.books' }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('button', { name: 'Лидеры по кампаниям' }),
+      await screen.findByRole('button', { name: 'topPerformers.ariaTab.campaigns' }),
     ).toBeInTheDocument();
   });
 
@@ -100,6 +95,6 @@ describe('DashboardPage (Phase 1 redesign)', () => {
       </Wrap>,
     );
     // Header всё равно должен отрендериться через summaryByBook (он есть в моках).
-    expect(await screen.findByRole('heading', { name: 'Обзор' })).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-page')).toBeInTheDocument();
   });
 });

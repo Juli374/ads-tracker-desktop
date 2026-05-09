@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import type {
   TopPerformersData,
@@ -18,6 +19,7 @@ interface Props {
 type Tab = 'books' | 'campaigns';
 
 export const TopPerformers: React.FC<Props> = ({ data, loading }) => {
+  const { t } = useTranslation('dashboard');
   const [tab, setTab] = useState<Tab>('books');
   const { navigate } = useNav();
   const { setBookId } = useGlobalFilters();
@@ -39,23 +41,21 @@ export const TopPerformers: React.FC<Props> = ({ data, loading }) => {
     <div>
       <div className="flex items-center justify-between mb-3">
         <div className="inline-flex items-center bg-zinc-100 rounded-md p-0.5">
-          {(['books', 'campaigns'] as const).map((t) => (
+          {(['books', 'campaigns'] as const).map((tabId) => (
             <button
-              key={t}
+              key={tabId}
               type="button"
-              onClick={() => setTab(t)}
-              aria-label={
-                t === 'books' ? 'Лидеры по книгам' : 'Лидеры по кампаниям'
-              }
+              onClick={() => setTab(tabId)}
+              aria-label={t(`topPerformers.ariaTab.${tabId}`)}
               className={`
                 px-3 h-7 text-xs font-medium rounded
                 transition-colors
-                ${tab === t
+                ${tab === tabId
                   ? 'bg-white text-zinc-900 shadow-sm'
                   : 'text-zinc-600 hover:text-zinc-900'}
               `}
             >
-              {t === 'books' ? 'Книги' : 'Кампании'}
+              {t(`topPerformers.tab.${tabId}`)}
             </button>
           ))}
         </div>
@@ -64,11 +64,11 @@ export const TopPerformers: React.FC<Props> = ({ data, loading }) => {
       {loading && !data ? (
         <LoadingRow />
       ) : !data || (winners.length === 0 && losers.length === 0) ? (
-        <EmptyState title="Недостаточно данных за период" />
+        <EmptyState title={t('topPerformers.empty')} />
       ) : (
         <div className="grid grid-cols-2 gap-4">
           <Column
-            title="Лидеры"
+            title={t('topPerformers.winners')}
             icon={<TrendingUp size={13} className="text-emerald-600" />}
             tone="positive"
           >
@@ -82,7 +82,7 @@ export const TopPerformers: React.FC<Props> = ({ data, loading }) => {
           </Column>
 
           <Column
-            title="Аутсайдеры"
+            title={t('topPerformers.losers')}
             icon={<TrendingDown size={13} className="text-red-600" />}
             tone="negative"
           >

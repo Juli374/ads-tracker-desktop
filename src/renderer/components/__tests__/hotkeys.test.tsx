@@ -36,7 +36,7 @@ describe('keyboard hotkeys', () => {
     const user = userEvent.setup();
     renderApp();
     // Стартовая страница — Dashboard, дожидаемся async-инициализации
-    expect(await screen.findByRole('heading', { name: 'Обзор' })).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-page')).toBeInTheDocument();
 
     await user.keyboard('g');
     await user.keyboard('b');
@@ -47,7 +47,7 @@ describe('keyboard hotkeys', () => {
   it('g+c переключает на Campaigns', async () => {
     const user = userEvent.setup();
     renderApp();
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.keyboard('g');
     await user.keyboard('c');
     expect(
@@ -58,8 +58,8 @@ describe('keyboard hotkeys', () => {
   it('g без последующего ключа в окне 1.5с не делает ничего', async () => {
     const user = userEvent.setup();
     renderApp();
-    expect(await screen.findByRole('heading', { name: 'Обзор' })).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-page')).toBeInTheDocument();
     await user.keyboard('g');
-    expect(screen.getByRole('heading', { name: 'Обзор' })).toBeInTheDocument();
+    expect(screen.getByTestId('dashboard-page')).toBeInTheDocument();
   });
 });

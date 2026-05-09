@@ -59,7 +59,7 @@ describe('KeywordsPage', () => {
         </AuthProvider>
       </ToastProvider>,
     );
-    await screen.findByRole('heading', { name: 'Обзор' });
+    await screen.findByTestId('dashboard-page');
     await user.keyboard('gk');
     expect(
       await screen.findByRole('heading', { name: 'Ключевые слова' }),

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import type { MarketplaceSummary } from '../../api/metrics';
 import { ChartTooltip, type ChartTooltipRow, EmptyState, LoadingRow } from '../ui';
@@ -29,6 +30,7 @@ interface Slice {
 }
 
 export const MarketplaceDistribution: React.FC<Props> = ({ summary, loading }) => {
+  const { t } = useTranslation('dashboard');
   const [mode, setMode] = useState<Mode>('spend');
 
   const slices = useMemo<Slice[]>(() => {
@@ -89,7 +91,7 @@ export const MarketplaceDistribution: React.FC<Props> = ({ summary, loading }) =
       {loading && !summary ? (
         <LoadingRow />
       ) : slices.length === 0 ? (
-        <EmptyState title="Нет данных по маркетплейсам" />
+        <EmptyState title={t('marketplaceShare.empty')} />
       ) : (
         <div className="grid grid-cols-2 gap-6 items-center">
           <div className="h-56">
