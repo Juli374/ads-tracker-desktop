@@ -76,7 +76,10 @@
     "build": "Build",
     "buildProduction": "production",
     "buildDev": "dev",
-    "backendRepo": "Backend repo"
+    "backendRepo": "Backend repo",
+    "language": "Language",
+    "languageEn": "English",
+    "languageRu": "Русский (coming soon)"
   },
   "userMenu": {
     "userAria": "User menu",

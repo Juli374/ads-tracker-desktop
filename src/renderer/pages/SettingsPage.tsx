@@ -192,6 +192,24 @@ export const SettingsPage: React.FC = () => {
           value={info.appInfo?.isPackaged ? t('app.buildProduction') : t('app.buildDev')}
         />
         <Row
+          label={t('app.language')}
+          value={
+            <select
+              value="en"
+              disabled
+              aria-label={t('app.language')}
+              className="
+                h-7 px-2 pr-7 text-xs rounded-md cursor-not-allowed
+                border border-zinc-200 bg-zinc-50 text-zinc-700
+                focus:outline-none
+              "
+            >
+              <option value="en">{t('app.languageEn')}</option>
+              <option value="ru" disabled>{t('app.languageRu')}</option>
+            </select>
+          }
+        />
+        <Row
           label={t('app.backendRepo')}
           value={
             <a
