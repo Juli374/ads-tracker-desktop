@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, AlertTriangle, BellOff, Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import { metricsApi, type AlertItem } from '../api/metrics';
 import {
@@ -28,12 +29,6 @@ const normalizeSeverity = (s: string | undefined): Severity => {
   return 'info';
 };
 
-const severityLabel: Record<Severity, string> = {
-  critical: 'Критично',
-  warning: 'Предупреждения',
-  info: 'Информация',
-};
-
 const severityIcon = (sev: Severity, size = 14) => {
   if (sev === 'critical')
     return <AlertCircle size={size} className="text-red-600 flex-shrink-0" />;
@@ -49,6 +44,7 @@ const severityBadgeClass: Record<Severity, string> = {
 };
 
 export const AlertsPage: React.FC = () => {
+  const { t } = useTranslation('alerts');
   const toast = useToast();
   const { navigate } = useNav();
   const { filters: globalFilters } = useGlobalFilters();
@@ -82,13 +78,13 @@ export const AlertsPage: React.FC = () => {
           setAlerts([]);
           return;
         }
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить алёрты');
+        toast.error(err instanceof ApiError ? err.message : t('errors.load'));
         setAlerts([]);
       } finally {
         setLoading(false);
       }
     },
-    [from, to, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts, toast],
+    [from, to, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts, toast, t],
   );
 
   useEffect(() => {
@@ -116,15 +112,15 @@ export const AlertsPage: React.FC = () => {
   }, [alerts]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="alerts-page">
       <PageHeader
-        title="Мониторинг"
+        title={t('title')}
         subtitle={
           unsupported
-            ? 'Endpoint /api/alerts недоступен'
+            ? t('subtitle.unsupported')
             : alerts != null
-            ? `${alerts.length} активных алёртов за период`
-            : 'Загрузка…'
+            ? t('subtitle.activeCount', { count: alerts.length })
+            : t('loading')
         }
         rightSlot={
           <RangePicker
@@ -137,69 +133,71 @@ export const AlertsPage: React.FC = () => {
         }
       />
 
-      {unsupported && (
-        <ErrorBanner message="Endpoint /api/alerts вернул 401/403/404." />
-      )}
+      {unsupported && <ErrorBanner message={t('errors.unsupportedBanner')} />}
 
       {!unsupported && (
         <>
           <div className="grid grid-cols-3 gap-3">
             <Kpi
-              label="Критично"
+              label={t('severity.critical')}
               value={fmtNumber(counts.critical)}
               loading={loading && !alerts}
               tone={counts.critical > 0 ? 'negative' : 'default'}
             />
             <Kpi
-              label="Предупреждения"
+              label={t('severity.warning')}
               value={fmtNumber(counts.warning)}
               loading={loading && !alerts}
             />
             <Kpi
-              label="Информация"
+              label={t('severity.info')}
               value={fmtNumber(counts.info)}
               loading={loading && !alerts}
             />
           </div>
 
           <div role="tablist" className="flex items-center gap-1 border-b border-zinc-200">
-            {(['all', ...SEVERITY_ORDER] as const).map((s) => (
-              <button
-                key={s}
-                role="tab"
-                aria-selected={filterSev === s}
-                aria-label={`Фильтр: ${s === 'all' ? 'Все' : severityLabel[s]}`}
-                type="button"
-                onClick={() => setFilterSev(s)}
-                className={`
-                  h-9 px-3 text-xs font-medium border-b-2 -mb-px transition-colors
-                  ${filterSev === s
-                    ? 'border-zinc-900 text-zinc-900'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-900'}
-                `}
-              >
-                {s === 'all' ? 'Все' : severityLabel[s]}
-                {s !== 'all' && counts[s] > 0 && (
-                  <span className="ml-1.5 text-[10px] text-zinc-400 tabular-nums">
-                    {counts[s]}
-                  </span>
-                )}
-              </button>
-            ))}
+            {(['all', ...SEVERITY_ORDER] as const).map((s) => {
+              const label = s === 'all' ? t('filter.all') : t(`severity.${s}` as 'severity.critical');
+              return (
+                <button
+                  key={s}
+                  role="tab"
+                  data-testid={`alerts-filter-${s}`}
+                  aria-selected={filterSev === s}
+                  aria-label={t('filter.aria', { label })}
+                  type="button"
+                  onClick={() => setFilterSev(s)}
+                  className={`
+                    h-9 px-3 text-xs font-medium border-b-2 -mb-px transition-colors
+                    ${filterSev === s
+                      ? 'border-zinc-900 text-zinc-900'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-900'}
+                  `}
+                >
+                  {label}
+                  {s !== 'all' && counts[s] > 0 && (
+                    <span className="ml-1.5 text-[10px] text-zinc-400 tabular-nums">
+                      {counts[s]}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {loading && !alerts ? (
-            <Card title="Алёрты">
+            <Card title={t('card.title')}>
               <LoadingRow />
             </Card>
           ) : alerts && alerts.length === 0 ? (
-            <Card title="Алёрты">
+            <Card title={t('card.title')}>
               <EmptyState
-                title="Нет активных алёртов"
+                title={t('empty.title')}
                 hint={
                   <span className="inline-flex items-center gap-1.5">
                     <BellOff size={11} />
-                    Алёрты появятся при отклонениях от целевых метрик
+                    {t('empty.hint')}
                   </span>
                 }
               />
@@ -214,7 +212,7 @@ export const AlertsPage: React.FC = () => {
                   title={
                     <span className="flex items-center gap-2">
                       {severityIcon(sev, 13)}
-                      {severityLabel[sev]}
+                      {t(`severity.${sev}` as 'severity.critical')}
                       <span className="text-zinc-400 text-xs font-normal">{list.length}</span>
                     </span>
                   }
@@ -239,6 +237,7 @@ const AlertRow: React.FC<{
   sev: Severity;
   onNav: ReturnType<typeof useNav>['navigate'];
 }> = ({ a, sev, onNav }) => {
+  const { t } = useTranslation('alerts');
   const time = (a.created_at || '').slice(0, 16).replace('T', ' ');
   return (
     <li className="px-5 py-3 hover:bg-zinc-50/40 transition-colors">
@@ -267,7 +266,7 @@ const AlertRow: React.FC<{
                 onClick={() => onNav('campaign_details', { campaignId: a.campaign_id as number })}
                 className="text-[11px] text-zinc-500 hover:text-zinc-900 hover:underline"
               >
-                К кампании →
+                {t('row.toCampaign')}
               </button>
             )}
             {a.book_id != null && a.campaign_id == null && (
@@ -276,7 +275,7 @@ const AlertRow: React.FC<{
                 onClick={() => onNav('books')}
                 className="text-[11px] text-zinc-500 hover:text-zinc-900 hover:underline"
               >
-                К книгам →
+                {t('row.toBooks')}
               </button>
             )}
           </div>

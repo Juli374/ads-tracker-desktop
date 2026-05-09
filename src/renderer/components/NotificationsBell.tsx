@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, CheckCheck, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   notificationsApi,
   Notification,
@@ -11,13 +12,12 @@ import { useAuth } from '../contexts/AuthContext';
 const POLL_MS = 60_000;
 const LIST_LIMIT = 20;
 
-// Если backend вернул 401/403/404 — выключаем функциональность для этого
-// сеанса и больше не дёргаем endpoint. У некоторых юзеров может не быть прав.
 function shouldDisable(status: number): boolean {
   return status === 401 || status === 403 || status === 404;
 }
 
 export const NotificationsBell: React.FC = () => {
+  const { t } = useTranslation('alerts');
   const toast = useToast();
   const { status: authStatus } = useAuth();
   const [open, setOpen] = useState(false);
@@ -41,7 +41,6 @@ export const NotificationsBell: React.FC = () => {
     }
   }, [authStatus]);
 
-  // Initial + polling
   useEffect(() => {
     if (authStatus !== 'authenticated') return;
     fetchUnread();
@@ -49,7 +48,6 @@ export const NotificationsBell: React.FC = () => {
     return () => clearInterval(id);
   }, [authStatus, fetchUnread]);
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -71,12 +69,12 @@ export const NotificationsBell: React.FC = () => {
         return;
       }
       toast.error(
-        err instanceof ApiError ? err.message : 'Не удалось загрузить уведомления',
+        err instanceof ApiError ? err.message : t('bell.loadFailed'),
       );
     } finally {
       setLoadingList(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   const onToggle = () => {
     if (disabled) return;
@@ -92,7 +90,7 @@ export const NotificationsBell: React.FC = () => {
       setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, is_read: 1 } : i)));
       setUnread((u) => Math.max(0, u - 1));
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось обновить');
+      toast.error(err instanceof ApiError ? err.message : t('bell.updateFailed'));
     }
   };
 
@@ -101,18 +99,17 @@ export const NotificationsBell: React.FC = () => {
       await notificationsApi.markAllRead();
       setItems((prev) => prev.map((i) => ({ ...i, is_read: 1 })));
       setUnread(0);
-      toast.success('Все уведомления отмечены прочитанными');
+      toast.success(t('bell.markAllSuccess'));
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось обновить');
+      toast.error(err instanceof ApiError ? err.message : t('bell.updateFailed'));
     }
   };
 
   if (disabled) {
-    // No-op кнопка, но в стиле остальной шапки чтобы не пропадала иконка
     return (
       <button
         className="h-7 w-7 flex items-center justify-center rounded-md text-zinc-300 cursor-not-allowed"
-        title="Уведомления недоступны"
+        title={t('bell.unavailable')}
         disabled
       >
         <Bell size={14} strokeWidth={2} />
@@ -125,7 +122,7 @@ export const NotificationsBell: React.FC = () => {
       <button
         onClick={onToggle}
         className="relative h-7 w-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
-        aria-label="Уведомления"
+        aria-label={t('bell.aria')}
         aria-expanded={open}
       >
         <Bell size={14} strokeWidth={2} />
@@ -138,7 +135,7 @@ export const NotificationsBell: React.FC = () => {
         <div className="absolute right-0 top-9 z-40 w-80 bg-white border border-zinc-200 rounded-lg shadow-card overflow-hidden">
           <div className="px-3 py-2 border-b border-zinc-100 flex items-center justify-between">
             <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-              Уведомления
+              {t('bell.title')}
               {unread > 0 && (
                 <span className="ml-1.5 text-red-500 normal-case">{unread}</span>
               )}
@@ -152,7 +149,7 @@ export const NotificationsBell: React.FC = () => {
                 "
               >
                 <CheckCheck size={10} />
-                Прочитать всё
+                {t('bell.markAll')}
               </button>
             )}
           </div>
@@ -164,7 +161,7 @@ export const NotificationsBell: React.FC = () => {
               </div>
             ) : items.length === 0 ? (
               <div className="px-4 py-8 text-center text-xs text-zinc-400">
-                Нет уведомлений
+                {t('bell.empty')}
               </div>
             ) : (
               items.map((n) => (
@@ -182,7 +179,26 @@ const NotificationItem: React.FC<{
   n: Notification;
   onMarkRead: (n: Notification) => void;
 }> = ({ n, onMarkRead }) => {
+  const { t } = useTranslation('alerts');
   const isRead = !!n.is_read;
+
+  const relative = (iso: string): string => {
+    const ts = new Date(iso).getTime();
+    if (!Number.isFinite(ts)) return iso;
+    const diff = Date.now() - ts;
+    if (diff < 60_000) return t('bell.relative.justNow');
+    if (diff < 3_600_000) {
+      return t('bell.relative.minutesAgo', { count: Math.round(diff / 60_000) });
+    }
+    if (diff < 86_400_000) {
+      return t('bell.relative.hoursAgo', { count: Math.round(diff / 3_600_000) });
+    }
+    if (diff < 7 * 86_400_000) {
+      return t('bell.relative.daysAgo', { count: Math.round(diff / 86_400_000) });
+    }
+    return iso.slice(0, 10);
+  };
+
   return (
     <button
       onClick={() => onMarkRead(n)}
@@ -206,7 +222,7 @@ const NotificationItem: React.FC<{
           )}
           {n.created_at && (
             <div className="text-[10px] text-zinc-400 mt-1">
-              {formatRelative(n.created_at)}
+              {relative(n.created_at)}
             </div>
           )}
         </div>
@@ -214,14 +230,3 @@ const NotificationItem: React.FC<{
     </button>
   );
 };
-
-function formatRelative(iso: string): string {
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return iso;
-  const diff = Date.now() - t;
-  if (diff < 60_000) return 'только что';
-  if (diff < 3_600_000) return `${Math.round(diff / 60_000)} мин назад`;
-  if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)} ч назад`;
-  if (diff < 7 * 86_400_000) return `${Math.round(diff / 86_400_000)} дн назад`;
-  return iso.slice(0, 10);
-}

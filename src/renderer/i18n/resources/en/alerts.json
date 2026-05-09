@@ -1,0 +1,48 @@
+{
+  "title": "Monitoring",
+  "loading": "Loading…",
+  "subtitle": {
+    "unsupported": "Endpoint /api/alerts unavailable",
+    "activeCount": "{count, plural, one {# active alert} other {# active alerts}} for the period"
+  },
+  "errors": {
+    "load": "Failed to load alerts",
+    "unsupportedBanner": "Endpoint /api/alerts returned 401/403/404."
+  },
+  "severity": {
+    "critical": "Critical",
+    "warning": "Warnings",
+    "info": "Info"
+  },
+  "filter": {
+    "all": "All",
+    "aria": "Filter: {label}"
+  },
+  "card": {
+    "title": "Alerts"
+  },
+  "empty": {
+    "title": "No active alerts",
+    "hint": "Alerts appear when metrics deviate from targets"
+  },
+  "row": {
+    "toCampaign": "Open campaign →",
+    "toBooks": "Open books →"
+  },
+  "bell": {
+    "aria": "Notifications",
+    "unavailable": "Notifications unavailable",
+    "title": "Notifications",
+    "markAll": "Mark all",
+    "markAllSuccess": "All notifications marked as read",
+    "empty": "No notifications",
+    "loadFailed": "Failed to load notifications",
+    "updateFailed": "Failed to update",
+    "relative": {
+      "justNow": "just now",
+      "minutesAgo": "{count, plural, one {# min ago} other {# min ago}}",
+      "hoursAgo": "{count, plural, one {# h ago} other {# h ago}}",
+      "daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
+    }
+  }
+}

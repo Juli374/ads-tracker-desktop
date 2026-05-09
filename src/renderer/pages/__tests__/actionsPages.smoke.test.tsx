@@ -92,11 +92,9 @@ describe('AlertsPage', () => {
         <AlertsPage />
       </Wrap>,
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Мониторинг' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('alerts-page')).toBeInTheDocument();
     // Mock alerts: [] → empty state
-    expect(await screen.findByText('Нет активных алёртов')).toBeInTheDocument();
+    expect(await screen.findByText('empty.title')).toBeInTheDocument();
   });
 });
 
@@ -126,8 +124,6 @@ describe('Хоткеи G A / G U / G L', () => {
     renderApp();
     await screen.findByTestId('dashboard-page');
     await user.keyboard('gl');
-    expect(
-      await screen.findByRole('heading', { name: 'Мониторинг' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('alerts-page')).toBeInTheDocument();
   });
 });
