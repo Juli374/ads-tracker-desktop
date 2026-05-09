@@ -51,7 +51,7 @@ describe('drill-down navigation', () => {
     ).toBeInTheDocument();
   });
 
-  it('Campaigns → SearchTerms: клик по строке кампании переключает на SearchTerms с chip-кампанией', async () => {
+  it('Campaigns → CampaignDetails: клик по строке кампании ведёт на детали', async () => {
     const user = userEvent.setup();
     renderApp();
 
@@ -62,10 +62,11 @@ describe('drill-down navigation', () => {
     const campaignRow = await screen.findByText('Test Campaign');
     await user.click(campaignRow);
 
-    expect(
-      await screen.findByRole('heading', { name: 'Поисковые запросы' }),
-    ).toBeInTheDocument();
-    const chips = await screen.findAllByText(/кампания #100/);
-    expect(chips.length).toBeGreaterThan(0);
+    // На детали попадаем — заголовок страницы = имя кампании.
+    const headings = await screen.findAllByRole('heading', { name: 'Test Campaign' });
+    expect(headings.length).toBeGreaterThan(0);
+    // Табы рендерятся
+    expect(await screen.findByRole('tab', { name: 'Таб: Ad Groups' })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'Таб: Targets' })).toBeInTheDocument();
   });
 });

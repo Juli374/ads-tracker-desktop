@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { CampaignAnalyticsItem } from '../api/metrics';
-import { campaignsApi, CampaignState } from '../api/campaigns';
+import { campaignsApi, CampaignState, type BiddingStrategy, type CampaignUpdate } from '../api/campaigns';
 import { ApiError } from '../api/client';
 import { useToast } from '../contexts/ToastContext';
 import { fmtMoney } from '../lib/format';
@@ -12,14 +12,34 @@ interface Props {
   onSaved(): void;
 }
 
+const BIDDING_STRATEGIES: BiddingStrategy[] = [
+  'Fixed bids',
+  'Dynamic bids - down only',
+  'Dynamic bids - up and down',
+];
+
+// Парсит число из строки или возвращает undefined если строка пустая.
+// Невалидные числа возвращают NaN — caller валидирует через Number.isFinite.
+const parseOptionalNumber = (s: string): number | undefined => {
+  const trimmed = s.trim();
+  if (!trimmed) return undefined;
+  return Number(trimmed);
+};
+
 export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved }) => {
   const toast = useToast();
   const [state, setState] = useState<CampaignState>(
     campaign.status === 'paused' ? 'paused' : 'enabled',
   );
-  // Backend в /api/metrics/summary/by-campaign не возвращает текущий budget,
-  // поэтому начинаем с пустого поля и не пушим если пусто.
+  const [name, setName] = useState<string>(campaign.campaign_name || '');
+  // Backend в /api/metrics/summary/by-campaign не возвращает текущий budget /
+  // bidding strategy / placements — поэтому поля начинаются пустыми и пушатся
+  // только если юзер ввёл значение.
   const [budget, setBudget] = useState<string>('');
+  const [bidding, setBidding] = useState<BiddingStrategy | ''>('');
+  const [topOfSearch, setTopOfSearch] = useState<string>('');
+  const [productPages, setProductPages] = useState<string>('');
+  const [restOfSearch, setRestOfSearch] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -32,21 +52,36 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!campaign.campaign_id) return;
-    const trimmed = budget.trim();
-    let budgetNum: number | undefined;
-    if (trimmed) {
-      budgetNum = Number(trimmed);
-      if (!Number.isFinite(budgetNum) || budgetNum <= 0) {
-        toast.error('Budget должен быть положительным числом');
+
+    const budgetNum = parseOptionalNumber(budget);
+    if (budgetNum !== undefined && (!Number.isFinite(budgetNum) || budgetNum <= 0)) {
+      toast.error('Budget должен быть положительным числом');
+      return;
+    }
+    const placements: Array<[string, number | undefined]> = [
+      ['top_of_search', parseOptionalNumber(topOfSearch)],
+      ['product_pages', parseOptionalNumber(productPages)],
+      ['rest_of_search', parseOptionalNumber(restOfSearch)],
+    ];
+    for (const [field, value] of placements) {
+      if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 900)) {
+        toast.error(`${field}: число от 0 до 900`);
         return;
       }
     }
+
+    const trimmedName = name.trim();
+    const payload: CampaignUpdate = { state };
+    if (budgetNum !== undefined) payload.budget = budgetNum;
+    if (trimmedName && trimmedName !== campaign.campaign_name) payload.name = trimmedName;
+    if (bidding) payload.bidding_strategy = bidding;
+    if (placements[0][1] !== undefined) payload.top_of_search = placements[0][1];
+    if (placements[1][1] !== undefined) payload.product_pages = placements[1][1];
+    if (placements[2][1] !== undefined) payload.rest_of_search = placements[2][1];
+
     setSubmitting(true);
     try {
-      await campaignsApi.update(campaign.campaign_id, {
-        state,
-        ...(budgetNum != null ? { budget: budgetNum } : {}),
-      });
+      await campaignsApi.update(campaign.campaign_id, payload);
       toast.success('Сохранено');
       onSaved();
       onClose();
@@ -71,7 +106,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden"
+        className="w-full max-w-lg bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden"
       >
         <div className="px-5 pt-5 pb-3 border-b border-zinc-100">
           <div className="flex items-start justify-between gap-3">
@@ -121,6 +156,20 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
             </div>
           </div>
 
+          {/* Имя */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-700">
+              Имя кампании
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClass}
+              autoFocus
+            />
+          </div>
+
           {/* Budget */}
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-zinc-700">
@@ -133,17 +182,61 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
               placeholder="оставить без изменений"
-              className="
-                w-full h-9 px-3 text-sm rounded-md
-                border border-zinc-200 bg-white
-                text-zinc-900 placeholder:text-zinc-400
-                focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
-              "
-              autoFocus
+              className={inputClass}
             />
             <p className="text-[11px] text-zinc-400">
               Spend за период: {fmtMoney(campaign.cost, campaign.currency)}.
               Поле пустое = бюджет не меняется.
+            </p>
+          </div>
+
+          {/* Bidding strategy */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-700">
+              Bidding strategy
+            </label>
+            <select
+              value={bidding}
+              onChange={(e) => setBidding(e.target.value as BiddingStrategy | '')}
+              className="
+                w-full h-9 px-2 text-sm rounded-md
+                border border-zinc-200 bg-white text-zinc-900
+                focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+              "
+            >
+              <option value="">— не менять —</option>
+              {BIDDING_STRATEGIES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Placement adjustments */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-700">
+              Placement bid adjustments (%)
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <PlacementInput
+                label="Top of search"
+                value={topOfSearch}
+                onChange={setTopOfSearch}
+              />
+              <PlacementInput
+                label="Product pages"
+                value={productPages}
+                onChange={setProductPages}
+              />
+              <PlacementInput
+                label="Rest of search"
+                value={restOfSearch}
+                onChange={setRestOfSearch}
+              />
+            </div>
+            <p className="text-[11px] text-zinc-400">
+              Пустое поле = не менять. 0–900%, без знака.
             </p>
           </div>
         </div>
@@ -180,3 +273,26 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
     </div>
   );
 };
+
+const inputClass =
+  'w-full h-9 px-3 text-sm rounded-md border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400';
+
+const PlacementInput: React.FC<{
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}> = ({ label, value, onChange }) => (
+  <div className="space-y-1">
+    <div className="text-[10px] text-zinc-500">{label}</div>
+    <input
+      type="number"
+      min="0"
+      max="900"
+      step="1"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="—"
+      className={inputClass}
+    />
+  </div>
+);

@@ -1,5 +1,7 @@
 export { Card } from './Card';
 export { Kpi } from './Kpi';
+export { KpiDelta } from './KpiDelta';
+export { EditableNumber } from './EditableNumber';
 export { RangePicker } from './RangePicker';
 export { PageHeader } from './PageHeader';
 export { ErrorBanner, LoadingRow, EmptyState } from './States';

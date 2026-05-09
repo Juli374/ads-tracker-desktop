@@ -29,6 +29,30 @@ export const negativesApi = {
     );
   },
 
+  // Bulk-добавление: backend принимает { keywords: string[], match_type }.
+  // Используется в AddCampaignModal wizard и расширенной NegativesPage.
+  addBulkToCampaign(
+    campaignId: number,
+    keywords: string[],
+    matchType: NegativeMatchType,
+  ) {
+    return apiClient.post<{ success: boolean; results?: unknown[] }>(
+      `/api/campaigns/${campaignId}/negatives`,
+      { keywords, match_type: matchType },
+    );
+  },
+
+  addBulkToAdGroup(
+    adGroupId: number,
+    keywords: string[],
+    matchType: NegativeMatchType,
+  ) {
+    return apiClient.post<{ success: boolean; results?: unknown[] }>(
+      `/api/ad-groups/${adGroupId}/negatives`,
+      { keywords, match_type: matchType },
+    );
+  },
+
   delete(negativeId: number) {
     return apiClient.del<{ success: boolean }>(
       `/api/negatives/${negativeId}`,

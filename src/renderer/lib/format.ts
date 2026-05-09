@@ -8,15 +8,28 @@ export function symbolFor(currency?: string | null): string {
   return ISO_TO_SYMBOL[currency.toUpperCase()] ?? currency;
 }
 
-export const fmtNumber = (n: number, max = 0) =>
-  new Intl.NumberFormat('en-US', { maximumFractionDigits: max }).format(n);
+// Все форматтеры безопасны по отношению к null/undefined/NaN/Infinity:
+// возвращают '—' если значение невалидно. Это важно, потому что бэкенд
+// иногда возвращает поля как undefined (e.g. tacos на пустых периодах),
+// и любой Number.toFixed на них кидает ErrorBoundary.
+const isFiniteNumber = (n: unknown): n is number =>
+  typeof n === 'number' && Number.isFinite(n);
 
-export const fmtMoney = (n: number, currency?: string | null) => {
-  const sign = n < 0 ? '-' : '';
-  return `${sign}${symbolFor(currency)}${fmtNumber(Math.abs(n))}`;
+export const fmtNumber = (n: number | null | undefined, max = 0) => {
+  if (!isFiniteNumber(n)) return '—';
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: max }).format(n);
 };
 
-export const fmtMoneyPrecise = (n: number, currency?: string | null) => {
+export const fmtMoney = (n: number | null | undefined, currency?: string | null) => {
+  if (!isFiniteNumber(n)) return '—';
+  const sign = n < 0 ? '-' : '';
+  return `${sign}${symbolFor(currency)}${new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 0,
+  }).format(Math.abs(n))}`;
+};
+
+export const fmtMoneyPrecise = (n: number | null | undefined, currency?: string | null) => {
+  if (!isFiniteNumber(n)) return '—';
   const sign = n < 0 ? '-' : '';
   const formatted = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
@@ -25,8 +38,10 @@ export const fmtMoneyPrecise = (n: number, currency?: string | null) => {
   return `${sign}${symbolFor(currency)}${formatted}`;
 };
 
-export const fmtPct = (n: number, digits = 1) =>
-  `${n.toFixed(digits)}%`;
+export const fmtPct = (n: number | null | undefined, digits = 1) => {
+  if (!isFiniteNumber(n)) return '—';
+  return `${n.toFixed(digits)}%`;
+};
 
 export function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10);

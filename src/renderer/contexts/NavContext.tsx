@@ -11,8 +11,17 @@ export type ViewId =
   | 'books'
   | 'search_terms'
   | 'campaigns'
+  | 'campaign_details'
+  | 'keywords'
   | 'reports'
+  | 'comparison'
   | 'negatives'
+  | 'action_center'
+  | 'automation'
+  | 'alerts'
+  | 'royalties'
+  | 'operations'
+  | 'accounting'
   | 'settings';
 
 // Filters, которые могут передаваться при drill-down между страницами.
@@ -22,6 +31,9 @@ export interface NavFilters {
   localCampaignId?: number;
   amazonCampaignId?: string;
   marketplace?: string;
+  // Для campaign_details: id кампании в нашей БД, и опц. начальный таб.
+  campaignId?: number;
+  detailsTab?: 'ad_groups' | 'targets' | 'search_terms' | 'negatives' | 'history';
 }
 
 interface NavContextValue {

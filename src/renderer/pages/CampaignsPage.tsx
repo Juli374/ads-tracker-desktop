@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, ArrowDownUp, Pencil } from 'lucide-react';
+import { Search, ArrowDownUp, Pencil, Plus } from 'lucide-react';
 import { ApiError } from '../api/client';
 import {
   metricsApi,
@@ -7,6 +7,7 @@ import {
   CampaignAnalyticsItem,
 } from '../api/metrics';
 import { EditCampaignModal } from '../components/EditCampaignModal';
+import { AddCampaignModal } from '../components/AddCampaignModal';
 import {
   PageHeader,
   RangePicker,
@@ -59,6 +60,7 @@ export const CampaignsPage: React.FC = () => {
   const [activeOnly, setActiveOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<CampaignAnalyticsItem | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
 
@@ -182,13 +184,27 @@ export const CampaignsPage: React.FC = () => {
             : 'Загрузка…'
         }
         rightSlot={
-          <RangePicker
-            value={range}
-            onChange={setRange}
-            onRefresh={() => load()}
-            refreshing={loading}
-            autoRefresh={{ storageKey: 'auto-refresh-campaigns' }}
-          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="
+                inline-flex items-center gap-1.5 h-8 px-3 rounded-md
+                text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800
+                transition-colors
+              "
+            >
+              <Plus size={14} strokeWidth={2.5} />
+              Кампания
+            </button>
+            <RangePicker
+              value={range}
+              onChange={setRange}
+              onRefresh={() => load()}
+              refreshing={loading}
+              autoRefresh={{ storageKey: 'auto-refresh-campaigns' }}
+            />
+          </div>
         }
       />
 
@@ -266,9 +282,8 @@ export const CampaignsPage: React.FC = () => {
                   key={c.campaign_id ?? c.amazon_campaign_id}
                   c={c}
                   onDrillDown={() =>
-                    navigate('search_terms', {
-                      localCampaignId: c.campaign_id,
-                      amazonCampaignId: c.amazon_campaign_id,
+                    navigate('campaign_details', {
+                      campaignId: c.campaign_id,
                     })
                   }
                   onEdit={() => setEditing(c)}
@@ -292,6 +307,13 @@ export const CampaignsPage: React.FC = () => {
           campaign={editing}
           onClose={() => setEditing(null)}
           onSaved={() => load()}
+        />
+      )}
+
+      {creating && (
+        <AddCampaignModal
+          onClose={() => setCreating(false)}
+          onCreated={() => load()}
         />
       )}
     </div>

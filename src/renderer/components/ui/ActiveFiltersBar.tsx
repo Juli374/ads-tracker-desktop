@@ -17,9 +17,9 @@ export const ActiveFiltersBar: React.FC<Props> = ({ chips }) => {
       <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
         Активные фильтры
       </span>
-      {chips.map((c, idx) => (
+      {chips.map((c) => (
         <button
-          key={idx}
+          key={c.label}
           onClick={c.onRemove}
           className="
             inline-flex items-center gap-1.5 h-6 px-2 rounded-md

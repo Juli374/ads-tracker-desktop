@@ -13,13 +13,17 @@ import {
   EmptyState,
   LoadingRow,
 } from '../components/ui';
+import { NegativeListsTab } from '../components/NegativeListsTab';
 import { dateRangeFor } from '../lib/dateRange';
 import { useToast } from '../contexts/ToastContext';
 import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 
+type Tab = 'campaigns' | 'lists';
+
 export const NegativesPage: React.FC = () => {
   const toast = useToast();
   const { filters: globalFilters } = useGlobalFilters();
+  const [tab, setTab] = useState<Tab>('campaigns');
   const [campaigns, setCampaigns] = useState<CampaignSummary | null>(null);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [campaignId, setCampaignId] = useState<number | null>(null);
@@ -102,12 +106,26 @@ export const NegativesPage: React.FC = () => {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (campaignId == null) return;
-    const term = keyword.trim();
-    if (!term) return;
+    // Принимаем как одно слово, так и список (по строке/запятой). Дубли убираем.
+    const list = Array.from(
+      new Set(
+        keyword
+          .split(/[\n,]+/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+      ),
+    );
+    if (list.length === 0) return;
     setAdding(true);
     try {
-      await negativesApi.add(campaignId, term, matchType);
-      toast.success('Добавлено как negative');
+      if (list.length === 1) {
+        await negativesApi.add(campaignId, list[0], matchType);
+      } else {
+        await negativesApi.addBulkToCampaign(campaignId, list, matchType);
+      }
+      toast.success(
+        list.length === 1 ? 'Добавлено как negative' : `Добавлено: ${list.length}`,
+      );
       setKeyword('');
       await loadNegatives();
     } catch (err) {
@@ -132,12 +150,40 @@ export const NegativesPage: React.FC = () => {
       <PageHeader
         title="Минус-слова"
         subtitle={
-          selectedCampaign
-            ? `${selectedCampaign.campaign_name} · ${selectedCampaign.marketplace}`
-            : 'Negative keywords для кампании'
+          tab === 'campaigns'
+            ? selectedCampaign
+              ? `${selectedCampaign.campaign_name} · ${selectedCampaign.marketplace}`
+              : 'Negative keywords для кампании'
+            : 'Глобальные и book-specific списки'
         }
       />
 
+      {/* Tabs */}
+      <div role="tablist" className="flex items-center gap-1 border-b border-zinc-200">
+        {(['campaigns', 'lists'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            aria-label={t === 'campaigns' ? 'Таб: По кампаниям' : 'Таб: Списки'}
+            onClick={() => setTab(t)}
+            className={`
+              h-9 px-3 text-xs font-medium border-b-2 -mb-px transition-colors
+              ${tab === t
+                ? 'border-zinc-900 text-zinc-900'
+                : 'border-transparent text-zinc-500 hover:text-zinc-900'}
+            `}
+          >
+            {t === 'campaigns' ? 'По кампаниям' : 'Списки'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'lists' && <NegativeListsTab />}
+
+      {tab === 'campaigns' && (
+        <>
       {/* Campaign selector */}
       <Card title="Кампания">
         {campaignsLoading ? (
@@ -170,50 +216,57 @@ export const NegativesPage: React.FC = () => {
         )}
       </Card>
 
-      {/* Add new negative */}
+      {/* Add new negative — bulk: textarea + один match-type для всех */}
       {selectedCampaign && (
-        <Card title="Добавить минус-слово">
-          <form onSubmit={handleAdd} className="px-5 py-3 flex items-center gap-2">
-            <input
-              type="text"
+        <Card title="Добавить минус-слова">
+          <form onSubmit={handleAdd} className="px-5 py-3 space-y-3">
+            <textarea
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="негативное ключевое слово…"
+              placeholder={'one keyword per line, or comma-separated\nfree\ncheap'}
               disabled={adding}
+              rows={3}
               className="
-                flex-1 h-9 px-3 text-sm rounded-md
+                w-full px-3 py-2 text-sm rounded-md
                 border border-zinc-200 bg-white
                 text-zinc-900 placeholder:text-zinc-400
                 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
-                disabled:opacity-50
+                disabled:opacity-50 font-mono resize-y min-h-[80px]
               "
             />
-            <select
-              value={matchType}
-              onChange={(e) => setMatchType(e.target.value as NegativeMatchType)}
-              disabled={adding}
-              className="
-                h-9 px-2 pr-7 text-xs rounded-md
-                border border-zinc-200 bg-white text-zinc-700 cursor-pointer
-                focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
-              "
-            >
-              <option value="Exact">Exact</option>
-              <option value="Phrase">Phrase</option>
-            </select>
-            <button
-              type="submit"
-              disabled={adding || !keyword.trim()}
-              className="
-                inline-flex items-center gap-1.5 h-9 px-3 rounded-md
-                bg-zinc-900 text-white text-xs font-medium
-                hover:bg-zinc-800 transition-colors
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
-            >
-              {adding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-              Добавить
-            </button>
+            <div className="flex items-center justify-between gap-2">
+              <div className="inline-flex bg-white border border-zinc-200 rounded-md p-0.5">
+                {(['Exact', 'Phrase'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMatchType(m)}
+                    disabled={adding}
+                    className={`
+                      px-3 h-7 text-xs font-medium rounded transition-colors
+                      ${matchType === m
+                        ? 'bg-zinc-900 text-white'
+                        : 'text-zinc-600 hover:text-zinc-900'}
+                    `}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="submit"
+                disabled={adding || !keyword.trim()}
+                className="
+                  inline-flex items-center gap-1.5 h-8 px-3 rounded-md
+                  bg-zinc-900 text-white text-xs font-medium
+                  hover:bg-zinc-800 transition-colors
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                "
+              >
+                {adding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                Добавить
+              </button>
+            </div>
           </form>
         </Card>
       )}
@@ -282,6 +335,8 @@ export const NegativesPage: React.FC = () => {
             </table>
           )}
         </Card>
+      )}
+        </>
       )}
     </div>
   );

@@ -78,4 +78,31 @@ describe('fmtPct', () => {
   it('handles negative percent', () => {
     expect(fmtPct(-5.5)).toBe('-5.5%');
   });
+
+  it('returns em-dash for null/undefined/NaN/Infinity', () => {
+    expect(fmtPct(null)).toBe('—');
+    expect(fmtPct(undefined)).toBe('—');
+    expect(fmtPct(NaN)).toBe('—');
+    expect(fmtPct(Infinity)).toBe('—');
+    expect(fmtPct(-Infinity)).toBe('—');
+  });
+});
+
+describe('safe fallbacks', () => {
+  it('fmtNumber returns em-dash on invalid', () => {
+    expect(fmtNumber(null)).toBe('—');
+    expect(fmtNumber(undefined)).toBe('—');
+    expect(fmtNumber(NaN)).toBe('—');
+  });
+
+  it('fmtMoney returns em-dash on invalid', () => {
+    expect(fmtMoney(null)).toBe('—');
+    expect(fmtMoney(undefined, 'USD')).toBe('—');
+    expect(fmtMoney(NaN, 'EUR')).toBe('—');
+  });
+
+  it('fmtMoneyPrecise returns em-dash on invalid', () => {
+    expect(fmtMoneyPrecise(null)).toBe('—');
+    expect(fmtMoneyPrecise(undefined)).toBe('—');
+  });
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard,
   BookOpen,
@@ -8,15 +8,64 @@ import {
   Settings,
   Ban,
   Command,
+  Key,
+  History,
+  Zap,
+  Activity,
+  GitCompare,
+  Wallet,
+  ClipboardList,
+  Coins,
+  Loader2,
 } from 'lucide-react';
 
+// Eagerly loaded — самые посещаемые страницы (стартовый экран).
 import { DashboardPage } from '../pages/DashboardPage';
 import { BooksPage } from '../pages/BooksPage';
-import { SearchTermsPage } from '../pages/SearchTermsPage';
 import { CampaignsPage } from '../pages/CampaignsPage';
-import { ReportsPage } from '../pages/ReportsPage';
 import { SettingsPage } from '../pages/SettingsPage';
-import { NegativesPage } from '../pages/NegativesPage';
+import { CalendarBell } from './CalendarBell';
+
+// Lazy-loaded — остальные страницы вытягиваются по требованию.
+// Каждая идёт в отдельный chunk → ~150–250 KB gzip с initial bundle.
+// Recharts тащится через Dashboard (eager), но также через Reports (lazy) —
+// будет split в свой chunk автоматически.
+const SearchTermsPage = lazy(() =>
+  import('../pages/SearchTermsPage').then((m) => ({ default: m.SearchTermsPage })),
+);
+const CampaignDetailsPage = lazy(() =>
+  import('../pages/CampaignDetailsPage').then((m) => ({ default: m.CampaignDetailsPage })),
+);
+const KeywordsPage = lazy(() =>
+  import('../pages/KeywordsPage').then((m) => ({ default: m.KeywordsPage })),
+);
+const ActionCenterPage = lazy(() =>
+  import('../pages/ActionCenterPage').then((m) => ({ default: m.ActionCenterPage })),
+);
+const AutomationPage = lazy(() =>
+  import('../pages/AutomationPage').then((m) => ({ default: m.AutomationPage })),
+);
+const AlertsPage = lazy(() =>
+  import('../pages/AlertsPage').then((m) => ({ default: m.AlertsPage })),
+);
+const ComparisonPage = lazy(() =>
+  import('../pages/ComparisonPage').then((m) => ({ default: m.ComparisonPage })),
+);
+const RoyaltiesPage = lazy(() =>
+  import('../pages/RoyaltiesPage').then((m) => ({ default: m.RoyaltiesPage })),
+);
+const OperationsCenterPage = lazy(() =>
+  import('../pages/OperationsCenterPage').then((m) => ({ default: m.OperationsCenterPage })),
+);
+const AccountingPage = lazy(() =>
+  import('../pages/AccountingPage').then((m) => ({ default: m.AccountingPage })),
+);
+const ReportsPage = lazy(() =>
+  import('../pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
+);
+const NegativesPage = lazy(() =>
+  import('../pages/NegativesPage').then((m) => ({ default: m.NegativesPage })),
+);
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
@@ -33,10 +82,24 @@ interface NavItem {
 const mainNav: NavItem[] = [
   { id: 'dashboard', label: 'Обзор', icon: LayoutDashboard, shortcut: 'G O' },
   { id: 'books', label: 'Книги', icon: BookOpen, shortcut: 'G B' },
-  { id: 'search_terms', label: 'Поисковые запросы', icon: Search, shortcut: 'G S' },
   { id: 'campaigns', label: 'Кампании', icon: Target, shortcut: 'G C' },
+  { id: 'keywords', label: 'Ключи', icon: Key, shortcut: 'G K' },
+  { id: 'search_terms', label: 'Поисковые запросы', icon: Search, shortcut: 'G S' },
   { id: 'negatives', label: 'Минус-слова', icon: Ban, shortcut: 'G N' },
   { id: 'reports', label: 'Отчёты', icon: FileText, shortcut: 'G R' },
+  { id: 'comparison', label: 'Сравнение', icon: GitCompare, shortcut: 'G P' },
+];
+
+const actionsNav: NavItem[] = [
+  { id: 'action_center', label: 'Центр действий', icon: History, shortcut: 'G A' },
+  { id: 'automation', label: 'Автоматизация', icon: Zap, shortcut: 'G U' },
+  { id: 'alerts', label: 'Мониторинг', icon: Activity, shortcut: 'G L' },
+  { id: 'operations', label: 'Операции', icon: ClipboardList, shortcut: 'G T' },
+];
+
+const financeNav: NavItem[] = [
+  { id: 'royalties', label: 'Royalty', icon: Coins, shortcut: 'G Y' },
+  { id: 'accounting', label: 'Бухгалтерия', icon: Wallet, shortcut: 'G F' },
 ];
 
 const bottomNav: NavItem[] = [
@@ -57,8 +120,16 @@ const HOTKEY_MAP: Record<string, ViewId> = {
   b: 'books',
   s: 'search_terms',
   c: 'campaigns',
+  k: 'keywords',
   r: 'reports',
+  p: 'comparison',
   n: 'negatives',
+  a: 'action_center',
+  u: 'automation',
+  l: 'alerts',
+  t: 'operations',
+  y: 'royalties',
+  f: 'accounting',
 };
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -127,6 +198,24 @@ const Layout: React.FC = () => {
         return <SearchTermsPage />;
       case 'campaigns':
         return <CampaignsPage />;
+      case 'campaign_details':
+        return <CampaignDetailsPage />;
+      case 'keywords':
+        return <KeywordsPage />;
+      case 'action_center':
+        return <ActionCenterPage />;
+      case 'automation':
+        return <AutomationPage />;
+      case 'alerts':
+        return <AlertsPage />;
+      case 'comparison':
+        return <ComparisonPage />;
+      case 'royalties':
+        return <RoyaltiesPage />;
+      case 'operations':
+        return <OperationsCenterPage />;
+      case 'accounting':
+        return <AccountingPage />;
       case 'reports':
         return <ReportsPage />;
       case 'negatives':
@@ -202,6 +291,8 @@ const Layout: React.FC = () => {
             </span>
           </button>
 
+          <CalendarBell />
+
           <NotificationsBell />
 
           <UserMenu />
@@ -210,11 +301,21 @@ const Layout: React.FC = () => {
 
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-56 flex-shrink-0 border-r border-zinc-200 bg-white flex flex-col">
-          <nav className="flex-1 p-2 space-y-0.5">
+          <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
             <div className="px-3 pb-1.5 pt-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
               Аналитика
             </div>
             {mainNav.map(renderNavItem)}
+
+            <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+              Действия
+            </div>
+            {actionsNav.map(renderNavItem)}
+
+            <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+              Финансы
+            </div>
+            {financeNav.map(renderNavItem)}
           </nav>
 
           <div className="p-2 border-t border-zinc-100 space-y-0.5">
@@ -231,7 +332,9 @@ const Layout: React.FC = () => {
         </aside>
 
         <main className="flex-1 overflow-auto bg-zinc-50">
-          <div className="max-w-6xl mx-auto px-8 py-8">{renderContent()}</div>
+          <div className="max-w-6xl mx-auto px-8 py-8">
+            <Suspense fallback={<PageFallback />}>{renderContent()}</Suspense>
+          </div>
         </main>
       </div>
 
@@ -239,3 +342,9 @@ const Layout: React.FC = () => {
     </div>
   );
 };
+
+const PageFallback: React.FC = () => (
+  <div className="flex items-center justify-center py-20">
+    <Loader2 size={18} className="animate-spin text-zinc-400" />
+  </div>
+);

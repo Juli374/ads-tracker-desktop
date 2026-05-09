@@ -1,0 +1,251 @@
+import React, { useEffect, useState } from 'react';
+import { Loader2, X } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
+import { ApiError } from '../api/client';
+import { targetsApi, type MatchType } from '../api/targets';
+import type { AdGroup } from '../api/adGroups';
+
+interface Props {
+  adGroups: AdGroup[];
+  defaultAdGroupId?: number;
+  // Default bid из выбранной ad group — применяется по умолчанию если не override.
+  onClose(): void;
+  onAdded(): void;
+}
+
+const splitNonEmpty = (raw: string): string[] =>
+  Array.from(
+    new Set(
+      raw
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  );
+
+export const AddTargetModal: React.FC<Props> = ({
+  adGroups,
+  defaultAdGroupId,
+  onClose,
+  onAdded,
+}) => {
+  const toast = useToast();
+  const [adGroupId, setAdGroupId] = useState<number | null>(
+    defaultAdGroupId ?? adGroups[0]?.id ?? null,
+  );
+  const [type, setType] = useState<'keyword' | 'asin'>('keyword');
+  const [keywords, setKeywords] = useState('');
+  const [matchType, setMatchType] = useState<MatchType>('exact');
+  const [bidOverride, setBidOverride] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    document.body.dataset.modalOpen = 'true';
+    return () => {
+      delete document.body.dataset.modalOpen;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onWinKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !submitting) onClose();
+    };
+    window.addEventListener('keydown', onWinKey);
+    return () => window.removeEventListener('keydown', onWinKey);
+  }, [submitting, onClose]);
+
+  const selectedGroup = adGroups.find((g) => g.id === adGroupId) ?? null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adGroupId) {
+      toast.error('Выберите ad group');
+      return;
+    }
+    const items = splitNonEmpty(keywords);
+    if (items.length === 0) {
+      toast.error('Список пуст');
+      return;
+    }
+    const overrideBid = bidOverride.trim() ? Number(bidOverride) : undefined;
+    if (overrideBid !== undefined && (!Number.isFinite(overrideBid) || overrideBid <= 0)) {
+      toast.error('Bid override должен быть > 0');
+      return;
+    }
+    const bid = overrideBid ?? selectedGroup?.default_bid ?? 0.75;
+
+    setSubmitting(true);
+    try {
+      let failed = 0;
+      if (type === 'keyword') {
+        const results = await targetsApi.createKeywordsBulk(adGroupId, items, matchType, bid);
+        failed = results.filter((r) => !r.ok).length;
+      } else {
+        // ASIN-targets: сериализуем в отдельных POST'ах через api.create.
+        for (const asin of items) {
+          try {
+            await targetsApi.create(adGroupId, { asin, match_type: 'asin', bid });
+          } catch {
+            failed += 1;
+          }
+        }
+      }
+      if (failed > 0) {
+        toast.error(`${items.length - failed}/${items.length} добавлены, ${failed} с ошибкой`);
+      } else {
+        toast.success(`Добавлено: ${items.length}`);
+      }
+      onAdded();
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Не удалось добавить targets');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-zinc-900/20 backdrop-blur-sm"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !submitting) onClose();
+      }}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-lg bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden"
+      >
+        <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-start justify-between gap-3">
+          <h2 className="text-base font-semibold text-zinc-900 tracking-tight">
+            Добавить targets
+          </h2>
+          <button
+            type="button"
+            onClick={() => !submitting && onClose()}
+            className="text-zinc-400 hover:text-zinc-700 transition-colors"
+            aria-label="Закрыть"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          {/* Ad group */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-700">Ad Group</label>
+            <select
+              value={adGroupId ?? ''}
+              onChange={(e) => setAdGroupId(Number(e.target.value))}
+              className="w-full h-9 px-2 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400"
+              required
+            >
+              {adGroups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name} (default ${g.default_bid?.toFixed(2) ?? '0.00'})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Тип target */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-700">Тип</label>
+            <div className="inline-flex bg-white border border-zinc-200 rounded-md p-0.5">
+              {(['keyword', 'asin'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setType(t)}
+                  className={`px-3 h-7 text-xs font-medium rounded transition-colors ${
+                    type === t ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:text-zinc-900'
+                  }`}
+                >
+                  {t === 'keyword' ? 'Keywords' : 'ASIN'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Список */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-700">
+              {type === 'keyword' ? 'Ключевые слова' : 'ASIN-ы'}
+              <span className="text-zinc-400 font-normal ml-1">(по одному на строку)</span>
+            </label>
+            <textarea
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+              placeholder={
+                type === 'keyword'
+                  ? 'crockpot recipes\nslow cooker meals'
+                  : 'B08XXXXXXX\nB09YYYYYYY'
+              }
+              rows={5}
+              className="w-full px-3 py-2 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400 font-mono resize-y min-h-[100px]"
+              required
+            />
+          </div>
+
+          {/* Match type — только для keywords */}
+          {type === 'keyword' && (
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-zinc-700">Match type</label>
+              <div className="inline-flex bg-white border border-zinc-200 rounded-md p-0.5">
+                {(['exact', 'phrase', 'broad'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMatchType(m)}
+                    className={`px-3 h-7 text-xs font-medium rounded transition-colors ${
+                      matchType === m ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:text-zinc-900'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bid override */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-700">
+              Bid override ($)
+              <span className="text-zinc-400 font-normal ml-1">
+                — пустое = default {selectedGroup?.default_bid?.toFixed(2) ?? '—'}
+              </span>
+            </label>
+            <input
+              type="number"
+              min="0.02"
+              step="0.01"
+              value={bidOverride}
+              onChange={(e) => setBidOverride(e.target.value)}
+              placeholder={selectedGroup?.default_bid?.toFixed(2) ?? '0.75'}
+              className="w-full h-9 px-3 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400"
+            />
+          </div>
+        </div>
+
+        <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="h-8 px-3 text-xs font-medium rounded-md text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors disabled:opacity-50"
+          >
+            Отмена
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="h-8 px-4 text-xs font-medium rounded-md bg-zinc-900 text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting && <Loader2 size={12} className="animate-spin" />}
+            Добавить
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};

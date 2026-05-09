@@ -138,6 +138,49 @@ export interface WeeklySummary {
 }
 
 // ============================================================================
+// Keyword summary (KeywordsPage)
+// ============================================================================
+
+export interface KeywordAnalyticsItem {
+  keyword_id: string;
+  keyword_text: string;
+  match_type: string;
+  target_type: 'keyword' | 'auto' | 'product' | string;
+  campaign_id: number;
+  campaign_name: string;
+  ad_group_id: number | null;
+  ad_group_name: string | null;
+  book_id: number;
+  book_title: string;
+  book_cover: string | null;
+  marketplace: string;
+  currency: string;
+  target_id: number | null;
+  bid: number | null;
+  status: string;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  sales: number;
+  orders: number;
+  ctr: number;
+  cpc: number;
+  cr: number;
+  acos: number;
+  profit: number;
+  be_acos?: number | null;
+}
+
+export interface KeywordSummary {
+  date_from: string;
+  date_to: string;
+  attribution_window: string;
+  keywords: KeywordAnalyticsItem[];
+  total_count: number;
+  error?: string;
+}
+
+// ============================================================================
 // Marketplace summary
 // ============================================================================
 
@@ -162,6 +205,113 @@ export interface MarketplaceSummary {
   date_to: string;
   attribution_window: string;
   marketplaces: { [key: string]: MarketplaceMetric };
+  error?: string;
+}
+
+// ============================================================================
+// Overview / KPIs with period-over-period comparison (Dashboard hero)
+// ============================================================================
+
+export interface PeriodMetrics {
+  impressions: number;
+  clicks: number;
+  spend: number;
+  sales: number;
+  orders: number;
+  acos: number;
+  roi: number;
+  ctr: number;
+  royalty: number;
+  profit: number;
+  paperback_orders?: number;
+  organic_orders?: number;
+  tacos?: number;
+  roas?: number;
+}
+
+export interface MetricChanges {
+  impressions: number;
+  clicks: number;
+  spend: number;
+  sales: number;
+  orders: number;
+  acos: number;
+  roi: number;
+  ctr: number;
+  royalty: number;
+  profit: number;
+  tacos?: number;
+  roas?: number;
+}
+
+export interface OverviewMetrics {
+  date_from: string;
+  date_to: string;
+  prev_date_from: string;
+  prev_date_to: string;
+  attribution_window: string;
+  current_period: PeriodMetrics;
+  previous_period: PeriodMetrics;
+  changes: MetricChanges;
+  error?: string;
+}
+
+// ============================================================================
+// Top performers (winners + losers) — Dashboard
+// ============================================================================
+
+export interface BookPerformerItem {
+  id: number;
+  title: string;
+  cover_image: string | null;
+  profit: number;
+  spend: number;
+  sales: number;
+  orders: number;
+  acos: number;
+}
+
+export interface CampaignPerformerItem {
+  id: number;
+  name: string;
+  book_title: string;
+  marketplace: string;
+  campaign_type: string;
+  profit: number;
+  spend: number;
+  sales: number;
+  orders: number;
+  acos: number;
+}
+
+export interface TopPerformersData {
+  date_from: string;
+  date_to: string;
+  attribution_window: string;
+  books: { winners: BookPerformerItem[]; losers: BookPerformerItem[] };
+  campaigns: { winners: CampaignPerformerItem[]; losers: CampaignPerformerItem[] };
+  error?: string;
+}
+
+// ============================================================================
+// Alerts (Dashboard widget + Alerts page)
+// ============================================================================
+
+export interface AlertItem {
+  id: number | string;
+  severity: 'critical' | 'warning' | 'info' | string;
+  title: string;
+  message: string;
+  // Optional contextual links
+  book_id?: number;
+  campaign_id?: number;
+  link_to?: string;
+  created_at?: string;
+}
+
+export interface AlertsResponse {
+  alerts: AlertItem[];
+  count?: number;
   error?: string;
 }
 
@@ -242,5 +392,63 @@ export const metricsApi = {
       '/api/metrics/summary/weekly',
       buildSummaryQuery(params),
     );
+  },
+
+  overview(params: RangeParams & BookFilters = {}): Promise<OverviewMetrics> {
+    return apiClient.get<OverviewMetrics>(
+      '/api/metrics/summary/overview',
+      buildSummaryQuery(params),
+    );
+  },
+
+  topPerformers(
+    params: RangeParams & BookFilters & { limit?: number } = {},
+  ): Promise<TopPerformersData> {
+    return apiClient.get<TopPerformersData>(
+      '/api/metrics/summary/top-performers',
+      {
+        ...buildSummaryQuery(params),
+        limit: params.limit ?? 5,
+      },
+    );
+  },
+
+  alerts(params: RangeParams & BookFilters = {}): Promise<AlertsResponse> {
+    return apiClient.get<AlertsResponse>('/api/alerts', buildSummaryQuery(params));
+  },
+
+  summaryByKeyword(
+    params: RangeParams & BookFilters = {},
+  ): Promise<KeywordSummary> {
+    return apiClient.get<KeywordSummary>(
+      '/api/metrics/summary/by-keyword',
+      buildSummaryQuery(params),
+    );
+  },
+
+  // Универсальные breakdowns: backend возвращает { date_from, date_to, attribution_window, <pluralKey>: [...] }
+  // Все колонки одинакового shape: { <key>: ..., impressions, clicks, cost, sales, orders, ctr, acos, ... }.
+  // Renderer (BreakdownTab) ожидает `items` поле — нормализуем здесь.
+  async breakdown(
+    endpoint: string,
+    pluralKey: string,
+    params: RangeParams & BookFilters = {},
+  ): Promise<{ date_from?: string; date_to?: string; items: Record<string, unknown>[] }> {
+    const raw = await apiClient.get<Record<string, unknown>>(endpoint, buildSummaryQuery(params));
+    const items = raw[pluralKey];
+    let normalized: Record<string, unknown>[] = [];
+    if (Array.isArray(items)) {
+      normalized = items as Record<string, unknown>[];
+    } else if (items && typeof items === 'object') {
+      // Некоторые endpoint'ы (by-marketplace) возвращают dict — конвертируем в массив с key.
+      normalized = Object.entries(items as Record<string, Record<string, unknown>>).map(
+        ([key, m]) => ({ key, ...m }),
+      );
+    }
+    return {
+      date_from: raw.date_from as string | undefined,
+      date_to: raw.date_to as string | undefined,
+      items: normalized,
+    };
   },
 };

@@ -1,14 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { metricsApi, BookSummary, BookMetric } from '../api/metrics';
+import { DollarSign, ShoppingCart, Target as TargetIcon, TrendingDown } from 'lucide-react';
+import {
+  metricsApi,
+  type BookMetric,
+  type BookSummary,
+  type DailySummary,
+  type MarketplaceSummary,
+  type OverviewMetrics,
+  type TopPerformersData,
+} from '../api/metrics';
 import { ApiError } from '../api/client';
 import {
+  ActiveFiltersBar,
   Card,
-  Kpi,
+  EmptyState,
+  KpiDelta,
+  LoadingRow,
   PageHeader,
   RangePicker,
-  EmptyState,
-  LoadingRow,
-  ActiveFiltersBar,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
@@ -18,72 +27,105 @@ import {
   useGlobalFilterChips,
 } from '../contexts/GlobalFiltersContext';
 import { useBooks } from '../contexts/BooksContext';
+import { HeroChart } from '../components/dashboard/HeroChart';
+import { TopPerformers } from '../components/dashboard/TopPerformers';
+import { MarketplaceDistribution } from '../components/dashboard/MarketplaceDistribution';
+import { FunnelChart } from '../components/dashboard/FunnelChart';
+import { AlertsWidget } from '../components/dashboard/AlertsWidget';
 
 export const DashboardPage: React.FC = () => {
   const toast = useToast();
   const { filters: globalFilters } = useGlobalFilters();
   const { list: booksList } = useBooks();
   const chips = useGlobalFilterChips(booksList);
-  const [range, setRange] = useState<RangeId>('7d');
+
+  const [range, setRange] = useState<RangeId>('30d');
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<BookSummary | null>(null);
+  const [overview, setOverview] = useState<OverviewMetrics | null>(null);
+  const [daily, setDaily] = useState<DailySummary | null>(null);
+  const [topPerf, setTopPerf] = useState<TopPerformersData | null>(null);
+  const [mpSummary, setMpSummary] = useState<MarketplaceSummary | null>(null);
+  const [bookSummary, setBookSummary] = useState<BookSummary | null>(null);
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
+
+  // Bag общих параметров фильтрации.
+  const filterParams = useMemo(
+    () => ({
+      from,
+      to,
+      attribution: '7d' as const,
+      marketplaces: globalFilters.marketplaces.length
+        ? globalFilters.marketplaces
+        : undefined,
+      bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
+      accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,
+    }),
+    [from, to, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
+  );
 
   const load = useMemo(
     () => async () => {
       setLoading(true);
-      try {
-        const data = await metricsApi.summaryByBook({
-          from,
-          to,
-          attribution: '7d',
-          marketplaces: globalFilters.marketplaces.length
-            ? globalFilters.marketplaces
-            : undefined,
-          bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
-          accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,
-        });
-        setSummary(data);
-      } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить данные');
-      } finally {
-        setLoading(false);
+      // Параллельный fetch. Если один из вторичных endpoint'ов упадёт — мы
+      // не прерываем рендер остальных секций, а молча показываем placeholder.
+      // Главные ошибки (overview/by-book) показываем тостом.
+      const settled = await Promise.allSettled([
+        metricsApi.overview(filterParams),
+        metricsApi.summaryDaily(filterParams),
+        metricsApi.topPerformers({ ...filterParams, limit: 5 }),
+        metricsApi.summaryByMarketplace(filterParams),
+        metricsApi.summaryByBook(filterParams),
+      ]);
+
+      const [ovRes, dailyRes, topRes, mpRes, bookRes] = settled;
+
+      if (ovRes.status === 'fulfilled') setOverview(ovRes.value);
+      else setOverview(null);
+
+      if (dailyRes.status === 'fulfilled') setDaily(dailyRes.value);
+      else setDaily(null);
+
+      if (topRes.status === 'fulfilled') setTopPerf(topRes.value);
+      else setTopPerf(null);
+
+      if (mpRes.status === 'fulfilled') setMpSummary(mpRes.value);
+      else setMpSummary(null);
+
+      if (bookRes.status === 'fulfilled') setBookSummary(bookRes.value);
+      else setBookSummary(null);
+
+      // Если упали ОБА главных endpoint'а — это явная проблема, кидаем toast.
+      if (ovRes.status === 'rejected' && bookRes.status === 'rejected') {
+        const err = bookRes.reason;
+        toast.error(
+          err instanceof ApiError ? err.message : 'Не удалось загрузить данные',
+        );
       }
+
+      setLoading(false);
     },
-    [from, to, toast, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
+    [filterParams, toast],
   );
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const totals = useMemo(() => {
-    if (!summary) return null;
-    const acc = summary.books.reduce(
-      (a, b) => ({
-        cost: a.cost + (b.cost || 0),
-        sales: a.sales + (b.sales || 0),
-        royalty: a.royalty + (b.royalty || 0),
-        orders: a.orders + (b.orders || 0),
-        clicks: a.clicks + (b.clicks || 0),
-      }),
-      { cost: 0, sales: 0, royalty: 0, orders: 0, clicks: 0 },
-    );
-    const acos = acc.sales > 0 ? (acc.cost / acc.sales) * 100 : 0;
-    const tacos = acc.royalty > 0 ? (acc.cost / acc.royalty) * 100 : 0;
-    return { ...acc, acos, tacos };
-  }, [summary]);
+  const cur = overview?.current_period;
+  const ch = overview?.changes;
+
+  const subtitle = overview
+    ? `${overview.date_from} → ${overview.date_to} · окно атрибуции ${overview.attribution_window}`
+    : bookSummary
+    ? `${bookSummary.date_from} → ${bookSummary.date_to} · окно атрибуции ${bookSummary.attribution_window}`
+    : 'Загрузка…';
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Обзор"
-        subtitle={
-          summary
-            ? `${summary.date_from} → ${summary.date_to} · окно атрибуции ${summary.attribution_window}`
-            : 'Загрузка…'
-        }
+        subtitle={subtitle}
         rightSlot={
           <RangePicker
             value={range}
@@ -98,28 +140,97 @@ export const DashboardPage: React.FC = () => {
       <ActiveFiltersBar chips={chips} />
 
       <div className="grid grid-cols-4 gap-3">
-        <Kpi label="Spend" value={totals ? fmtMoney(totals.cost) : '—'} loading={loading} />
-        <Kpi label="Sales" value={totals ? fmtMoney(totals.sales) : '—'} loading={loading} />
-        <Kpi
-          label="ACOS"
-          value={totals ? fmtPct(totals.acos) : '—'}
-          loading={loading}
-          tone={totals && totals.acos > 100 ? 'negative' : 'default'}
+        <KpiDelta
+          label="Profit"
+          value={fmtMoney(cur?.profit)}
+          change={ch?.profit}
+          loading={loading && !overview}
+          tone={cur && cur.profit < 0 ? 'negative' : 'default'}
+          icon={<DollarSign size={14} />}
         />
-        <Kpi label="TACoS" value={totals ? fmtPct(totals.tacos) : '—'} loading={loading} />
+        <KpiDelta
+          label="ACOS"
+          value={cur?.acos != null && cur.acos > 0 ? fmtPct(cur.acos) : '—'}
+          change={ch?.acos}
+          inverseChange
+          loading={loading && !overview}
+          tone={cur && cur.acos > 100 ? 'negative' : 'default'}
+          icon={<TrendingDown size={14} />}
+        />
+        <KpiDelta
+          label="Sales"
+          value={fmtMoney(cur?.sales)}
+          change={ch?.sales}
+          loading={loading && !overview}
+          icon={<ShoppingCart size={14} />}
+        />
+        <KpiDelta
+          label="Spend"
+          value={fmtMoney(cur?.spend)}
+          change={ch?.spend}
+          inverseChange
+          loading={loading && !overview}
+          icon={<TargetIcon size={14} />}
+        />
       </div>
+
+      <Card
+        title="Эффективность"
+        rightSlot={
+          <span className="text-xs text-zinc-400">
+            клик по метрике — линия на графике (макс. 6)
+          </span>
+        }
+        bodyClassName="px-5 py-4"
+      >
+        <HeroChart
+          data={daily?.daily ?? []}
+          loading={loading && !daily}
+          targetAcos={25}
+          onLimitReached={() => toast.info('Максимум 6 метрик одновременно')}
+        />
+      </Card>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2">
+          <Card title="Лидеры по прибыли" bodyClassName="px-5 py-4">
+            <TopPerformers data={topPerf} loading={loading && !topPerf} />
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Card title="Оповещения" bodyClassName="px-5 py-3">
+            <AlertsWidget
+              from={from}
+              to={to}
+              attribution="7d"
+              marketplaces={filterParams.marketplaces}
+              bookIds={filterParams.bookIds}
+              accounts={filterParams.accounts}
+            />
+          </Card>
+
+          <Card title="Воронка" bodyClassName="px-5 py-4">
+            <FunnelChart data={cur ?? null} loading={loading && !overview} />
+          </Card>
+        </div>
+      </div>
+
+      <Card title="Распределение по маркетплейсам" bodyClassName="px-5 py-4">
+        <MarketplaceDistribution summary={mpSummary} loading={loading && !mpSummary} />
+      </Card>
 
       <Card
         title="Книги"
         rightSlot={
           <div className="text-xs text-zinc-500">
-            {summary ? `${summary.books.length} всего` : null}
+            {bookSummary ? `${bookSummary.books.length} всего` : null}
           </div>
         }
       >
-        {loading && !summary ? (
+        {loading && !bookSummary ? (
           <LoadingRow />
-        ) : !summary || summary.books.length === 0 ? (
+        ) : !bookSummary || bookSummary.books.length === 0 ? (
           <EmptyState />
         ) : (
           <table className="w-full text-sm table-sticky-head">
@@ -135,7 +246,7 @@ export const DashboardPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {[...summary.books]
+              {[...bookSummary.books]
                 .sort((a, b) => b.cost - a.cost)
                 .map((b) => (
                   <BookRow key={`${b.book_id}-${b.marketplace}`} book={b} />

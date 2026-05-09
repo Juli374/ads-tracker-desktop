@@ -12,10 +12,11 @@ export interface UserProfile {
 }
 
 export const profileApi = {
-  // Возвращается как { user: {...} }
-  get(): Promise<UserProfile> {
-    return apiClient
-      .get<{ user: UserProfile }>('/api/profile')
-      .then((res) => res.user);
+  // Возвращается как { user: {...} }. async/await вместо .then(), чтобы caller
+  // мог нормально обернуть в try/catch (раньше unhandled rejection через .then()
+  // мог уронить strict prod build — code-quality finding #6).
+  async get(): Promise<UserProfile> {
+    const res = await apiClient.get<{ user: UserProfile }>('/api/profile');
+    return res.user;
   },
 };
