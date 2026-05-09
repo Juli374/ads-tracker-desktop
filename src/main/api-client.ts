@@ -8,9 +8,35 @@ function apiBaseUrl(): string {
   return (process.env.ADS_TRACKER_API_URL?.trim() || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
 }
 
-function buildUrl(path: string, query?: ApiRequestPayload['query']): string {
+// Защита от path-injection: renderer не должен мочь обратиться к произвольным
+// хостам. Все наши endpoint'ы — под /api/. Path не содержит scheme/host.
+function validatePath(path: string): string {
+  if (typeof path !== 'string' || path.length === 0) {
+    throw new Error('api:request: path must be a non-empty string');
+  }
+  // Защита от authority-override через protocol-relative или backslash-схем.
+  if (path.includes('://') || path.includes('\\') || path.includes('@')) {
+    throw new Error('api:request: path must not contain "://", "\\", or "@"');
+  }
+  // Все наши endpoint'ы под /api/. Нормализуем leading slash.
   const normalised = path.startsWith('/') ? path : `/${path}`;
+  if (!normalised.startsWith('/api/')) {
+    throw new Error('api:request: path must start with /api/');
+  }
+  return normalised;
+}
+
+function buildUrl(path: string, query?: ApiRequestPayload['query']): string {
+  const normalised = validatePath(path);
   const url = new URL(apiBaseUrl() + normalised);
+  // Защита от smuggling host через `path = '//evil.com/x'` (после нормализации
+  // путь начинается с `/api/`, но проверяем пост-фактум host тоже).
+  const expectedHost = new URL(apiBaseUrl()).host;
+  if (url.host !== expectedHost) {
+    throw new Error(
+      `api:request: host mismatch (got ${url.host}, expected ${expectedHost})`,
+    );
+  }
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value === undefined || value === null) continue;

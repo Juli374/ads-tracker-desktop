@@ -8,6 +8,21 @@ export const IpcChannel = {
   AuthSetToken: 'auth:setToken',
   AuthClearToken: 'auth:clearToken',
   ApiRequest: 'api:request',
+  // Pub/sub event: main → renderer когда пришёл deeplink ads-tracker-desktop://...
+  DeepLink: 'app:deepLink',
+  // Открыть URL во внешнем браузере (для OAuth-флоу).
+  ShellOpenExternal: 'shell:openExternal',
+  // Локальный royalty store (public-release scaffold). Все каналы синхронные
+  // через ipcMain.handle (read из JSON быстрый, не блокирует event-loop в renderer).
+  LocalRoyaltyListUploads: 'local:royalty:listUploads',
+  LocalRoyaltyListRecords: 'local:royalty:listRecords',
+  LocalRoyaltyGetSummary: 'local:royalty:getSummary',
+  LocalRoyaltyImport: 'local:royalty:import',
+  LocalRoyaltyDelete: 'local:royalty:delete',
+  LocalRoyaltyFilePath: 'local:royalty:filePath',
+  // Auto-update placeholder: renderer запрашивает статус, main отдаёт 'idle' до подключения electron-updater.
+  UpdateGetStatus: 'update:getStatus',
+  UpdateCheck: 'update:check',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -36,6 +51,81 @@ export interface ApiResponse<T = unknown> {
   error?: string;
 }
 
+// Полезная нагрузка событий deeplink. Renderer декодирует строкой URL.
+export interface DeepLinkEvent {
+  url: string;
+}
+
+// === Local royalty (зеркалит shape main/local-db/royalty.ts) ===
+export interface LocalRoyaltyUpload {
+  id: number;
+  account_id: number;
+  account_name?: string;
+  marketplace: string;
+  target_month: string;
+  uploaded_at: string;
+  source_filename?: string;
+  total_units: number;
+  total_royalty: number;
+  total_revenue: number;
+  currency?: string;
+}
+
+export interface LocalRoyaltyRecord {
+  id: number;
+  upload_id: number;
+  asin?: string;
+  book_title?: string;
+  marketplace: string;
+  target_month: string;
+  units: number;
+  royalty: number;
+  revenue: number;
+  currency?: string;
+}
+
+export interface LocalRoyaltyMonthSummary {
+  target_month: string;
+  totals: { units: number; royalty: number; revenue: number };
+  by_marketplace: Array<{ marketplace: string; units: number; royalty: number; revenue: number }>;
+}
+
+export interface LocalRoyaltyImportPayload {
+  account_id: number;
+  account_name?: string;
+  marketplace: string;
+  target_month: string;
+  source_filename?: string;
+  records: Array<{
+    asin?: string;
+    book_title?: string;
+    units: number;
+    royalty: number;
+    revenue: number;
+    currency?: string;
+  }>;
+}
+
+// === Auto-update ===
+export type UpdateState =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error';
+
+export interface UpdateStatus {
+  state: UpdateState;
+  version?: string;       // версия доступного обновления, если есть
+  current_version?: string;
+  progress_percent?: number;
+  message?: string;
+  // Включится ли реальная проверка. Сейчас всегда false до подключения electron-updater.
+  enabled: boolean;
+}
+
 // API, который выставляется в renderer через contextBridge как window.api
 export interface DesktopApi {
   app: {
@@ -48,4 +138,23 @@ export interface DesktopApi {
     clearToken(): Promise<void>;
   };
   request<T = unknown>(payload: ApiRequestPayload): Promise<ApiResponse<T>>;
+  // Подписка на deeplink-события. Возвращает unsubscribe.
+  onDeepLink(handler: (event: DeepLinkEvent) => void): () => void;
+  shell: {
+    // Открыть https-URL в системном браузере (для OAuth-флоу).
+    openExternal(url: string): Promise<void>;
+  };
+  // Public-release scaffold: локальное хранилище royalty.
+  localRoyalty: {
+    listUploads(): Promise<LocalRoyaltyUpload[]>;
+    listRecords(uploadId: number): Promise<LocalRoyaltyRecord[]>;
+    getSummary(targetMonth: string): Promise<LocalRoyaltyMonthSummary>;
+    import(payload: LocalRoyaltyImportPayload): Promise<{ upload_id: number; records_added: number }>;
+    delete(uploadId: number): Promise<{ deleted: number }>;
+    filePath(): Promise<string>;
+  };
+  update: {
+    getStatus(): Promise<UpdateStatus>;
+    check(): Promise<UpdateStatus>;
+  };
 }

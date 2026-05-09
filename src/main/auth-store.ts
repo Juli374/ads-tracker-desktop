@@ -2,10 +2,11 @@ import { app, safeStorage } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-// Personal-use хардкод: если ни safeStorage, ни plain-файл не дали токена,
-// используем встроенный. Можно перебить через TokenPasteScreen или
-// через env ADS_TRACKER_API_TOKEN.
-const BUILTIN_TOKEN = 'at_live_29099c08ec6c8beec3f160a0b9d36c9a004b1e07';
+// Никаких хардкод-токенов в исходниках. Токен берётся из:
+// 1. ENV ADS_TRACKER_API_TOKEN (для CI/тестов)
+// 2. Encrypted via safeStorage (production)
+// 3. Plain-file fallback (unsigned dev — при отсутствии keychain)
+// Если ни один источник не дал токен — возвращаем null, юзер увидит LoginScreen.
 
 const TOKEN_FILE_ENC = 'auth-token.bin';
 const TOKEN_FILE_PLAIN = 'auth-token.txt';
@@ -54,20 +55,22 @@ export async function readToken(): Promise<string | null> {
   const fromPlain = await readPlain();
   if (fromPlain) return fromPlain;
 
-  // 4) Встроенный builtin для personal-use
-  return BUILTIN_TOKEN;
+  // 4) Ничего не нашли — юзер увидит LoginScreen.
+  return null;
 }
 
 export async function writeToken(token: string): Promise<void> {
+  // Всегда сначала пытаемся подчистить plain-файл — независимо от того,
+  // удалось ли потом зашифровать. Иначе старое незашифрованное значение
+  // лежит на диске даже после перехода на keychain (security-finding #3).
+  try {
+    await fs.unlink(plainPath());
+  } catch {
+    // ignore: ENOENT в норме
+  }
   if (safeStorage.isEncryptionAvailable()) {
     const encrypted = safeStorage.encryptString(token);
     await fs.writeFile(encPath(), encrypted, { mode: 0o600 });
-    // Заодно подчистим plain-файл, чтобы старое значение не перекрывало
-    try {
-      await fs.unlink(plainPath());
-    } catch {
-      // ignore
-    }
     return;
   }
   // Fallback: пишем без шифрования. Mode 0o600 — только владельцу.

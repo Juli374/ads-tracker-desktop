@@ -1,6 +1,11 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
+
+// React.lazy + Suspense fallback на страницах увеличил время до появления
+// heading'а до >1s в jsdom (default RTL timeout). Поднимаем asyncUtilTimeout
+// до 5s чтобы findByRole/findByText корректно ждали загрузки lazy-чанка.
+configure({ asyncUtilTimeout: 5000 });
 
 afterEach(() => {
   cleanup();
