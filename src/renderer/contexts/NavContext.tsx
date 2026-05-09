@@ -2,7 +2,6 @@ import React, {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -53,22 +52,14 @@ export const NavProvider: React.FC<{
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>;
 };
 
-// Хук для страницы-получателя: читает filters один раз при mount и потом
-// сбрасывает их в контексте через useEffect (после рендера, безопасно для React).
+// Хук для страницы-получателя: читает filters один раз при mount.
 // Возвращает снапшот, который можно использовать как initial state.
+// Сброс контекстных filters не делаем — sidebar.navigate(page) уже передаёт
+// {} по умолчанию, что обнуляет filters для следующего mount.
 export function useInitialFilters(): NavFilters {
   const ctx = useContext(NavContext);
   if (!ctx) throw new Error('useInitialFilters must be used within NavProvider');
-  // Снимок при первом рендере — не меняется при перерендерах
   const [snapshot] = useState(() => ctx.filters);
-  // После mount сбрасываем filters в контексте, чтобы повторный mount страницы
-  // (через cmd+K или sidebar) не унаследовал старые фильтры.
-  useEffect(() => {
-    if (Object.keys(snapshot).length > 0) {
-      ctx.navigate(ctx.page, {});
-    }
-    // Run once on mount; ctx-based deps would re-trigger on every navigate.
-  }, []); // eslint-disable-line
   return snapshot;
 }
 

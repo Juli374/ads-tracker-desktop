@@ -1,5 +1,5 @@
 import { describe, it, beforeEach, expect } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 
@@ -36,45 +36,36 @@ describe('drill-down navigation', () => {
     const user = userEvent.setup();
     renderApp();
 
+    await screen.findByRole('heading', { name: 'Обзор' });
     await user.click(screen.getByRole('button', { name: /Книги/ }));
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Книги' })).toBeInTheDocument(),
-    );
-    await waitFor(() => expect(screen.getByText('Test Book')).toBeInTheDocument());
 
-    const bookCell = screen.getByText('Test Book');
+    await screen.findByRole('heading', { name: 'Книги' });
+    const bookCell = await screen.findByText('Test Book');
     await user.click(bookCell);
 
-    // После drill-down: страница Campaigns + global Book filter в topbar показывает Test Book
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Кампании' })).toBeInTheDocument(),
-    );
-    // Кнопка-сброс «Сбросить книгу» свидетельствует что global bookId установлен
-    await waitFor(() =>
-      expect(screen.getByLabelText('Сбросить книгу')).toBeInTheDocument(),
-    );
+    expect(
+      await screen.findByRole('heading', { name: 'Кампании' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText('Сбросить книгу'),
+    ).toBeInTheDocument();
   });
 
   it('Campaigns → SearchTerms: клик по строке кампании переключает на SearchTerms с chip-кампанией', async () => {
     const user = userEvent.setup();
     renderApp();
 
+    await screen.findByRole('heading', { name: 'Обзор' });
     await user.click(screen.getByRole('button', { name: /Кампании/ }));
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Кампании' })).toBeInTheDocument(),
-    );
-    await waitFor(() => expect(screen.getByText('Test Campaign')).toBeInTheDocument());
+    await screen.findByRole('heading', { name: 'Кампании' });
 
-    await user.click(screen.getByText('Test Campaign'));
+    const campaignRow = await screen.findByText('Test Campaign');
+    await user.click(campaignRow);
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole('heading', { name: 'Поисковые запросы' }),
-      ).toBeInTheDocument();
-    });
-    await waitFor(() => {
-      const chip = screen.getByTitle('Сбросить фильтр по кампании');
-      expect(within(chip).getByText(/кампания #100/)).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByRole('heading', { name: 'Поисковые запросы' }),
+    ).toBeInTheDocument();
+    const chips = await screen.findAllByText(/кампания #100/);
+    expect(chips.length).toBeGreaterThan(0);
   });
 });

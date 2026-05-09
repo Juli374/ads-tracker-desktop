@@ -1,5 +1,5 @@
 import { describe, it, beforeEach, expect } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 
 import { DashboardPage } from '../DashboardPage';
@@ -42,13 +42,12 @@ describe('page smoke renders', () => {
         <DashboardPage />
       </Wrap>,
     );
-    expect(screen.getByText('Обзор')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText('Spend')).toBeInTheDocument();
-      expect(screen.getByText('Sales')).toBeInTheDocument();
-      expect(screen.getByText('ACOS')).toBeInTheDocument();
-      expect(screen.getByText('TACoS')).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('heading', { name: 'Обзор' })).toBeInTheDocument();
+    // KPI labels встречаются и в заголовках таблицы — findAllByText.
+    expect((await screen.findAllByText('Spend')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Sales')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('ACOS')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('TACoS')).length).toBeGreaterThan(0);
   });
 
   it('BooksPage renders header and table', async () => {
@@ -57,10 +56,8 @@ describe('page smoke renders', () => {
         <BooksPage />
       </Wrap>,
     );
-    expect(screen.getByText('Книги')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText('Test Book')).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('heading', { name: 'Книги' })).toBeInTheDocument();
+    expect(await screen.findByText('Test Book')).toBeInTheDocument();
   });
 
   it('CampaignsPage renders header and table', async () => {
@@ -69,10 +66,8 @@ describe('page smoke renders', () => {
         <CampaignsPage />
       </Wrap>,
     );
-    expect(screen.getByText('Кампании')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText('Test Campaign')).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('heading', { name: 'Кампании' })).toBeInTheDocument();
+    expect(await screen.findByText('Test Campaign')).toBeInTheDocument();
   });
 
   it('SearchTermsPage renders header without crashing on empty list', async () => {
@@ -81,10 +76,10 @@ describe('page smoke renders', () => {
         <SearchTermsPage />
       </Wrap>,
     );
-    expect(screen.getByText('Поисковые запросы')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText(/Нет запросов/)).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByRole('heading', { name: 'Поисковые запросы' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(/Нет запросов/)).toBeInTheDocument();
   });
 
   it('ReportsPage renders header, table and marketplace card', async () => {
@@ -93,12 +88,10 @@ describe('page smoke renders', () => {
         <ReportsPage />
       </Wrap>,
     );
-    expect(screen.getByText('Отчёты')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText('Динамика по дням')).toBeInTheDocument();
-      expect(screen.getByText('Сводка')).toBeInTheDocument();
-      expect(screen.getByText('По маркетплейсам')).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('heading', { name: 'Отчёты' })).toBeInTheDocument();
+    expect(await screen.findByText('Динамика по дням')).toBeInTheDocument();
+    expect(await screen.findByText('Сводка')).toBeInTheDocument();
+    expect(await screen.findByText('По маркетплейсам')).toBeInTheDocument();
   });
 
   it('SettingsPage renders sections', async () => {
@@ -107,12 +100,10 @@ describe('page smoke renders', () => {
         <SettingsPage />
       </Wrap>,
     );
-    expect(screen.getByText('Настройки')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText('Учётная запись')).toBeInTheDocument();
-      expect(screen.getByText('API-ключ')).toBeInTheDocument();
-      expect(screen.getByText('Backend')).toBeInTheDocument();
-      expect(screen.getByText('Приложение')).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('heading', { name: 'Настройки' })).toBeInTheDocument();
+    expect(await screen.findByText('Учётная запись')).toBeInTheDocument();
+    expect(await screen.findByText('API-ключ')).toBeInTheDocument();
+    expect(await screen.findByText('Backend')).toBeInTheDocument();
+    expect(await screen.findByText('Приложение')).toBeInTheDocument();
   });
 });
