@@ -2,6 +2,7 @@ import React from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { MarketplacesProvider } from './contexts/MarketplacesContext';
+import { BooksProvider } from './contexts/BooksContext';
 import { GlobalFiltersProvider } from './contexts/GlobalFiltersContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './components/MainLayout';
@@ -27,9 +28,11 @@ export const App: React.FC = () => (
     <ToastProvider>
       <AuthProvider>
         <MarketplacesProvider>
-          <GlobalFiltersProvider>
-            <Gate />
-          </GlobalFiltersProvider>
+          <BooksProvider>
+            <GlobalFiltersProvider>
+              <Gate />
+            </GlobalFiltersProvider>
+          </BooksProvider>
         </MarketplacesProvider>
       </AuthProvider>
     </ToastProvider>

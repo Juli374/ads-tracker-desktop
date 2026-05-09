@@ -1,59 +1,103 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Filter, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Filter, X, BookOpen, User, Globe } from 'lucide-react';
 import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 import { useMarketplaces } from '../contexts/MarketplacesContext';
+import { useBooks } from '../contexts/BooksContext';
 
 export const GlobalFilters: React.FC = () => {
-  const { list: marketplaces } = useMarketplaces();
-  const { filters, toggleMarketplace, reset, hasAny } = useGlobalFilters();
+  const { filters, reset, hasAny } = useGlobalFilters();
+  const { list: books } = useBooks();
+
+  const accounts = useMemo(() => {
+    const set = new Set<string>();
+    for (const b of books) if (b.account) set.add(b.account);
+    return [...set].sort();
+  }, [books]);
+
+  const showAccountFilter = accounts.length > 1;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <BookFilter />
+      {showAccountFilter && <AccountFilter accounts={accounts} />}
+      <MarketplaceFilter />
+      {hasAny && (
+        <button
+          onClick={reset}
+          className="
+            h-7 px-2 flex items-center gap-1 rounded-md text-[11px]
+            text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100
+            transition-colors
+          "
+          title="Сбросить все фильтры"
+        >
+          <X size={11} />
+          Сбросить
+        </button>
+      )}
+      {/* keep Filter icon in tree to avoid eslint unused — used below */}
+      <span className="hidden">
+        <Filter size={1} />
+      </span>
+    </div>
+  );
+};
+
+// ---------- Book filter (single-select with search) ----------
+
+const BookFilter: React.FC = () => {
+  const { filters, setBookId } = useGlobalFilters();
+  const { list: books } = useBooks();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement | null>(null);
 
-  // Закрытие по клику вне
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const selectedCount = filters.marketplaces.length;
-  const buttonLabel =
-    selectedCount === 0
-      ? 'Все MPs'
-      : selectedCount === 1
-      ? filters.marketplaces[0]
-      : `${selectedCount} MPs`;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return books;
+    return books.filter((b) => b.title.toLowerCase().includes(q));
+  }, [books, query]);
+
+  const selected = useMemo(
+    () => books.find((b) => b.id === filters.bookId),
+    [books, filters.bookId],
+  );
+
+  const label = selected ? selected.title : 'Все книги';
+  const active = filters.bookId != null;
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
         className={`
-          flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs transition-colors
-          border
-          ${hasAny
+          flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs transition-colors border
+          ${active
             ? 'bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800'
             : 'bg-white text-zinc-600 border-zinc-200 hover:text-zinc-900 hover:bg-zinc-50'}
         `}
-        aria-label="Глобальные фильтры"
         aria-expanded={open}
       >
-        <Filter size={11} />
-        <span className="font-medium">{buttonLabel}</span>
-        {hasAny && (
+        <BookOpen size={11} />
+        <span className="font-medium max-w-[140px] truncate">{label}</span>
+        {active && (
           <span
             onClick={(e) => {
               e.stopPropagation();
-              reset();
+              setBookId(undefined);
             }}
             className="ml-1 hover:text-zinc-300 transition-colors cursor-pointer"
             role="button"
-            aria-label="Сбросить фильтры"
+            aria-label="Сбросить книгу"
           >
             <X size={11} />
           </span>
@@ -61,19 +105,116 @@ export const GlobalFilters: React.FC = () => {
       </button>
 
       {open && (
-        <div
-          className="
-            absolute right-0 top-9 z-40 w-64 bg-white border border-zinc-200
-            rounded-lg shadow-card overflow-hidden
-          "
-        >
+        <div className="absolute right-0 top-9 z-40 w-72 bg-white border border-zinc-200 rounded-lg shadow-card overflow-hidden">
+          <div className="px-3 py-2 border-b border-zinc-100">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Поиск книги…"
+              className="w-full h-7 px-2 text-xs bg-transparent border-0 outline-none placeholder:text-zinc-400"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-[280px] overflow-y-auto py-1">
+            <button
+              onClick={() => {
+                setBookId(undefined);
+                setOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 h-8 text-sm text-left hover:bg-zinc-50 transition-colors"
+            >
+              <RadioDot selected={filters.bookId == null} />
+              <span className="text-xs text-zinc-700">Все книги</span>
+            </button>
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-zinc-400">Ничего не нашлось</div>
+            ) : (
+              filtered.map((b) => {
+                const sel = filters.bookId === b.id;
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => {
+                      setBookId(b.id);
+                      setOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 h-8 text-sm text-left hover:bg-zinc-50 transition-colors"
+                  >
+                    <RadioDot selected={sel} />
+                    <span className="text-xs text-zinc-700 truncate flex-1">
+                      {b.title}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---------- Marketplaces filter (multi-select) ----------
+
+const MarketplaceFilter: React.FC = () => {
+  const { list: marketplaces } = useMarketplaces();
+  const { filters, toggleMarketplace, setMarketplaces } = useGlobalFilters();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const count = filters.marketplaces.length;
+  const label = count === 0 ? 'Все MPs' : count === 1 ? filters.marketplaces[0] : `${count} MPs`;
+  const active = count > 0;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`
+          flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs transition-colors border
+          ${active
+            ? 'bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800'
+            : 'bg-white text-zinc-600 border-zinc-200 hover:text-zinc-900 hover:bg-zinc-50'}
+        `}
+        aria-expanded={open}
+      >
+        <Globe size={11} />
+        <span className="font-medium">{label}</span>
+        {active && (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              setMarketplaces([]);
+            }}
+            className="ml-1 hover:text-zinc-300 transition-colors cursor-pointer"
+            role="button"
+            aria-label="Сбросить маркетплейсы"
+          >
+            <X size={11} />
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-9 z-40 w-64 bg-white border border-zinc-200 rounded-lg shadow-card overflow-hidden">
           <div className="px-3 py-2 border-b border-zinc-100 flex items-center justify-between">
             <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
               Маркетплейсы
             </div>
-            {hasAny && (
+            {active && (
               <button
-                onClick={() => reset()}
+                onClick={() => setMarketplaces([])}
                 className="text-[10px] text-zinc-500 hover:text-zinc-900 transition-colors"
               >
                 Сбросить
@@ -90,38 +231,10 @@ export const GlobalFilters: React.FC = () => {
                   <button
                     key={code}
                     onClick={() => toggleMarketplace(code)}
-                    className="
-                      w-full flex items-center gap-2.5 px-3 h-8 text-sm text-left
-                      hover:bg-zinc-50 transition-colors
-                    "
+                    className="w-full flex items-center gap-2.5 px-3 h-8 text-sm text-left hover:bg-zinc-50 transition-colors"
                   >
-                    <span
-                      className={`
-                        w-3.5 h-3.5 rounded border flex items-center justify-center
-                        ${selected
-                          ? 'bg-zinc-900 border-zinc-900'
-                          : 'bg-white border-zinc-300'}
-                      `}
-                    >
-                      {selected && (
-                        <svg
-                          width="9"
-                          height="9"
-                          viewBox="0 0 9 9"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M1 4.5L3.5 7L8 1.5"
-                            stroke="white"
-                            strokeWidth="1.5"
-                          />
-                        </svg>
-                      )}
-                    </span>
-                    <span className="text-xs text-zinc-700 uppercase font-mono">
-                      {code}
-                    </span>
+                    <Checkbox selected={selected} />
+                    <span className="text-xs text-zinc-700 uppercase font-mono">{code}</span>
                   </button>
                 );
               })
@@ -132,3 +245,106 @@ export const GlobalFilters: React.FC = () => {
     </div>
   );
 };
+
+// ---------- Account filter (multi-select, hidden if 1) ----------
+
+const AccountFilter: React.FC<{ accounts: string[] }> = ({ accounts }) => {
+  const { filters, toggleAccount, setAccounts } = useGlobalFilters();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const count = filters.accounts.length;
+  const label = count === 0 ? 'Все account' : count === 1 ? filters.accounts[0] : `${count} acc.`;
+  const active = count > 0;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`
+          flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs transition-colors border
+          ${active
+            ? 'bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800'
+            : 'bg-white text-zinc-600 border-zinc-200 hover:text-zinc-900 hover:bg-zinc-50'}
+        `}
+        aria-expanded={open}
+      >
+        <User size={11} />
+        <span className="font-medium max-w-[100px] truncate">{label}</span>
+        {active && (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              setAccounts([]);
+            }}
+            className="ml-1 hover:text-zinc-300 transition-colors cursor-pointer"
+            role="button"
+            aria-label="Сбросить account"
+          >
+            <X size={11} />
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-9 z-40 w-56 bg-white border border-zinc-200 rounded-lg shadow-card overflow-hidden">
+          <div className="px-3 py-2 border-b border-zinc-100 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+            Account
+          </div>
+          <div className="max-h-[240px] overflow-y-auto py-1">
+            {accounts.map((acc) => {
+              const selected = filters.accounts.includes(acc);
+              return (
+                <button
+                  key={acc}
+                  onClick={() => toggleAccount(acc)}
+                  className="w-full flex items-center gap-2.5 px-3 h-8 text-sm text-left hover:bg-zinc-50 transition-colors"
+                >
+                  <Checkbox selected={selected} />
+                  <span className="text-xs text-zinc-700 truncate">{acc}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---------- Helpers ----------
+
+const Checkbox: React.FC<{ selected: boolean }> = ({ selected }) => (
+  <span
+    className={`
+      w-3.5 h-3.5 rounded border flex items-center justify-center
+      ${selected ? 'bg-zinc-900 border-zinc-900' : 'bg-white border-zinc-300'}
+    `}
+  >
+    {selected && (
+      <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+        <path d="M1 4.5L3.5 7L8 1.5" stroke="white" strokeWidth="1.5" />
+      </svg>
+    )}
+  </span>
+);
+
+const RadioDot: React.FC<{ selected: boolean }> = ({ selected }) => (
+  <span
+    className={`
+      w-3.5 h-3.5 rounded-full border flex items-center justify-center
+      ${selected ? 'border-zinc-900' : 'border-zinc-300'}
+    `}
+  >
+    {selected && <span className="w-1.5 h-1.5 rounded-full bg-zinc-900" />}
+  </span>
+);

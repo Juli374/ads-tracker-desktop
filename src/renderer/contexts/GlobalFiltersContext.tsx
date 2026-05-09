@@ -8,19 +8,24 @@ import React, {
 
 export interface GlobalFilters {
   marketplaces: string[];
+  bookId?: number;
+  accounts: string[];
 }
 
 interface GlobalFiltersContextValue {
   filters: GlobalFilters;
   setMarketplaces(codes: string[]): void;
   toggleMarketplace(code: string): void;
+  setBookId(id: number | undefined): void;
+  setAccounts(accounts: string[]): void;
+  toggleAccount(account: string): void;
   reset(): void;
   hasAny: boolean;
 }
 
 const GlobalFiltersContext = createContext<GlobalFiltersContextValue | null>(null);
 
-const EMPTY: GlobalFilters = { marketplaces: [] };
+const EMPTY: GlobalFilters = { marketplaces: [], bookId: undefined, accounts: [] };
 
 export const GlobalFiltersProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -43,17 +48,54 @@ export const GlobalFiltersProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, []);
 
+  const setBookId = useCallback((id: number | undefined) => {
+    setFilters((f) => ({ ...f, bookId: id }));
+  }, []);
+
+  const setAccounts = useCallback((accounts: string[]) => {
+    setFilters((f) => ({ ...f, accounts }));
+  }, []);
+
+  const toggleAccount = useCallback((account: string) => {
+    setFilters((f) => {
+      const has = f.accounts.includes(account);
+      return {
+        ...f,
+        accounts: has
+          ? f.accounts.filter((a) => a !== account)
+          : [...f.accounts, account],
+      };
+    });
+  }, []);
+
   const reset = useCallback(() => setFilters(EMPTY), []);
+
+  const hasAny =
+    filters.marketplaces.length > 0 ||
+    filters.bookId != null ||
+    filters.accounts.length > 0;
 
   const value = useMemo<GlobalFiltersContextValue>(
     () => ({
       filters,
       setMarketplaces,
       toggleMarketplace,
+      setBookId,
+      setAccounts,
+      toggleAccount,
       reset,
-      hasAny: filters.marketplaces.length > 0,
+      hasAny,
     }),
-    [filters, setMarketplaces, toggleMarketplace, reset],
+    [
+      filters,
+      setMarketplaces,
+      toggleMarketplace,
+      setBookId,
+      setAccounts,
+      toggleAccount,
+      reset,
+      hasAny,
+    ],
   );
 
   return (

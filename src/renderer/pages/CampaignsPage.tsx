@@ -50,9 +50,6 @@ export const CampaignsPage: React.FC = () => {
   );
   const [campaignType, setCampaignType] = useState<string>('all');
   const [activeOnly, setActiveOnly] = useState(false);
-  const [bookFilter, setBookFilter] = useState<number | null>(
-    incomingFilters.bookId ?? null,
-  );
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<CampaignAnalyticsItem | null>(null);
 
@@ -61,7 +58,18 @@ export const CampaignsPage: React.FC = () => {
   // Сброс на первую страницу при смене любого фильтра
   useEffect(() => {
     setPage(1);
-  }, [from, to, search, sortKey, marketplace, campaignType, activeOnly, bookFilter]);
+  }, [
+    from,
+    to,
+    search,
+    sortKey,
+    marketplace,
+    campaignType,
+    activeOnly,
+    globalFilters.bookId,
+    globalFilters.accounts,
+    globalFilters.marketplaces,
+  ]);
 
   const load = useMemo(
     () => async () => {
@@ -75,6 +83,8 @@ export const CampaignsPage: React.FC = () => {
           marketplaces: globalFilters.marketplaces.length
             ? globalFilters.marketplaces
             : undefined,
+          bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
+          accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,
         });
         setSummary(data);
       } catch (err) {
@@ -83,7 +93,15 @@ export const CampaignsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [from, to, activeOnly, toast, globalFilters.marketplaces],
+    [
+      from,
+      to,
+      activeOnly,
+      toast,
+      globalFilters.marketplaces,
+      globalFilters.bookId,
+      globalFilters.accounts,
+    ],
   );
 
   useEffect(() => {
@@ -111,7 +129,6 @@ export const CampaignsPage: React.FC = () => {
     if (!summary) return [];
     const q = search.trim().toLowerCase();
     let list = summary.campaigns.filter((c) => {
-      if (bookFilter != null && c.book_id !== bookFilter) return false;
       if (marketplace !== 'all' && c.marketplace !== marketplace) return false;
       if (campaignType !== 'all' && c.campaign_type !== campaignType) return false;
       if (q) {
@@ -124,15 +141,7 @@ export const CampaignsPage: React.FC = () => {
     });
     list = [...list].sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
     return list;
-  }, [summary, search, sortKey, marketplace, campaignType, bookFilter]);
-
-  const bookFilterTitle = useMemo(() => {
-    if (bookFilter == null || !summary) return null;
-    return (
-      summary.campaigns.find((c) => c.book_id === bookFilter)?.book_title ??
-      `book #${bookFilter}`
-    );
-  }, [bookFilter, summary]);
+  }, [summary, search, sortKey, marketplace, campaignType]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paginated = useMemo(
@@ -189,25 +198,7 @@ export const CampaignsPage: React.FC = () => {
       </div>
 
       <Card
-        title={
-          <div className="flex items-center gap-2">
-            <span>Список</span>
-            {bookFilterTitle && (
-              <button
-                onClick={() => setBookFilter(null)}
-                className="
-                  inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md
-                  text-[11px] font-medium bg-zinc-100 text-zinc-700
-                  hover:bg-zinc-200 transition-colors
-                "
-                title="Сбросить фильтр по книге"
-              >
-                <span className="max-w-[180px] truncate">📕 {bookFilterTitle}</span>
-                <span className="text-zinc-500">×</span>
-              </button>
-            )}
-          </div>
-        }
+        title="Список"
         rightSlot={
           <div className="flex items-center gap-2">
             <Select

@@ -38,7 +38,7 @@ type SortKey = 'spend' | 'sales' | 'orders' | 'acos';
 export const BooksPage: React.FC = () => {
   const toast = useToast();
   const { navigate } = useNav();
-  const { filters: globalFilters } = useGlobalFilters();
+  const { filters: globalFilters, setBookId } = useGlobalFilters();
   const [range, setRange] = useState<RangeId>('30d');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<BookSummary | null>(null);
@@ -59,6 +59,8 @@ export const BooksPage: React.FC = () => {
           marketplaces: globalFilters.marketplaces.length
             ? globalFilters.marketplaces
             : undefined,
+          bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
+          accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,
         });
         setSummary(data);
       } catch (err) {
@@ -67,7 +69,7 @@ export const BooksPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [from, to, toast, globalFilters.marketplaces],
+    [from, to, toast, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
   );
 
   useEffect(() => {
@@ -225,9 +227,13 @@ export const BooksPage: React.FC = () => {
                   group={g}
                   expanded={expanded.has(g.book_id)}
                   onToggle={() => toggle(g.book_id)}
-                  onDrillDown={(marketplace) =>
-                    navigate('campaigns', { bookId: g.book_id, marketplace })
-                  }
+                  onDrillDown={(marketplace) => {
+                    // Drill-down: устанавливаем глобальный bookId, чтобы фильтр был
+                    // виден на всех страницах. Marketplace по-прежнему уходит как
+                    // local через NavContext (multi-MP применяется глобально).
+                    setBookId(g.book_id);
+                    navigate('campaigns', marketplace ? { marketplace } : {});
+                  }}
                 />
               ))}
             </tbody>

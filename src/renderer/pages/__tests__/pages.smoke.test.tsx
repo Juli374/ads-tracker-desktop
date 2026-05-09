@@ -12,6 +12,7 @@ import { ToastProvider } from '../../contexts/ToastContext';
 import { NavProvider } from '../../contexts/NavContext';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { MarketplacesProvider } from '../../contexts/MarketplacesContext';
+import { BooksProvider } from '../../contexts/BooksContext';
 import { GlobalFiltersProvider } from '../../contexts/GlobalFiltersContext';
 
 import { installMockApi, mockApiResponses } from '../../../test/mockApi';
@@ -21,7 +22,9 @@ const Wrap: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <ToastProvider>
       <AuthProvider>
         <MarketplacesProvider>
-          <GlobalFiltersProvider>{children}</GlobalFiltersProvider>
+          <BooksProvider>
+            <GlobalFiltersProvider>{children}</GlobalFiltersProvider>
+          </BooksProvider>
         </MarketplacesProvider>
       </AuthProvider>
     </ToastProvider>

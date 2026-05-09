@@ -195,5 +195,19 @@ export function mockApiResponses(): Record<string, unknown> {
       classificationCounts: {},
     },
     '/api/marketplaces': ['USA', 'UK', 'CA', 'AU', 'DE', 'FR', 'ES', 'IT'],
+    '/api/books': [
+      {
+        id: 1,
+        title: 'Test Book',
+        subtitle: null,
+        cover_image: null,
+        amazon_link: null,
+        trim_size: '6x9',
+        interior_type: 'bw_cream',
+        page_count: 100,
+        account: 'Test',
+        publication_date: null,
+      },
+    ],
   };
 }

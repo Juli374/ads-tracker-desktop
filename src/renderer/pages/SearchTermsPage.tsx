@@ -81,6 +81,10 @@ export const SearchTermsPage: React.FC = () => {
         globalFilters.marketplaces.length === 1
           ? globalFilters.marketplaces[0]
           : undefined,
+      bookId: globalFilters.bookId,
+      // backend search-terms тоже принимает account как одиночный
+      account:
+        globalFilters.accounts.length === 1 ? globalFilters.accounts[0] : undefined,
     }),
     [
       from,
@@ -92,6 +96,8 @@ export const SearchTermsPage: React.FC = () => {
       search,
       campaignFilter,
       globalFilters.marketplaces,
+      globalFilters.bookId,
+      globalFilters.accounts,
     ],
   );
 

@@ -56,6 +56,8 @@ export interface SearchTermsFilters {
   marketplace?: string;
   campaignId?: string;
   localCampaignId?: number;
+  // Backend принимает одиночный account string. Если глобальный фильтр
+  // выбрал ровно один — передаём, иначе undefined (без фильтрации).
   account?: string;
   keywordId?: string;
   termType?: 'keywords' | 'asins';

@@ -7,6 +7,7 @@ import { MainLayout } from '../MainLayout';
 import { ToastProvider } from '../../contexts/ToastContext';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { MarketplacesProvider } from '../../contexts/MarketplacesContext';
+import { BooksProvider } from '../../contexts/BooksContext';
 import { GlobalFiltersProvider } from '../../contexts/GlobalFiltersContext';
 
 import { installMockApi, mockApiResponses } from '../../../test/mockApi';
@@ -20,40 +21,38 @@ const renderApp = () =>
     <ToastProvider>
       <AuthProvider>
         <MarketplacesProvider>
-          <GlobalFiltersProvider>
-            <MainLayout />
-          </GlobalFiltersProvider>
+          <BooksProvider>
+            <GlobalFiltersProvider>
+              <MainLayout />
+            </GlobalFiltersProvider>
+          </BooksProvider>
         </MarketplacesProvider>
       </AuthProvider>
     </ToastProvider>,
   );
 
 describe('drill-down navigation', () => {
-  it('Books → Campaigns: клик по строке книги переключает на Campaigns с фильтром по книге', async () => {
+  it('Books → Campaigns: клик по строке книги ставит global bookId и переключает на Campaigns', async () => {
     const user = userEvent.setup();
     renderApp();
 
     await user.click(screen.getByRole('button', { name: /Книги/ }));
-    // Page heading H1 = «Книги»
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Книги' })).toBeInTheDocument(),
     );
-    // Test Book row appears
     await waitFor(() => expect(screen.getByText('Test Book')).toBeInTheDocument());
 
-    // Find the table row containing 'Test Book' and click it (not chevron)
     const bookCell = screen.getByText('Test Book');
     await user.click(bookCell);
 
-    // After drill-down: page heading is «Кампании» and book chip rendered
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Кампании' })).toBeInTheDocument();
-    });
-    // Chip with 📕 Test Book inside campaign filter
-    await waitFor(() => {
-      const chip = screen.getByTitle('Сбросить фильтр по книге');
-      expect(within(chip).getByText(/Test Book/)).toBeInTheDocument();
-    });
+    // После drill-down: страница Campaigns + global Book filter в topbar показывает Test Book
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Кампании' })).toBeInTheDocument(),
+    );
+    // Кнопка-сброс «Сбросить книгу» свидетельствует что global bookId установлен
+    await waitFor(() =>
+      expect(screen.getByLabelText('Сбросить книгу')).toBeInTheDocument(),
+    );
   });
 
   it('Campaigns → SearchTerms: клик по строке кампании переключает на SearchTerms с chip-кампанией', async () => {

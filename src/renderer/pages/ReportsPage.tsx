@@ -66,19 +66,21 @@ export const ReportsPage: React.FC = () => {
   const load = useMemo(
     () => async () => {
       setLoading(true);
-      const mps = globalFilters.marketplaces.length
-        ? globalFilters.marketplaces
-        : undefined;
+      const common = {
+        from,
+        to,
+        attribution: '7d' as const,
+        marketplaces: globalFilters.marketplaces.length
+          ? globalFilters.marketplaces
+          : undefined,
+        bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
+        accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,
+      };
       try {
         const [d, w, mp] = await Promise.all([
-          metricsApi.summaryDaily({ from, to, attribution: '7d', marketplaces: mps }),
-          metricsApi.summaryWeekly({ from, to, attribution: '7d', marketplaces: mps }),
-          metricsApi.summaryByMarketplace({
-            from,
-            to,
-            attribution: '7d',
-            marketplaces: mps,
-          }),
+          metricsApi.summaryDaily(common),
+          metricsApi.summaryWeekly(common),
+          metricsApi.summaryByMarketplace(common),
         ]);
         setDaily(d);
         setWeekly(w);
@@ -91,7 +93,7 @@ export const ReportsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [from, to, toast, globalFilters.marketplaces],
+    [from, to, toast, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
   );
 
   useEffect(() => {

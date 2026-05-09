@@ -34,6 +34,8 @@ export const DashboardPage: React.FC = () => {
           marketplaces: globalFilters.marketplaces.length
             ? globalFilters.marketplaces
             : undefined,
+          bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
+          accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,
         });
         setSummary(data);
       } catch (err) {
@@ -42,7 +44,7 @@ export const DashboardPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [from, to, toast, globalFilters.marketplaces],
+    [from, to, toast, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
   );
 
   useEffect(() => {

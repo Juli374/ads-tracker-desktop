@@ -7,6 +7,7 @@ import { MainLayout } from '../MainLayout';
 import { ToastProvider } from '../../contexts/ToastContext';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { MarketplacesProvider } from '../../contexts/MarketplacesContext';
+import { BooksProvider } from '../../contexts/BooksContext';
 import { GlobalFiltersProvider } from '../../contexts/GlobalFiltersContext';
 
 import { installMockApi, mockApiResponses } from '../../../test/mockApi';
@@ -20,9 +21,11 @@ const renderApp = () =>
     <ToastProvider>
       <AuthProvider>
         <MarketplacesProvider>
-          <GlobalFiltersProvider>
-            <MainLayout />
-          </GlobalFiltersProvider>
+          <BooksProvider>
+            <GlobalFiltersProvider>
+              <MainLayout />
+            </GlobalFiltersProvider>
+          </BooksProvider>
         </MarketplacesProvider>
       </AuthProvider>
     </ToastProvider>,
