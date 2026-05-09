@@ -12,6 +12,7 @@ import type enComparison from './resources/en/comparison.json';
 import type enAlerts from './resources/en/alerts.json';
 import type enOperations from './resources/en/operations.json';
 import type enAutomation from './resources/en/automation.json';
+import type enAccounting from './resources/en/accounting.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -30,6 +31,7 @@ declare module 'i18next' {
       alerts: typeof enAlerts;
       operations: typeof enOperations;
       automation: typeof enAutomation;
+      accounting: typeof enAccounting;
     };
     returnNull: false;
   }

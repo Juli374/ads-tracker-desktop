@@ -1,0 +1,37 @@
+{
+  "title": "Accounting",
+  "subtitle": {
+    "default": "Read-only view of accounts and transactions",
+    "unsupported": "Endpoint unavailable"
+  },
+  "errors": {
+    "load": "Failed to load accounting",
+    "unsupportedBanner": "Endpoint /api/accounting/* returned 401/403/404."
+  },
+  "kpi": {
+    "accounts": "Accounts",
+    "totalBalance": "Total balance",
+    "transactions": "Transactions (latest)"
+  },
+  "accounts": {
+    "cardTitle": "Accounts",
+    "empty": "No accounts",
+    "th": {
+      "name": "Name",
+      "type": "Type",
+      "balance": "Balance",
+      "currency": "Currency"
+    }
+  },
+  "transactions": {
+    "cardTitle": "Latest transactions",
+    "empty": "No transactions",
+    "th": {
+      "date": "Date",
+      "account": "Account",
+      "category": "Category",
+      "description": "Description",
+      "amount": "Amount"
+    }
+  }
+}

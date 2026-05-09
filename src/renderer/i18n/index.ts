@@ -15,6 +15,7 @@ import enComparison from './resources/en/comparison.json';
 import enAlerts from './resources/en/alerts.json';
 import enOperations from './resources/en/operations.json';
 import enAutomation from './resources/en/automation.json';
+import enAccounting from './resources/en/accounting.json';
 
 void i18next
   .use(ICU)
@@ -23,7 +24,7 @@ void i18next
     lng: 'en',
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['common', 'nav', 'dashboard', 'campaigns', 'books', 'searchTerms', 'keywords', 'negatives', 'reports', 'comparison', 'alerts', 'operations', 'automation'],
+    ns: ['common', 'nav', 'dashboard', 'campaigns', 'books', 'searchTerms', 'keywords', 'negatives', 'reports', 'comparison', 'alerts', 'operations', 'automation', 'accounting'],
     resources: {
       en: {
         common: enCommon,
@@ -39,6 +40,7 @@ void i18next
         alerts: enAlerts,
         operations: enOperations,
         automation: enAutomation,
+        accounting: enAccounting,
       },
     },
     interpolation: { escapeValue: false },

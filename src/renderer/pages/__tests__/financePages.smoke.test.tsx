@@ -84,11 +84,9 @@ describe('AccountingPage', () => {
         <AccountingPage />
       </Wrap>,
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Бухгалтерия' }),
-    ).toBeInTheDocument();
-    // Empty accounts → "Нет счетов"
-    expect(await screen.findByText('Нет счетов')).toBeInTheDocument();
+    expect(await screen.findByTestId('accounting-page')).toBeInTheDocument();
+    // Empty accounts → "accounts.empty" key.
+    expect(await screen.findByText('accounts.empty')).toBeInTheDocument();
   });
 });
 
@@ -118,8 +116,6 @@ describe('Hotkeys G Y / G T / G F', () => {
     renderApp();
     await screen.findByTestId('dashboard-page');
     await user.keyboard('gf');
-    expect(
-      await screen.findByRole('heading', { name: 'Бухгалтерия' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('accounting-page')).toBeInTheDocument();
   });
 });

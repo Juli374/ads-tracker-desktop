@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
   accountingApi,
@@ -18,6 +19,7 @@ import { fmtMoney, fmtNumber } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 
 export const AccountingPage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const toast = useToast();
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [tx, setTx] = useState<Transaction[] | null>(null);
@@ -30,13 +32,13 @@ export const AccountingPage: React.FC = () => {
       setLoading(true);
       setUnsupported(false);
       try {
-        const [a, t] = await Promise.all([
+        const [a, txs] = await Promise.all([
           accountingApi.listAccounts(),
           accountingApi.listTransactions({ limit: 100 }),
         ]);
         if (cancelled) return;
         setAccounts(Array.isArray(a) ? a : []);
-        setTx(normalizeTransactions(t));
+        setTx(normalizeTransactions(txs));
       } catch (err) {
         if (cancelled) return;
         if (err instanceof ApiError && [401, 403, 404].includes(err.status)) {
@@ -45,7 +47,7 @@ export const AccountingPage: React.FC = () => {
           setTx([]);
           return;
         }
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить бухгалтерию');
+        toast.error(err instanceof ApiError ? err.message : t('errors.load'));
         setAccounts([]);
         setTx([]);
       } finally {
@@ -55,7 +57,7 @@ export const AccountingPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [toast]);
+  }, [toast, t]);
 
   const totals = useMemo(() => {
     const totalBalance = (accounts ?? []).reduce(
@@ -70,50 +72,48 @@ export const AccountingPage: React.FC = () => {
   }, [accounts, tx]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="accounting-page">
       <PageHeader
-        title="Бухгалтерия"
-        subtitle={unsupported ? 'Endpoint недоступен' : 'Read-only просмотр счетов и транзакций'}
+        title={t('title')}
+        subtitle={unsupported ? t('subtitle.unsupported') : t('subtitle.default')}
       />
 
-      {unsupported && (
-        <ErrorBanner message="Endpoint /api/accounting/* вернул 401/403/404." />
-      )}
+      {unsupported && <ErrorBanner message={t('errors.unsupportedBanner')} />}
 
       {!unsupported && (
         <>
           <div className="grid grid-cols-3 gap-3">
             <Kpi
-              label="Счетов"
+              label={t('kpi.accounts')}
               value={fmtNumber(totals.accountsCount)}
               loading={loading && !accounts}
             />
             <Kpi
-              label="Баланс (сумма)"
+              label={t('kpi.totalBalance')}
               value={fmtMoney(totals.totalBalance)}
               loading={loading && !accounts}
               tone={totals.totalBalance < 0 ? 'negative' : 'default'}
             />
             <Kpi
-              label="Транзакций (последних)"
+              label={t('kpi.transactions')}
               value={fmtNumber(totals.txCount)}
               loading={loading && !tx}
             />
           </div>
 
-          <Card title="Счета">
+          <Card title={t('accounts.cardTitle')}>
             {loading && !accounts ? (
               <LoadingRow />
             ) : !accounts || accounts.length === 0 ? (
-              <EmptyState title="Нет счетов" />
+              <EmptyState title={t('accounts.empty')} />
             ) : (
               <table className="w-full text-sm table-sticky-head">
                 <thead>
                   <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                    <th className="text-left px-5 py-2 font-medium">Имя</th>
-                    <th className="text-left px-3 py-2 font-medium">Тип</th>
-                    <th className="text-right px-3 py-2 font-medium">Баланс</th>
-                    <th className="text-right px-5 py-2 font-medium">Currency</th>
+                    <th className="text-left px-5 py-2 font-medium">{t('accounts.th.name')}</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('accounts.th.type')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('accounts.th.balance')}</th>
+                    <th className="text-right px-5 py-2 font-medium">{t('accounts.th.currency')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,49 +140,49 @@ export const AccountingPage: React.FC = () => {
             )}
           </Card>
 
-          <Card title="Последние транзакции">
+          <Card title={t('transactions.cardTitle')}>
             {loading && !tx ? (
               <LoadingRow />
             ) : !tx || tx.length === 0 ? (
-              <EmptyState title="Нет транзакций" />
+              <EmptyState title={t('transactions.empty')} />
             ) : (
               <table className="w-full text-sm table-sticky-head">
                 <thead>
                   <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                    <th className="text-left px-5 py-2 font-medium">Дата</th>
-                    <th className="text-left px-3 py-2 font-medium">Счёт</th>
-                    <th className="text-left px-3 py-2 font-medium">Категория</th>
-                    <th className="text-left px-3 py-2 font-medium">Описание</th>
-                    <th className="text-right px-5 py-2 font-medium">Сумма</th>
+                    <th className="text-left px-5 py-2 font-medium">{t('transactions.th.date')}</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('transactions.th.account')}</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('transactions.th.category')}</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('transactions.th.description')}</th>
+                    <th className="text-right px-5 py-2 font-medium">{t('transactions.th.amount')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tx.map((t) => (
-                    <tr key={t.id} className="border-t border-zinc-100 hover:bg-zinc-50/60">
+                  {tx.map((tr) => (
+                    <tr key={tr.id} className="border-t border-zinc-100 hover:bg-zinc-50/60">
                       <td className="px-5 py-2.5 text-[11px] text-zinc-500 tabular-nums">
-                        {(t.date ?? '').slice(0, 10)}
+                        {(tr.date ?? '').slice(0, 10)}
                       </td>
                       <td className="px-3 py-2.5 text-xs text-zinc-700">
-                        {t.account_name ?? `#${t.account_id}`}
+                        {tr.account_name ?? `#${tr.account_id}`}
                       </td>
                       <td className="px-3 py-2.5 text-[11px] text-zinc-600">
-                        {t.category_name ?? '—'}
+                        {tr.category_name ?? '—'}
                       </td>
                       <td className="px-3 py-2.5 text-xs text-zinc-700 truncate max-w-md">
-                        {t.description ?? '—'}
+                        {tr.description ?? '—'}
                       </td>
                       <td className="px-5 py-2.5 text-xs text-right tabular-nums">
                         <span
                           className={
-                            t.type === 'expense'
+                            tr.type === 'expense'
                               ? 'text-red-600'
-                              : t.type === 'income'
+                              : tr.type === 'income'
                               ? 'text-emerald-600'
                               : 'text-zinc-700'
                           }
                         >
-                          {t.type === 'expense' ? '−' : t.type === 'income' ? '+' : ''}
-                          {fmtMoney(Math.abs(t.amount), t.currency)}
+                          {tr.type === 'expense' ? '−' : tr.type === 'income' ? '+' : ''}
+                          {fmtMoney(Math.abs(tr.amount), tr.currency)}
                         </span>
                       </td>
                     </tr>
