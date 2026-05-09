@@ -19,6 +19,7 @@ import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
 import { NotificationsBell } from './NotificationsBell';
+import { UserMenu } from './UserMenu';
 
 interface NavItem {
   id: ViewId;
@@ -197,9 +198,7 @@ const Layout: React.FC = () => {
 
           <NotificationsBell />
 
-          <button className="ml-1 h-7 w-7 rounded-full bg-zinc-200 hover:bg-zinc-300 transition-colors flex items-center justify-center text-xs font-medium text-zinc-700">
-            J
-          </button>
+          <UserMenu />
         </div>
       </header>
 
