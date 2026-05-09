@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   BookOpen,
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
+  const { t } = useTranslation('nav');
   const { navigate } = useNav();
   const { signOut } = useAuth();
   const toast = useToast();
@@ -54,115 +56,31 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
     [navigate, onClose],
   );
 
+  const goLabel = useCallback(
+    (id: ViewId) => t('palette.goTo', { target: t(`items.${id}` as 'items.dashboard') }),
+    [t],
+  );
+
   const items: PaletteItem[] = useMemo(
     () => [
-      {
-        id: 'go-dashboard',
-        label: 'Перейти на Обзор',
-        hint: 'G O',
-        icon: LayoutDashboard,
-        onRun: goto('dashboard'),
-      },
-      {
-        id: 'go-books',
-        label: 'Перейти на Книги',
-        hint: 'G B',
-        icon: BookOpen,
-        onRun: goto('books'),
-      },
-      {
-        id: 'go-search',
-        label: 'Перейти на Поисковые запросы',
-        hint: 'G S',
-        icon: SearchIcon,
-        onRun: goto('search_terms'),
-      },
-      {
-        id: 'go-campaigns',
-        label: 'Перейти на Кампании',
-        hint: 'G C',
-        icon: Target,
-        onRun: goto('campaigns'),
-      },
-      {
-        id: 'go-keywords',
-        label: 'Перейти на Ключи',
-        hint: 'G K',
-        icon: Key,
-        onRun: goto('keywords'),
-      },
-      {
-        id: 'go-reports',
-        label: 'Перейти на Отчёты',
-        hint: 'G R',
-        icon: FileText,
-        onRun: goto('reports'),
-      },
-      {
-        id: 'go-comparison',
-        label: 'Перейти на Сравнение',
-        hint: 'G P',
-        icon: GitCompare,
-        onRun: goto('comparison'),
-      },
-      {
-        id: 'go-negatives',
-        label: 'Перейти на Минус-слова',
-        hint: 'G N',
-        icon: Ban,
-        onRun: goto('negatives'),
-      },
-      {
-        id: 'go-action-center',
-        label: 'Перейти в Центр действий',
-        hint: 'G A',
-        icon: History,
-        onRun: goto('action_center'),
-      },
-      {
-        id: 'go-automation',
-        label: 'Перейти в Автоматизацию',
-        hint: 'G U',
-        icon: Zap,
-        onRun: goto('automation'),
-      },
-      {
-        id: 'go-alerts',
-        label: 'Перейти в Мониторинг',
-        hint: 'G L',
-        icon: Activity,
-        onRun: goto('alerts'),
-      },
-      {
-        id: 'go-operations',
-        label: 'Перейти в Операционный центр',
-        hint: 'G T',
-        icon: ClipboardList,
-        onRun: goto('operations'),
-      },
-      {
-        id: 'go-royalties',
-        label: 'Перейти в Royalty',
-        hint: 'G Y',
-        icon: Coins,
-        onRun: goto('royalties'),
-      },
-      {
-        id: 'go-accounting',
-        label: 'Перейти в Бухгалтерию',
-        hint: 'G F',
-        icon: Wallet,
-        onRun: goto('accounting'),
-      },
-      {
-        id: 'go-settings',
-        label: 'Перейти на Настройки',
-        icon: Settings,
-        onRun: goto('settings'),
-      },
+      { id: 'go-dashboard', label: goLabel('dashboard'), hint: 'G O', icon: LayoutDashboard, onRun: goto('dashboard') },
+      { id: 'go-books', label: goLabel('books'), hint: 'G B', icon: BookOpen, onRun: goto('books') },
+      { id: 'go-search', label: goLabel('search_terms'), hint: 'G S', icon: SearchIcon, onRun: goto('search_terms') },
+      { id: 'go-campaigns', label: goLabel('campaigns'), hint: 'G C', icon: Target, onRun: goto('campaigns') },
+      { id: 'go-keywords', label: goLabel('keywords'), hint: 'G K', icon: Key, onRun: goto('keywords') },
+      { id: 'go-reports', label: goLabel('reports'), hint: 'G R', icon: FileText, onRun: goto('reports') },
+      { id: 'go-comparison', label: goLabel('comparison'), hint: 'G P', icon: GitCompare, onRun: goto('comparison') },
+      { id: 'go-negatives', label: goLabel('negatives'), hint: 'G N', icon: Ban, onRun: goto('negatives') },
+      { id: 'go-action-center', label: goLabel('action_center'), hint: 'G A', icon: History, onRun: goto('action_center') },
+      { id: 'go-automation', label: goLabel('automation'), hint: 'G U', icon: Zap, onRun: goto('automation') },
+      { id: 'go-alerts', label: goLabel('alerts'), hint: 'G L', icon: Activity, onRun: goto('alerts') },
+      { id: 'go-operations', label: goLabel('operations'), hint: 'G T', icon: ClipboardList, onRun: goto('operations') },
+      { id: 'go-royalties', label: goLabel('royalties'), hint: 'G Y', icon: Coins, onRun: goto('royalties') },
+      { id: 'go-accounting', label: goLabel('accounting'), hint: 'G F', icon: Wallet, onRun: goto('accounting') },
+      { id: 'go-settings', label: goLabel('settings'), icon: Settings, onRun: goto('settings') },
       {
         id: 'reload',
-        label: 'Обновить страницу',
+        label: t('palette.reload'),
         icon: RefreshCw,
         onRun: () => {
           window.location.reload();
@@ -170,22 +88,22 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
       },
       {
         id: 'copy-api-url',
-        label: 'Скопировать API URL',
+        label: t('palette.copyApiUrl'),
         icon: Copy,
         onRun: async () => {
           try {
             const url = await window.api.app.getApiBaseUrl();
             await navigator.clipboard.writeText(url);
-            toast.success(`Скопировано: ${url}`);
+            toast.success(t('palette.copiedToast', { url }));
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Не удалось скопировать');
+            toast.error(err instanceof Error ? err.message : t('palette.copyFailed'));
           }
           onClose();
         },
       },
       {
         id: 'sign-out',
-        label: 'Выйти из аккаунта',
+        label: t('palette.signOut'),
         icon: LogOut,
         onRun: async () => {
           await signOut();
@@ -193,7 +111,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
         },
       },
     ],
-    [goto, signOut, toast, onClose],
+    [t, goLabel, goto, signOut, toast, onClose],
   );
 
   const filtered = useMemo(() => {
@@ -268,7 +186,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
     >
       <div
         role="dialog"
-        aria-label="Команды"
+        aria-label={t('palette.title')}
         className="w-full max-w-lg bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden"
         onKeyDown={onKeyDown}
       >
@@ -279,7 +197,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Найти команду…"
+            placeholder={t('palette.placeholder')}
             className="flex-1 text-sm bg-transparent border-0 outline-none placeholder:text-zinc-400"
           />
           <span className="text-[10px] font-mono text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200">
@@ -290,7 +208,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
         <div ref={listRef} className="max-h-[320px] overflow-y-auto py-1">
           {filtered.length === 0 ? (
             <div className="px-4 py-6 text-center text-xs text-zinc-400">
-              Ничего не нашлось
+              {t('palette.empty')}
             </div>
           ) : (
             filtered.map((item, idx) => {
@@ -300,6 +218,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
                 <button
                   key={item.id}
                   data-palette-idx={idx}
+                  data-testid={`palette-${item.id}`}
                   onMouseEnter={() => setActiveIdx(idx)}
                   onClick={() => item.onRun()}
                   className={`
@@ -323,10 +242,10 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
 
         <div className="px-3 py-1.5 border-t border-zinc-100 flex items-center justify-between text-[10px] text-zinc-400">
           <div className="flex items-center gap-3">
-            <span><kbd className="font-mono">↑↓</kbd> навигация</span>
-            <span><kbd className="font-mono">↵</kbd> выбор</span>
+            <span><kbd className="font-mono">↑↓</kbd> {t('palette.hint.navigate')}</span>
+            <span><kbd className="font-mono">↵</kbd> {t('palette.hint.select')}</span>
           </div>
-          <span><kbd className="font-mono">⌘K</kbd> открыть/закрыть</span>
+          <span><kbd className="font-mono">⌘K</kbd> {t('palette.hint.toggle')}</span>
         </div>
       </div>
     </div>

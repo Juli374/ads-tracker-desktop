@@ -32,7 +32,7 @@ const renderApp = () =>
 
 const goToDetails = async (user: ReturnType<typeof userEvent.setup>) => {
   await screen.findByRole('heading', { name: 'Обзор' });
-  await user.click(screen.getByRole('button', { name: /Кампании/ }));
+  await user.click(screen.getByTestId('nav-campaigns'));
   await screen.findByRole('heading', { name: 'Кампании' });
   const row = await screen.findByText('Test Campaign');
   await user.click(row);

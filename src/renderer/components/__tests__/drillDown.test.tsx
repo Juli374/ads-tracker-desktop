@@ -37,7 +37,7 @@ describe('drill-down navigation', () => {
     renderApp();
 
     await screen.findByRole('heading', { name: 'Обзор' });
-    await user.click(screen.getByRole('button', { name: /Книги/ }));
+    await user.click(screen.getByTestId('nav-books'));
 
     await screen.findByRole('heading', { name: 'Книги' });
     const bookCell = await screen.findByText('Test Book');
@@ -56,7 +56,7 @@ describe('drill-down navigation', () => {
     renderApp();
 
     await screen.findByRole('heading', { name: 'Обзор' });
-    await user.click(screen.getByRole('button', { name: /Кампании/ }));
+    await user.click(screen.getByTestId('nav-campaigns'));
     await screen.findByRole('heading', { name: 'Кампании' });
 
     const campaignRow = await screen.findByText('Test Campaign');

@@ -1,0 +1,46 @@
+{
+  "sections": {
+    "analytics": "Analytics",
+    "actions": "Actions",
+    "finance": "Finance"
+  },
+  "items": {
+    "dashboard": "Overview",
+    "books": "Books",
+    "campaigns": "Campaigns",
+    "keywords": "Keywords",
+    "search_terms": "Search terms",
+    "negatives": "Negatives",
+    "reports": "Reports",
+    "comparison": "Comparison",
+    "action_center": "Action center",
+    "automation": "Automation",
+    "alerts": "Monitoring",
+    "operations": "Operations",
+    "royalties": "Royalty",
+    "accounting": "Accounting",
+    "settings": "Settings"
+  },
+  "topbar": {
+    "openCommandPalette": "Open command palette",
+    "search": "Search",
+    "connected": "Connected",
+    "online": "Online"
+  },
+  "palette": {
+    "title": "Commands",
+    "placeholder": "Find a command…",
+    "empty": "No commands found",
+    "goTo": "Go to {target}",
+    "reload": "Reload page",
+    "copyApiUrl": "Copy API URL",
+    "copiedToast": "Copied: {url}",
+    "copyFailed": "Failed to copy",
+    "signOut": "Sign out",
+    "hint": {
+      "navigate": "navigate",
+      "select": "select",
+      "toggle": "open/close"
+    }
+  }
+}

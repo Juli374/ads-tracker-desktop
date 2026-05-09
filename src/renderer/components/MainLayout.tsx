@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   BookOpen,
@@ -74,36 +75,36 @@ import { UserMenu } from './UserMenu';
 
 interface NavItem {
   id: ViewId;
-  label: string;
   icon: React.ElementType;
   shortcut?: string;
 }
 
+// labelKey для каждого item — `items.<id>` в namespace 'nav'.
 const mainNav: NavItem[] = [
-  { id: 'dashboard', label: 'Обзор', icon: LayoutDashboard, shortcut: 'G O' },
-  { id: 'books', label: 'Книги', icon: BookOpen, shortcut: 'G B' },
-  { id: 'campaigns', label: 'Кампании', icon: Target, shortcut: 'G C' },
-  { id: 'keywords', label: 'Ключи', icon: Key, shortcut: 'G K' },
-  { id: 'search_terms', label: 'Поисковые запросы', icon: Search, shortcut: 'G S' },
-  { id: 'negatives', label: 'Минус-слова', icon: Ban, shortcut: 'G N' },
-  { id: 'reports', label: 'Отчёты', icon: FileText, shortcut: 'G R' },
-  { id: 'comparison', label: 'Сравнение', icon: GitCompare, shortcut: 'G P' },
+  { id: 'dashboard', icon: LayoutDashboard, shortcut: 'G O' },
+  { id: 'books', icon: BookOpen, shortcut: 'G B' },
+  { id: 'campaigns', icon: Target, shortcut: 'G C' },
+  { id: 'keywords', icon: Key, shortcut: 'G K' },
+  { id: 'search_terms', icon: Search, shortcut: 'G S' },
+  { id: 'negatives', icon: Ban, shortcut: 'G N' },
+  { id: 'reports', icon: FileText, shortcut: 'G R' },
+  { id: 'comparison', icon: GitCompare, shortcut: 'G P' },
 ];
 
 const actionsNav: NavItem[] = [
-  { id: 'action_center', label: 'Центр действий', icon: History, shortcut: 'G A' },
-  { id: 'automation', label: 'Автоматизация', icon: Zap, shortcut: 'G U' },
-  { id: 'alerts', label: 'Мониторинг', icon: Activity, shortcut: 'G L' },
-  { id: 'operations', label: 'Операции', icon: ClipboardList, shortcut: 'G T' },
+  { id: 'action_center', icon: History, shortcut: 'G A' },
+  { id: 'automation', icon: Zap, shortcut: 'G U' },
+  { id: 'alerts', icon: Activity, shortcut: 'G L' },
+  { id: 'operations', icon: ClipboardList, shortcut: 'G T' },
 ];
 
 const financeNav: NavItem[] = [
-  { id: 'royalties', label: 'Royalty', icon: Coins, shortcut: 'G Y' },
-  { id: 'accounting', label: 'Бухгалтерия', icon: Wallet, shortcut: 'G F' },
+  { id: 'royalties', icon: Coins, shortcut: 'G Y' },
+  { id: 'accounting', icon: Wallet, shortcut: 'G F' },
 ];
 
 const bottomNav: NavItem[] = [
-  { id: 'settings', label: 'Настройки', icon: Settings },
+  { id: 'settings', icon: Settings },
 ];
 
 export const MainLayout: React.FC = () => (
@@ -141,6 +142,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 const Layout: React.FC = () => {
+  const { t } = useTranslation('nav');
   const { page, navigate } = useNav();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const pendingG = useRef(false);
@@ -231,6 +233,7 @@ const Layout: React.FC = () => {
     return (
       <button
         key={item.id}
+        data-testid={`nav-${item.id}`}
         onClick={() => navigate(item.id)}
         className={`
           group flex items-center gap-2.5 w-full h-9 px-3 rounded-md text-sm
@@ -245,7 +248,7 @@ const Layout: React.FC = () => {
           strokeWidth={2}
           className={isActive ? 'text-zinc-900' : 'text-zinc-500 group-hover:text-zinc-700'}
         />
-        <span className="flex-1 text-left truncate">{item.label}</span>
+        <span className="flex-1 text-left truncate">{t(`items.${item.id}` as 'items.dashboard')}</span>
         {item.shortcut && (
           <span
             className={`
@@ -276,16 +279,17 @@ const Layout: React.FC = () => {
         <div className="flex items-center gap-2">
           <GlobalFilters />
           <button
+            data-testid="topbar-command-palette-trigger"
             onClick={() => setPaletteOpen(true)}
             className="
               flex items-center gap-2 h-7 px-2.5 rounded-md
               text-xs text-zinc-500 hover:text-zinc-900
               hover:bg-zinc-100 transition-colors
             "
-            aria-label="Открыть командную палитру"
+            aria-label={t('topbar.openCommandPalette')}
           >
             <Command size={12} strokeWidth={2} />
-            <span>Поиск</span>
+            <span>{t('topbar.search')}</span>
             <span className="ml-1 px-1.5 py-0.5 text-[10px] font-mono rounded bg-zinc-100 group-hover:bg-zinc-200 border border-zinc-200">
               ⌘K
             </span>
@@ -303,17 +307,17 @@ const Layout: React.FC = () => {
         <aside className="w-56 flex-shrink-0 border-r border-zinc-200 bg-white flex flex-col">
           <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
             <div className="px-3 pb-1.5 pt-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-              Аналитика
+              {t('sections.analytics')}
             </div>
             {mainNav.map(renderNavItem)}
 
             <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-              Действия
+              {t('sections.actions')}
             </div>
             {actionsNav.map(renderNavItem)}
 
             <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-              Финансы
+              {t('sections.finance')}
             </div>
             {financeNav.map(renderNavItem)}
           </nav>
@@ -323,10 +327,10 @@ const Layout: React.FC = () => {
           </div>
 
           <div className="px-4 py-2.5 border-t border-zinc-100 text-[11px] text-zinc-400 flex items-center justify-between">
-            <span>Подключено</span>
+            <span>{t('topbar.connected')}</span>
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Online
+              {t('topbar.online')}
             </span>
           </div>
         </aside>
