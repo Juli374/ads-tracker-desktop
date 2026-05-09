@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, ApiError } from './client';
 
 // ============================================================================
 // Books summary (used by Dashboard, BooksPage)
@@ -340,6 +340,70 @@ export interface OrganicTotalSummary {
 }
 
 // ============================================================================
+// Hourly dynamics (CampaignDetails)
+// ============================================================================
+
+export interface HourlyMetric {
+  hour: string; // ISO timestamp or "YYYY-MM-DD HH:00"
+  impressions: number;
+  clicks: number;
+  spend: number;
+  sales?: number;
+  orders?: number;
+  acos?: number;
+}
+
+export interface HourlyResponse {
+  date_from?: string;
+  date_to?: string;
+  attribution_window?: string;
+  hourly: HourlyMetric[];
+  error?: string;
+}
+
+// ============================================================================
+// Campaign-scoped Search Terms (CampaignDetails embed)
+// ============================================================================
+
+export interface CampaignSearchTermItem {
+  search_term: string;
+  match_type?: string;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  sales: number;
+  orders: number;
+  ctr?: number;
+  acos?: number;
+}
+
+export interface CampaignSearchTermsResponse {
+  date_from?: string;
+  date_to?: string;
+  items: CampaignSearchTermItem[];
+  error?: string;
+}
+
+// ============================================================================
+// Campaign all-changes (history tab)
+// ============================================================================
+
+export interface CampaignChange {
+  id?: number | string;
+  date: string; // YYYY-MM-DD or ISO
+  field?: string;
+  from_value?: string | number | null;
+  to_value?: string | number | null;
+  author?: string;
+  note?: string;
+}
+
+export interface CampaignAllChangesResponse {
+  changes: CampaignChange[];
+  error?: string;
+}
+
+// ============================================================================
 // Common types
 // ============================================================================
 
@@ -447,6 +511,67 @@ export const metricsApi = {
     return apiClient.get<OrganicTotalSummary>(
       '/api/metrics/summary/organic-total',
       buildSummaryQuery(params),
+    );
+  },
+
+  // Fetches metrics for a single campaign within a window.
+  // Tries /api/campaigns/<id>/metrics first; falls back to summaryByCampaign+filter on 404.
+  async campaignMetrics(
+    campaignId: number,
+    params: RangeParams = {},
+  ): Promise<CampaignAnalyticsItem | null> {
+    try {
+      const direct = await apiClient.get<CampaignAnalyticsItem>(
+        `/api/campaigns/${campaignId}/metrics`,
+        {
+          from: params.from,
+          to: params.to,
+          attribution: params.attribution ?? '7d',
+        },
+      );
+      if (direct && typeof direct === 'object' && 'campaign_id' in direct) {
+        return direct;
+      }
+    } catch (err) {
+      if (!(err instanceof ApiError) || (err.status !== 404 && err.status !== 405)) {
+        throw err;
+      }
+    }
+    const summary = await metricsApi.summaryByCampaign(params);
+    return summary.campaigns.find((c) => c.campaign_id === campaignId) ?? null;
+  },
+
+  campaignHourly(
+    amazonCampaignId: string,
+    params: RangeParams = {},
+  ): Promise<HourlyResponse> {
+    return apiClient.get<HourlyResponse>(
+      `/api/metrics/campaigns/${encodeURIComponent(amazonCampaignId)}/hourly`,
+      {
+        from: params.from,
+        to: params.to,
+        attribution: params.attribution ?? '7d',
+      },
+    );
+  },
+
+  campaignSearchTerms(
+    campaignId: number,
+    params: RangeParams = {},
+  ): Promise<CampaignSearchTermsResponse> {
+    return apiClient.get<CampaignSearchTermsResponse>(
+      `/api/campaigns/${campaignId}/search-terms`,
+      {
+        from: params.from,
+        to: params.to,
+        attribution: params.attribution ?? '7d',
+      },
+    );
+  },
+
+  campaignAllChanges(campaignId: number): Promise<CampaignAllChangesResponse> {
+    return apiClient.get<CampaignAllChangesResponse>(
+      `/api/campaigns/${campaignId}/all-changes`,
     );
   },
 

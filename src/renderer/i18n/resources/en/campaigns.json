@@ -39,6 +39,122 @@
       "negatives": "Negatives",
       "history": "History"
     },
+    "header": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "pauseTitle": "Pause campaign",
+      "resumeTitle": "Resume campaign",
+      "stateUpdated": "Campaign state updated",
+      "budgetSaved": "Budget saved",
+      "strategySaved": "Bidding strategy saved",
+      "budgetLabel": "Daily budget",
+      "strategyLabel": "Bidding strategy",
+      "weeksLabel": "Weeks",
+      "stateUpdateFailed": "Failed to update state",
+      "budgetUpdateFailed": "Failed to update budget",
+      "strategyUpdateFailed": "Failed to update strategy",
+      "ariaBudget": "Daily budget",
+      "ariaStrategy": "Bidding strategy"
+    },
+    "multiPeriod": {
+      "title": "Multi-period metrics",
+      "loading": "Loading…",
+      "empty": "No metrics for this period",
+      "th": {
+        "metric": "Metric",
+        "60d": "60d",
+        "30d": "30d",
+        "weekN": "W{n}",
+        "weekRange": "{from} → {to}"
+      },
+      "rows": {
+        "adSales": "AD Sales",
+        "spend": "Spend",
+        "orders": "Orders",
+        "impressions": "Impressions",
+        "clicks": "Clicks",
+        "acos": "ACOS",
+        "ctr": "CTR",
+        "cpc": "CPC",
+        "cvr": "CVR",
+        "roas": "ROAS"
+      }
+    },
+    "hourly": {
+      "title": "Hourly dynamics",
+      "loading": "Loading…",
+      "empty": "No hourly data for this period",
+      "loadFailed": "Failed to load hourly data",
+      "metric": {
+        "all": "All",
+        "impressions": "Impressions",
+        "clicks": "Clicks",
+        "spend": "Spend"
+      },
+      "axis": {
+        "hour": "Hour"
+      }
+    },
+    "advisor": {
+      "buttonLabel": "AI Advisor",
+      "buttonTitle": "AI Advisor (preview)",
+      "panelTitle": "AI Advisor",
+      "previewBadge": "Preview",
+      "summaryHeader": "Campaign snapshot",
+      "comingSoon": "Full chat coming in the next release.",
+      "closeAria": "Close panel"
+    },
+    "targets": {
+      "empty": "No targets for this campaign.",
+      "th": {
+        "type": "Type",
+        "select": "Select"
+      },
+      "selectAria": "Select target {target}",
+      "selectAllAria": "Select all targets",
+      "ariaStateToggle": "Toggle state for {target}",
+      "stateUpdated": "Target state updated",
+      "stateFailed": "Failed to update target state",
+      "bulk": {
+        "selected": "{count, plural, one {# target} other {# targets}} selected",
+        "pause": "Pause",
+        "enable": "Enable",
+        "bidMultiplier": "Bid ×",
+        "bidMultiplierTitle": "Multiply bids of selected targets",
+        "applyBid": "Apply",
+        "clear": "Clear",
+        "applied": "Updated {count} targets",
+        "failed": "Bulk update failed",
+        "multiplierPositive": "Multiplier must be > 0"
+      }
+    },
+    "searchTerms": {
+      "intro": "Open the full search terms page filtered by this campaign.",
+      "openLink": "Open Search Terms →",
+      "embedTitle": "Search Terms (this campaign)",
+      "loadFailed": "Failed to load search terms",
+      "empty": "No search terms for this period",
+      "openFull": "Open full page",
+      "th": {
+        "term": "Term",
+        "match": "Match",
+        "imps": "Imps",
+        "clicks": "Clicks",
+        "spend": "Spend",
+        "sales": "Sales",
+        "orders": "Orders",
+        "acos": "ACOS"
+      }
+    },
+    "history": {
+      "title": "History",
+      "placeholder": "Change log will be available after Action Center (Phase 5).",
+      "loading": "Loading…",
+      "empty": "No changes recorded yet",
+      "loadFailed": "Failed to load history",
+      "groupSingleDay": "{date}",
+      "weekRange": "{from} → {to}"
+    },
     "errors": {
       "notFoundForPeriod": "Campaign #{id} not found for the selected period.",
       "loadFailed": "Failed to load campaign",
@@ -64,12 +180,6 @@
       },
       "ariaDefaultBid": "Default bid for {name}"
     },
-    "targets": {
-      "empty": "No targets for this campaign.",
-      "th": {
-        "type": "Type"
-      }
-    },
     "negatives": {
       "empty": "No negative keywords for this campaign.",
       "th": {
@@ -77,14 +187,6 @@
       },
       "removeAria": "Remove {keyword}",
       "removeTitle": "Remove"
-    },
-    "searchTerms": {
-      "intro": "Open the full search terms page filtered by this campaign.",
-      "openLink": "Open Search Terms →"
-    },
-    "history": {
-      "title": "History",
-      "placeholder": "Change log will be available after Action Center (Phase 5)."
     }
   },
   "edit": {

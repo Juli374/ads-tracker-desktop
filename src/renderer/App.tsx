@@ -7,6 +7,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { MarketplacesProvider } from './contexts/MarketplacesContext';
 import { BooksProvider } from './contexts/BooksContext';
 import { GlobalFiltersProvider } from './contexts/GlobalFiltersContext';
+import { WeeksFilterProvider } from './contexts/WeeksFilterContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './components/MainLayout';
 import { LoginScreen } from './components/LoginScreen';
@@ -35,7 +36,9 @@ export const App: React.FC = () => (
             <MarketplacesProvider>
               <BooksProvider>
                 <GlobalFiltersProvider>
-                  <Gate />
+                  <WeeksFilterProvider>
+                    <Gate />
+                  </WeeksFilterProvider>
                 </GlobalFiltersProvider>
               </BooksProvider>
             </MarketplacesProvider>

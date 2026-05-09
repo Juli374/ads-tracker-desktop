@@ -69,4 +69,68 @@ export const amazonAdsApi = {
       { code, state, redirect_uri: redirectUri },
     );
   },
+
+  // ==========================================================================
+  // Campaign live-edit (uses local campaign id, backend translates to amzn id).
+  // Optimistic: caller updates local state immediately, reverts on rejection.
+  // ==========================================================================
+
+  setCampaignState(
+    campaignId: number,
+    state: 'enabled' | 'paused',
+  ): Promise<{ message: string }> {
+    return apiClient.put<{ message: string }>(
+      `/api/amazon-ads/campaigns/${campaignId}/state`,
+      { state },
+    );
+  },
+
+  setCampaignBudget(
+    campaignId: number,
+    budget: number,
+  ): Promise<{ message: string }> {
+    return apiClient.put<{ message: string }>(
+      `/api/amazon-ads/campaigns/${campaignId}/budget`,
+      { budget },
+    );
+  },
+
+  setCampaignBiddingStrategy(
+    campaignId: number,
+    biddingStrategy:
+      | 'Fixed bids'
+      | 'Dynamic bids - down only'
+      | 'Dynamic bids - up and down',
+  ): Promise<{ message: string }> {
+    return apiClient.put<{ message: string }>(
+      `/api/amazon-ads/campaigns/${campaignId}/bidding-strategy`,
+      { bidding_strategy: biddingStrategy },
+    );
+  },
+
+  // ==========================================================================
+  // Targets bulk operations
+  // ==========================================================================
+
+  setTargetState(
+    targetId: number,
+    state: 'enabled' | 'paused',
+  ): Promise<{ message: string }> {
+    return apiClient.put<{ message: string }>(
+      `/api/amazon-ads/targets/${targetId}/state`,
+      { state },
+    );
+  },
+
+  bulkUpdateTargets(payload: {
+    target_ids: number[];
+    state?: 'enabled' | 'paused';
+    bid_multiplier?: number;
+    bid?: number;
+  }): Promise<{ updated: number; message?: string }> {
+    return apiClient.post<{ updated: number; message?: string }>(
+      '/api/amazon-ads/targets/bulk-update',
+      payload,
+    );
+  },
 };

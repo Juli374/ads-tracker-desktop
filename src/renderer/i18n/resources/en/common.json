@@ -94,6 +94,10 @@
     "active": "Active filters",
     "removeTitle": "Remove"
   },
+  "weeks": {
+    "aria": "Weeks count",
+    "optionTitle": "{count, plural, one {Last # full week} other {Last # full weeks}}"
+  },
   "kpi": {
     "vsPrevious": "vs previous period"
   },

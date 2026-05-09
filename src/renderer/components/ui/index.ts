@@ -10,3 +10,4 @@ export type { ChartTooltipRow } from './ChartTooltip';
 export { Pagination } from './Pagination';
 export { ActiveFiltersBar } from './ActiveFiltersBar';
 export type { ActiveFilterChip } from './ActiveFiltersBar';
+export { WeeksSegment } from './WeeksSegment';
