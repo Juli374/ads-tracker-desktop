@@ -46,16 +46,14 @@ describe('AddCampaignModal', () => {
         <Stub />
       </Wrap>,
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Новая кампания' }),
-    ).toBeInTheDocument();
-    // Все ключевые секции
-    expect(await screen.findByText('Тип кампании')).toBeInTheDocument();
-    expect(await screen.findByText('Книга и маркетплейс')).toBeInTheDocument();
-    expect(await screen.findByText('Параметры')).toBeInTheDocument();
+    expect(await screen.findByTestId('add-campaign-modal')).toBeInTheDocument();
+    // Все ключевые секции — mock react-i18next возвращает ключи namespace.
+    expect(await screen.findByText('add.type.title')).toBeInTheDocument();
+    expect(await screen.findByText('add.bookSection')).toBeInTheDocument();
+    expect(await screen.findByText('add.params')).toBeInTheDocument();
     expect(await screen.findByText('Bidding & placements')).toBeInTheDocument();
     expect(
-      await screen.findByRole('button', { name: 'Создать кампанию' }),
+      await screen.findByRole('button', { name: 'add.actions.submit' }),
     ).toBeInTheDocument();
   });
 
@@ -66,7 +64,7 @@ describe('AddCampaignModal', () => {
         <Stub />
       </Wrap>,
     );
-    await screen.findByRole('heading', { name: 'Новая кампания' });
+    await screen.findByTestId('add-campaign-modal');
     await user.keyboard('{Escape}');
     expect(await screen.findByTestId('closed')).toBeInTheDocument();
   });
@@ -84,11 +82,9 @@ describe('CampaignsPage: + Кампания', () => {
         <CampaignsPage />
       </Wrap>,
     );
-    await screen.findByRole('heading', { name: 'Кампании' });
-    const addBtn = await screen.findByRole('button', { name: /^Кампания$/ });
+    await screen.findByTestId('campaigns-page');
+    const addBtn = await screen.findByRole('button', { name: /^list\.addCampaign$/ });
     await user.click(addBtn);
-    expect(
-      await screen.findByRole('heading', { name: 'Новая кампания' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('add-campaign-modal')).toBeInTheDocument();
   });
 });

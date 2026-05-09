@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, X } from 'lucide-react';
 import { CampaignAnalyticsItem } from '../api/metrics';
 import { campaignsApi, CampaignState, type BiddingStrategy, type CampaignUpdate } from '../api/campaigns';
@@ -27,6 +28,7 @@ const parseOptionalNumber = (s: string): number | undefined => {
 };
 
 export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved }) => {
+  const { t } = useTranslation('campaigns');
   const toast = useToast();
   const [state, setState] = useState<CampaignState>(
     campaign.status === 'paused' ? 'paused' : 'enabled',
@@ -55,7 +57,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
 
     const budgetNum = parseOptionalNumber(budget);
     if (budgetNum !== undefined && (!Number.isFinite(budgetNum) || budgetNum <= 0)) {
-      toast.error('Budget должен быть положительным числом');
+      toast.error(t('edit.errors.budgetPositive'));
       return;
     }
     const placements: Array<[string, number | undefined]> = [
@@ -65,7 +67,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
     ];
     for (const [field, value] of placements) {
       if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 900)) {
-        toast.error(`${field}: число от 0 до 900`);
+        toast.error(t('edit.errors.fieldRange', { field }));
         return;
       }
     }
@@ -82,11 +84,11 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
     setSubmitting(true);
     try {
       await campaignsApi.update(campaign.campaign_id, payload);
-      toast.success('Сохранено');
+      toast.success(t('edit.saved'));
       onSaved();
       onClose();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось сохранить');
+      toast.error(err instanceof ApiError ? err.message : t('edit.errors.saveFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -122,7 +124,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
               type="button"
               onClick={() => !submitting && onClose()}
               className="text-zinc-400 hover:text-zinc-700 transition-colors"
-              aria-label="Закрыть"
+              aria-label={t('edit.closeAria')}
             >
               <X size={16} />
             </button>
@@ -133,7 +135,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
           {/* State toggle */}
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-zinc-700">
-              Статус
+              {t('edit.fields.status')}
             </label>
             <div className="inline-flex bg-white border border-zinc-200 rounded-md p-0.5">
               {(['enabled', 'paused'] as const).map((s) => (
@@ -150,7 +152,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
                       : 'text-zinc-500 hover:text-zinc-900'}
                   `}
                 >
-                  {s === 'enabled' ? 'Активна' : 'На паузе'}
+                  {s === 'enabled' ? t('edit.fields.statusActive') : t('edit.fields.statusPaused')}
                 </button>
               ))}
             </div>
@@ -159,7 +161,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
           {/* Имя */}
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-zinc-700">
-              Имя кампании
+              {t('edit.fields.name')}
             </label>
             <input
               type="text"
@@ -173,7 +175,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
           {/* Budget */}
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-zinc-700">
-              Дневной бюджет ({campaign.currency || 'USD'})
+              {t('edit.fields.dailyBudget', { currency: campaign.currency || 'USD' })}
             </label>
             <input
               type="number"
@@ -181,12 +183,12 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
               min="0"
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
-              placeholder="оставить без изменений"
+              placeholder={t('edit.fields.budgetPlaceholder')}
               className={inputClass}
             />
             <p className="text-[11px] text-zinc-400">
-              Spend за период: {fmtMoney(campaign.cost, campaign.currency)}.
-              Поле пустое = бюджет не меняется.
+              {t('edit.fields.spendHint', { value: fmtMoney(campaign.cost, campaign.currency) })}{' '}
+              {t('edit.fields.budgetEmptyHint')}
             </p>
           </div>
 
@@ -204,7 +206,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
                 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
               "
             >
-              <option value="">— не менять —</option>
+              <option value="">{t('edit.fields.noChange')}</option>
               {BIDDING_STRATEGIES.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -236,7 +238,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
               />
             </div>
             <p className="text-[11px] text-zinc-400">
-              Пустое поле = не менять. 0–900%, без знака.
+              {t('edit.fields.placementHint')}
             </p>
           </div>
         </div>
@@ -253,7 +255,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
               disabled:opacity-50
             "
           >
-            Отмена
+            {t('edit.actions.cancel')}
           </button>
           <button
             type="submit"
@@ -266,7 +268,7 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
             "
           >
             {submitting && <Loader2 size={12} className="animate-spin" />}
-            Сохранить
+            {t('edit.actions.save')}
           </button>
         </div>
       </form>

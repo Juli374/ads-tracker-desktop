@@ -51,7 +51,7 @@ describe('keyboard hotkeys', () => {
     await user.keyboard('g');
     await user.keyboard('c');
     expect(
-      await screen.findByRole('heading', { name: 'Кампании' }),
+      await screen.findByTestId('campaigns-page'),
     ).toBeInTheDocument();
   });
 

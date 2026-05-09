@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, X } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { ApiError } from '../api/client';
@@ -29,6 +30,7 @@ export const AddTargetModal: React.FC<Props> = ({
   onClose,
   onAdded,
 }) => {
+  const { t } = useTranslation('campaigns');
   const toast = useToast();
   const [adGroupId, setAdGroupId] = useState<number | null>(
     defaultAdGroupId ?? adGroups[0]?.id ?? null,
@@ -59,17 +61,17 @@ export const AddTargetModal: React.FC<Props> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adGroupId) {
-      toast.error('Выберите ad group');
+      toast.error(t('addTarget.errors.selectAdGroup'));
       return;
     }
     const items = splitNonEmpty(keywords);
     if (items.length === 0) {
-      toast.error('Список пуст');
+      toast.error(t('addTarget.errors.listEmpty'));
       return;
     }
     const overrideBid = bidOverride.trim() ? Number(bidOverride) : undefined;
     if (overrideBid !== undefined && (!Number.isFinite(overrideBid) || overrideBid <= 0)) {
-      toast.error('Bid override должен быть > 0');
+      toast.error(t('addTarget.errors.bidOverridePositive'));
       return;
     }
     const bid = overrideBid ?? selectedGroup?.default_bid ?? 0.75;
@@ -91,14 +93,20 @@ export const AddTargetModal: React.FC<Props> = ({
         }
       }
       if (failed > 0) {
-        toast.error(`${items.length - failed}/${items.length} добавлены, ${failed} с ошибкой`);
+        toast.error(
+          t('addTarget.errors.partialFailure', {
+            ok: items.length - failed,
+            total: items.length,
+            fail: failed,
+          }),
+        );
       } else {
-        toast.success(`Добавлено: ${items.length}`);
+        toast.success(t('addTarget.added', { count: items.length }));
       }
       onAdded();
       onClose();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось добавить targets');
+      toast.error(err instanceof ApiError ? err.message : t('addTarget.errors.addFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -117,13 +125,13 @@ export const AddTargetModal: React.FC<Props> = ({
       >
         <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-start justify-between gap-3">
           <h2 className="text-base font-semibold text-zinc-900 tracking-tight">
-            Добавить targets
+            {t('addTarget.title')}
           </h2>
           <button
             type="button"
             onClick={() => !submitting && onClose()}
             className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label="Закрыть"
+            aria-label={t('addTarget.closeAria')}
           >
             <X size={16} />
           </button>
@@ -149,18 +157,18 @@ export const AddTargetModal: React.FC<Props> = ({
 
           {/* Тип target */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-zinc-700">Тип</label>
+            <label className="block text-xs font-medium text-zinc-700">{t('addTarget.fields.type')}</label>
             <div className="inline-flex bg-white border border-zinc-200 rounded-md p-0.5">
-              {(['keyword', 'asin'] as const).map((t) => (
+              {(['keyword', 'asin'] as const).map((tp) => (
                 <button
-                  key={t}
+                  key={tp}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => setType(tp)}
                   className={`px-3 h-7 text-xs font-medium rounded transition-colors ${
-                    type === t ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:text-zinc-900'
+                    type === tp ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:text-zinc-900'
                   }`}
                 >
-                  {t === 'keyword' ? 'Keywords' : 'ASIN'}
+                  {tp === 'keyword' ? 'Keywords' : 'ASIN'}
                 </button>
               ))}
             </div>
@@ -169,8 +177,8 @@ export const AddTargetModal: React.FC<Props> = ({
           {/* Список */}
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-zinc-700">
-              {type === 'keyword' ? 'Ключевые слова' : 'ASIN-ы'}
-              <span className="text-zinc-400 font-normal ml-1">(по одному на строку)</span>
+              {type === 'keyword' ? t('addTarget.fields.keywords') : t('addTarget.fields.asins')}
+              <span className="text-zinc-400 font-normal ml-1">{t('addTarget.fields.perLineHint')}</span>
             </label>
             <textarea
               value={keywords}
@@ -212,7 +220,9 @@ export const AddTargetModal: React.FC<Props> = ({
             <label className="block text-xs font-medium text-zinc-700">
               Bid override ($)
               <span className="text-zinc-400 font-normal ml-1">
-                — пустое = default {selectedGroup?.default_bid?.toFixed(2) ?? '—'}
+                {t('addTarget.fields.defaultBidEmpty', {
+                  value: selectedGroup?.default_bid?.toFixed(2) ?? '—',
+                })}
               </span>
             </label>
             <input
@@ -234,7 +244,7 @@ export const AddTargetModal: React.FC<Props> = ({
             disabled={submitting}
             className="h-8 px-3 text-xs font-medium rounded-md text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
-            Отмена
+            {t('addTarget.actions.cancel')}
           </button>
           <button
             type="submit"
@@ -242,7 +252,7 @@ export const AddTargetModal: React.FC<Props> = ({
             className="h-8 px-4 text-xs font-medium rounded-md bg-zinc-900 text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting && <Loader2 size={12} className="animate-spin" />}
-            Добавить
+            {t('addTarget.actions.submit')}
           </button>
         </div>
       </form>

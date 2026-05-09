@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, X } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useBooks } from '../contexts/BooksContext';
@@ -18,10 +19,10 @@ interface Props {
   onCreated(campaignId: number): void;
 }
 
-const CAMPAIGN_TYPES: Array<{ id: CampaignType; label: string; hint: string }> = [
-  { id: 'sp', label: 'Sponsored Products', hint: 'SP — самый популярный, для всех ASIN' },
-  { id: 'sb', label: 'Sponsored Brands',   hint: 'SB — баннер бренда, требует A+ контент' },
-  { id: 'sd', label: 'Sponsored Display',  hint: 'SD — ретаргетинг и аудитории' },
+const CAMPAIGN_TYPES: Array<{ id: CampaignType; label: string; hintKey: 'add.type.sp' | 'add.type.sb' | 'add.type.sd' }> = [
+  { id: 'sp', label: 'Sponsored Products', hintKey: 'add.type.sp' },
+  { id: 'sb', label: 'Sponsored Brands',   hintKey: 'add.type.sb' },
+  { id: 'sd', label: 'Sponsored Display',  hintKey: 'add.type.sd' },
 ];
 
 const BIDDING_STRATEGIES: BiddingStrategy[] = [
@@ -37,6 +38,7 @@ const splitKeywords = (raw: string): string[] =>
     .filter((line) => line.length > 0);
 
 export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
+  const { t } = useTranslation('campaigns');
   const toast = useToast();
   const { list: books } = useBooks();
 
@@ -106,16 +108,16 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
   const enableKeywords = isSp && isManual;
 
   const validate = (): string | null => {
-    if (!name.trim()) return 'Имя кампании обязательно';
-    if (!asinId) return 'Выберите книгу и маркетплейс';
+    if (!name.trim()) return t('add.errors.nameRequired');
+    if (!asinId) return t('add.errors.selectBookAndMp');
     const budgetNum = Number(budget);
     if (!Number.isFinite(budgetNum) || budgetNum <= 0)
-      return 'Бюджет должен быть положительным';
+      return t('add.errors.budgetPositive');
     if (enableAdGroup) {
-      if (!adGroupName.trim()) return 'Имя ad group обязательно';
+      if (!adGroupName.trim()) return t('add.errors.adGroupNameRequired');
       const bidNum = Number(defaultBid);
       if (!Number.isFinite(bidNum) || bidNum <= 0)
-        return 'Default bid должен быть положительным';
+        return t('add.errors.defaultBidPositive');
     }
     return null;
   };
@@ -166,7 +168,11 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
           const failed = results.filter((r) => !r.ok);
           if (failed.length > 0) {
             toast.error(
-              `Ключи: ${list.length - failed.length}/${list.length} добавлены (${failed.length} с ошибкой)`,
+              t('add.keywordsResult', {
+                ok: list.length - failed.length,
+                total: list.length,
+                fail: failed.length,
+              }),
             );
           }
         }
@@ -180,16 +186,18 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
           await negativesApi.addBulkToCampaign(campaignId, negList, negMatchType);
         } catch (negErr) {
           toast.error(
-            `Negatives: ${negErr instanceof ApiError ? negErr.message : 'не удалось добавить'}`,
+            t('add.errors.negativesFailed', {
+              error: negErr instanceof ApiError ? negErr.message : t('add.errors.negativesAddFallback'),
+            }),
           );
         }
       }
 
-      toast.success(`Кампания «${name.trim()}» создана`);
+      toast.success(t('add.created', { name: name.trim() }));
       onCreated(campaignId);
       onClose();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось создать кампанию');
+      toast.error(err instanceof ApiError ? err.message : t('add.errors.createFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -204,22 +212,23 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
     >
       <form
         onSubmit={handleSubmit}
+        data-testid="add-campaign-modal"
         className="w-full max-w-2xl bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden my-auto"
       >
         <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-zinc-900 tracking-tight">
-              Новая кампания
+              {t('add.title')}
             </h2>
             <div className="text-xs text-zinc-500 mt-0.5">
-              SP/SB/SD · auto или manual · ad group + ключи + минус-слова
+              {t('add.subtitle')}
             </div>
           </div>
           <button
             type="button"
             onClick={() => !submitting && onClose()}
             className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label="Закрыть"
+            aria-label={t('add.closeAria')}
           >
             <X size={16} />
           </button>
@@ -227,41 +236,41 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
 
         <div className="px-5 py-4 space-y-5 max-h-[70vh] overflow-y-auto">
           {/* Тип кампании */}
-          <Section title="Тип кампании">
+          <Section title={t('add.type.title')}>
             <div className="grid grid-cols-3 gap-2">
-              {CAMPAIGN_TYPES.map((t) => (
+              {CAMPAIGN_TYPES.map((ct) => (
                 <button
-                  key={t.id}
+                  key={ct.id}
                   type="button"
-                  onClick={() => setCampaignType(t.id)}
+                  onClick={() => setCampaignType(ct.id)}
                   className={`
                     text-left p-3 rounded-lg border transition-colors
-                    ${campaignType === t.id
+                    ${campaignType === ct.id
                       ? 'border-zinc-900 bg-zinc-50'
                       : 'border-zinc-200 hover:border-zinc-300'}
                   `}
                 >
                   <div className="text-xs font-semibold text-zinc-900 uppercase tracking-wide">
-                    {t.id}
+                    {ct.id}
                   </div>
-                  <div className="text-[11px] text-zinc-700 mt-0.5">{t.label}</div>
-                  <div className="text-[10px] text-zinc-400 mt-1">{t.hint}</div>
+                  <div className="text-[11px] text-zinc-700 mt-0.5">{ct.label}</div>
+                  <div className="text-[10px] text-zinc-400 mt-1">{t(ct.hintKey)}</div>
                 </button>
               ))}
             </div>
           </Section>
 
           {/* Книга + MP */}
-          <Section title="Книга и маркетплейс">
+          <Section title={t('add.bookSection')}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Книга">
+              <Field label={t('add.bookField')}>
                 <select
                   value={bookId ?? ''}
                   onChange={(e) => setBookId(e.target.value ? Number(e.target.value) : null)}
                   className={selectClass}
                   required
                 >
-                  <option value="">— выбрать —</option>
+                  <option value="">{t('add.bookPlaceholder')}</option>
                   {sortedBooks.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.title}
@@ -269,7 +278,7 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
                   ))}
                 </select>
               </Field>
-              <Field label="Маркетплейс (ASIN)">
+              <Field label={t('add.marketplaceField')}>
                 <select
                   value={asinId ?? ''}
                   onChange={(e) => setAsinId(e.target.value ? Number(e.target.value) : null)}
@@ -277,7 +286,7 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
                   disabled={!selectedBook}
                   required
                 >
-                  <option value="">— выбрать —</option>
+                  <option value="">{t('add.marketplacePlaceholder')}</option>
                   {selectedBook?.asins?.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.marketplace} · {a.asin}
@@ -290,28 +299,28 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
           </Section>
 
           {/* Targeting + Имя + Бюджет */}
-          <Section title="Параметры">
+          <Section title={t('add.params')}>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <Field label="Targeting">
                 <div className="inline-flex bg-white border border-zinc-200 rounded-md p-0.5 w-full">
-                  {(['manual', 'auto'] as const).map((t) => (
+                  {(['manual', 'auto'] as const).map((tt) => (
                     <button
-                      key={t}
+                      key={tt}
                       type="button"
-                      onClick={() => setTargetingType(t)}
+                      onClick={() => setTargetingType(tt)}
                       className={`
                         flex-1 h-8 text-xs font-medium rounded transition-colors
-                        ${targetingType === t
+                        ${targetingType === tt
                           ? 'bg-zinc-900 text-white'
                           : 'text-zinc-600 hover:text-zinc-900'}
                       `}
                     >
-                      {t === 'manual' ? 'Manual' : 'Auto'}
+                      {tt === 'manual' ? 'Manual' : 'Auto'}
                     </button>
                   ))}
                 </div>
               </Field>
-              <Field label="Дневной бюджет ($)">
+              <Field label={t('add.dailyBudget')}>
                 <input
                   type="number"
                   min="0"
@@ -323,12 +332,12 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
                 />
               </Field>
             </div>
-            <Field label="Имя кампании">
+            <Field label={t('add.name')}>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="например: SP-Manual-CrockpotUSA"
+                placeholder={t('add.namePlaceholder')}
                 className={inputClass}
                 required
               />
@@ -393,7 +402,7 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
           {enableAdGroup && (
             <Section title="Ad Group">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Имя ad group">
+                <Field label={t('add.adGroupName')}>
                   <input
                     type="text"
                     value={adGroupName}
@@ -420,8 +429,8 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
           {/* Keywords (manual SP) */}
           {enableKeywords && (
             <Section
-              title="Ключевые слова"
-              hint="по одному ключу на строку. Pусают bid из ad group."
+              title={t('add.keywords.title')}
+              hint={t('add.keywords.hint')}
             >
               <div className="space-y-2">
                 <textarea
@@ -455,7 +464,7 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
           )}
 
           {/* Negatives (опционально) */}
-          <Section title="Минус-слова (опционально)" hint="один на строку">
+          <Section title={t('add.negativesSection.title')} hint={t('add.negativesSection.hint')}>
             <div className="space-y-2">
               <textarea
                 value={negatives}
@@ -499,7 +508,7 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
               disabled:opacity-50
             "
           >
-            Отмена
+            {t('add.actions.cancel')}
           </button>
           <button
             type="submit"
@@ -512,7 +521,7 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
             "
           >
             {submitting && <Loader2 size={12} className="animate-spin" />}
-            Создать кампанию
+            {t('add.actions.submit')}
           </button>
         </div>
       </form>

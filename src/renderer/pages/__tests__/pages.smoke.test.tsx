@@ -66,7 +66,7 @@ describe('page smoke renders', () => {
         <CampaignsPage />
       </Wrap>,
     );
-    expect(await screen.findByRole('heading', { name: 'Кампании' })).toBeInTheDocument();
+    expect(await screen.findByTestId('campaigns-page')).toBeInTheDocument();
     expect(await screen.findByText('Test Campaign')).toBeInTheDocument();
   });
 

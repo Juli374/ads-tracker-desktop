@@ -1,0 +1,200 @@
+{
+  "list": {
+    "title": "Campaigns",
+    "subtitle": {
+      "withDates": "{from} → {to} · {filtered} of {total}",
+      "loading": "Loading…"
+    },
+    "loadFailed": "Failed to load campaigns",
+    "addCampaign": "Campaign",
+    "kpi": {
+      "campaignCount": "Campaigns"
+    },
+    "filters": {
+      "search": "Campaign / book…",
+      "marketplaceAll": "All MP",
+      "typeAll": "All types",
+      "activeOnly": "Active only"
+    },
+    "card": {
+      "title": "List"
+    },
+    "empty": {
+      "search": "No matches.",
+      "noData": "No campaigns for the selected period."
+    },
+    "th": {
+      "campaign": "Campaign",
+      "book": "Book",
+      "type": "Type"
+    },
+    "row": {
+      "openSearchTerms": "Open search terms for this campaign",
+      "edit": "Edit",
+      "editAria": "Edit campaign"
+    }
+  },
+  "details": {
+    "tabs": {
+      "negatives": "Negatives",
+      "history": "History"
+    },
+    "errors": {
+      "notFoundForPeriod": "Campaign #{id} not found for the selected period.",
+      "loadFailed": "Failed to load campaign",
+      "noId": "No campaign id provided. Open a campaign from the list.",
+      "loadAdGroupsFailed": "Failed to load ad groups",
+      "updateBidFailed": "Failed to update bid",
+      "loadTargetsFailed": "Failed to load targets",
+      "loadNegativesFailed": "Failed to load negatives",
+      "removeFailed": "Failed to remove"
+    },
+    "removed": "Removed",
+    "backToList": "Back to list",
+    "breadcrumbCampaigns": "Campaigns",
+    "breadcrumbDetails": "details",
+    "fallbackTitle": "Campaign #{id}",
+    "loading": "Loading…",
+    "edit": "Edit",
+    "tabAria": "Tab: {label}",
+    "adGroups": {
+      "empty": "No ad groups for this campaign.",
+      "th": {
+        "name": "Name"
+      },
+      "ariaDefaultBid": "Default bid for {name}"
+    },
+    "targets": {
+      "empty": "No targets for this campaign.",
+      "th": {
+        "type": "Type"
+      }
+    },
+    "negatives": {
+      "empty": "No negative keywords for this campaign.",
+      "th": {
+        "added": "Added"
+      },
+      "removeAria": "Remove {keyword}",
+      "removeTitle": "Remove"
+    },
+    "searchTerms": {
+      "intro": "Open the full search terms page filtered by this campaign.",
+      "openLink": "Open Search Terms →"
+    },
+    "history": {
+      "title": "History",
+      "placeholder": "Change log will be available after Action Center (Phase 5)."
+    }
+  },
+  "edit": {
+    "errors": {
+      "budgetPositive": "Budget must be a positive number",
+      "fieldRange": "{field}: number from 0 to 900",
+      "saveFailed": "Failed to save"
+    },
+    "saved": "Saved",
+    "closeAria": "Close",
+    "fields": {
+      "status": "Status",
+      "statusActive": "Active",
+      "statusPaused": "Paused",
+      "name": "Campaign name",
+      "dailyBudget": "Daily budget ({currency})",
+      "budgetPlaceholder": "leave unchanged",
+      "spendHint": "Spend for the period: {value}.",
+      "budgetEmptyHint": "Empty field = budget not changed.",
+      "noChange": "— don't change —",
+      "placementHint": "Empty field = don't change. 0–900%, no sign."
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "save": "Save"
+    }
+  },
+  "add": {
+    "title": "New campaign",
+    "subtitle": "SP/SB/SD · auto or manual · ad group + keywords + negatives",
+    "closeAria": "Close",
+    "type": {
+      "title": "Campaign type",
+      "sp": "SP — most popular, for any ASIN",
+      "sb": "SB — brand banner, requires A+ content",
+      "sd": "SD — retargeting and audiences"
+    },
+    "bookSection": "Book and marketplace",
+    "bookField": "Book",
+    "bookPlaceholder": "— select —",
+    "marketplaceField": "Marketplace (ASIN)",
+    "marketplacePlaceholder": "— select —",
+    "params": "Parameters",
+    "dailyBudget": "Daily budget ($)",
+    "name": "Campaign name",
+    "namePlaceholder": "e.g.: SP-Manual-CrockpotUSA",
+    "adGroupName": "Ad group name",
+    "keywords": {
+      "title": "Keywords",
+      "hint": "one keyword per line. Inherits bid from ad group."
+    },
+    "negativesSection": {
+      "title": "Negatives (optional)",
+      "hint": "one per line"
+    },
+    "errors": {
+      "nameRequired": "Campaign name is required",
+      "selectBookAndMp": "Select a book and marketplace",
+      "budgetPositive": "Budget must be positive",
+      "adGroupNameRequired": "Ad group name is required",
+      "defaultBidPositive": "Default bid must be positive",
+      "createFailed": "Failed to create campaign",
+      "negativesFailed": "Negatives: {error}",
+      "negativesAddFallback": "could not add"
+    },
+    "keywordsResult": "Keywords: {ok}/{total} added ({fail} failed)",
+    "created": "Campaign «{name}» created",
+    "actions": {
+      "cancel": "Cancel",
+      "submit": "Create campaign"
+    }
+  },
+  "addAdGroup": {
+    "title": "New Ad Group",
+    "closeAria": "Close",
+    "fields": {
+      "name": "Name"
+    },
+    "errors": {
+      "nameRequired": "Ad group name is required",
+      "defaultBidPositive": "Default bid must be > 0",
+      "createFailed": "Failed to create"
+    },
+    "created": "Ad group created",
+    "actions": {
+      "cancel": "Cancel",
+      "submit": "Create"
+    }
+  },
+  "addTarget": {
+    "title": "Add targets",
+    "closeAria": "Close",
+    "errors": {
+      "selectAdGroup": "Select an ad group",
+      "listEmpty": "List is empty",
+      "bidOverridePositive": "Bid override must be > 0",
+      "addFailed": "Failed to add targets",
+      "partialFailure": "{ok}/{total} added, {fail} failed"
+    },
+    "added": "Added: {count}",
+    "fields": {
+      "type": "Type",
+      "keywords": "Keywords",
+      "asins": "ASINs",
+      "perLineHint": "(one per line)",
+      "defaultBidEmpty": "— empty = default {value}"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "submit": "Add"
+    }
+  }
+}

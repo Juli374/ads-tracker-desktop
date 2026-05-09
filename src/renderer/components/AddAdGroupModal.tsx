@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, X } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { ApiError } from '../api/client';
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export const AddAdGroupModal: React.FC<Props> = ({ campaignId, onClose, onCreated }) => {
+  const { t } = useTranslation('campaigns');
   const toast = useToast();
   const [name, setName] = useState('Ad Group 1');
   const [defaultBid, setDefaultBid] = useState<string>('0.75');
@@ -35,22 +37,22 @@ export const AddAdGroupModal: React.FC<Props> = ({ campaignId, onClose, onCreate
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      toast.error('Имя ad group обязательно');
+      toast.error(t('addAdGroup.errors.nameRequired'));
       return;
     }
     const bid = Number(defaultBid);
     if (!Number.isFinite(bid) || bid <= 0) {
-      toast.error('Default bid должен быть > 0');
+      toast.error(t('addAdGroup.errors.defaultBidPositive'));
       return;
     }
     setSubmitting(true);
     try {
       const res = await adGroupsApi.create(campaignId, { name: trimmed, default_bid: bid });
-      toast.success('Ad group создана');
+      toast.success(t('addAdGroup.created'));
       onCreated(res.id);
       onClose();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось создать');
+      toast.error(err instanceof ApiError ? err.message : t('addAdGroup.errors.createFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -69,13 +71,13 @@ export const AddAdGroupModal: React.FC<Props> = ({ campaignId, onClose, onCreate
       >
         <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-start justify-between gap-3">
           <h2 className="text-base font-semibold text-zinc-900 tracking-tight">
-            Новая Ad Group
+            {t('addAdGroup.title')}
           </h2>
           <button
             type="button"
             onClick={() => !submitting && onClose()}
             className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label="Закрыть"
+            aria-label={t('addAdGroup.closeAria')}
           >
             <X size={16} />
           </button>
@@ -83,7 +85,7 @@ export const AddAdGroupModal: React.FC<Props> = ({ campaignId, onClose, onCreate
 
         <div className="px-5 py-4 space-y-3">
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-zinc-700">Имя</label>
+            <label className="block text-xs font-medium text-zinc-700">{t('addAdGroup.fields.name')}</label>
             <input
               type="text"
               value={name}
@@ -116,7 +118,7 @@ export const AddAdGroupModal: React.FC<Props> = ({ campaignId, onClose, onCreate
             disabled={submitting}
             className="h-8 px-3 text-xs font-medium rounded-md text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
-            Отмена
+            {t('addAdGroup.actions.cancel')}
           </button>
           <button
             type="submit"
@@ -124,7 +126,7 @@ export const AddAdGroupModal: React.FC<Props> = ({ campaignId, onClose, onCreate
             className="h-8 px-4 text-xs font-medium rounded-md bg-zinc-900 text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting && <Loader2 size={12} className="animate-spin" />}
-            Создать
+            {t('addAdGroup.actions.submit')}
           </button>
         </div>
       </form>

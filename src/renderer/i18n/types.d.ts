@@ -2,6 +2,7 @@ import 'i18next';
 import type enCommon from './resources/en/common.json';
 import type enNav from './resources/en/nav.json';
 import type enDashboard from './resources/en/dashboard.json';
+import type enCampaigns from './resources/en/campaigns.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -10,6 +11,7 @@ declare module 'i18next' {
       common: typeof enCommon;
       nav: typeof enNav;
       dashboard: typeof enDashboard;
+      campaigns: typeof enCampaigns;
     };
     returnNull: false;
   }

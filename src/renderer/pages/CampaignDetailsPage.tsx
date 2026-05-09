@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Ban,
@@ -38,15 +39,18 @@ import { AddTargetModal } from '../components/AddTargetModal';
 
 type TabId = 'ad_groups' | 'targets' | 'search_terms' | 'negatives' | 'history';
 
-const TABS: Array<{ id: TabId; label: string; icon: React.ElementType }> = [
-  { id: 'ad_groups', label: 'Ad Groups', icon: Layers },
-  { id: 'targets', label: 'Targets', icon: TargetIcon },
-  { id: 'search_terms', label: 'Search Terms', icon: Search },
-  { id: 'negatives', label: 'Минус-слова', icon: Ban },
-  { id: 'history', label: 'История', icon: History },
+// label берётся через t() в render — Ad Groups / Targets / Search Terms /
+// Negatives (из nav.items.negatives — т.к. это та же концепция) / History.
+const TABS: Array<{ id: TabId; labelStatic?: string; icon: React.ElementType }> = [
+  { id: 'ad_groups', labelStatic: 'Ad Groups', icon: Layers },
+  { id: 'targets', labelStatic: 'Targets', icon: TargetIcon },
+  { id: 'search_terms', labelStatic: 'Search Terms', icon: Search },
+  { id: 'negatives', icon: Ban },
+  { id: 'history', icon: History },
 ];
 
 export const CampaignDetailsPage: React.FC = () => {
+  const { t } = useTranslation('campaigns');
   const initial = useInitialFilters();
   const { navigate } = useNav();
   const campaignId = initial.campaignId ?? null;
@@ -76,18 +80,18 @@ export const CampaignDetailsPage: React.FC = () => {
         });
         const found = data.campaigns.find((c) => c.campaign_id === campaignId);
         if (!found) {
-          setError(`Кампания #${campaignId} не найдена за выбранный период.`);
+          setError(t('details.errors.notFoundForPeriod', { id: campaignId }));
           setCampaign(null);
         } else {
           setCampaign(found);
         }
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Не удалось загрузить кампанию');
+        setError(err instanceof ApiError ? err.message : t('details.errors.loadFailed'));
       } finally {
         setLoading(false);
       }
     },
-    [campaignId, from, to],
+    [campaignId, from, to, t],
   );
 
   useEffect(() => {
@@ -97,38 +101,39 @@ export const CampaignDetailsPage: React.FC = () => {
   if (campaignId == null) {
     return (
       <div className="space-y-4">
-        <ErrorBanner message="Не передан id кампании. Открой кампанию из списка." />
+        <ErrorBanner message={t('details.errors.noId')} />
         <button
           type="button"
           onClick={() => navigate('campaigns')}
           className="inline-flex items-center gap-1.5 text-xs text-zinc-600 hover:text-zinc-900"
         >
-          <ArrowLeft size={12} /> К списку кампаний
+          <ArrowLeft size={12} /> {t('details.backToList')}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="campaign-details-page">
       <div className="flex items-center gap-2 text-xs text-zinc-500">
         <button
           type="button"
+          data-testid="breadcrumb-back-to-campaigns"
           onClick={() => navigate('campaigns')}
           className="inline-flex items-center gap-1 hover:text-zinc-900 transition-colors"
         >
-          <ArrowLeft size={12} /> Кампании
+          <ArrowLeft size={12} /> {t('details.breadcrumbCampaigns')}
         </button>
         <span className="text-zinc-300">/</span>
-        <span className="text-zinc-700">детали</span>
+        <span className="text-zinc-700">{t('details.breadcrumbDetails')}</span>
       </div>
 
       <PageHeader
-        title={campaign?.campaign_name ?? `Кампания #${campaignId}`}
+        title={campaign?.campaign_name ?? t('details.fallbackTitle', { id: campaignId })}
         subtitle={
           campaign
             ? `${campaign.book_title} · ${campaign.marketplace} · ${campaign.campaign_type.toUpperCase()} · ${campaign.targeting_type}`
-            : 'Загрузка…'
+            : t('details.loading')
         }
         rightSlot={
           <div className="flex items-center gap-2">
@@ -139,7 +144,7 @@ export const CampaignDetailsPage: React.FC = () => {
                 className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
               >
                 <Pencil size={12} />
-                Редактировать
+                {t('details.edit')}
               </button>
             )}
             <RangePicker
@@ -171,17 +176,20 @@ export const CampaignDetailsPage: React.FC = () => {
 
       {/* Tabs */}
       <div role="tablist" className="flex items-center gap-1 border-b border-zinc-200">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = tab === t.id;
+        {TABS.map((tabSpec) => {
+          const Icon = tabSpec.icon;
+          const active = tab === tabSpec.id;
+          const label =
+            tabSpec.labelStatic ?? t(`details.tabs.${tabSpec.id as 'negatives' | 'history'}`);
           return (
             <button
-              key={t.id}
+              key={tabSpec.id}
               type="button"
               role="tab"
               aria-selected={active}
-              aria-label={`Таб: ${t.label}`}
-              onClick={() => setTab(t.id)}
+              aria-label={t('details.tabAria', { label })}
+              data-testid={`details-tab-${tabSpec.id}`}
+              onClick={() => setTab(tabSpec.id)}
               className={`
                 inline-flex items-center gap-1.5 h-9 px-3 text-xs font-medium
                 border-b-2 -mb-px transition-colors
@@ -191,7 +199,7 @@ export const CampaignDetailsPage: React.FC = () => {
               `}
             >
               <Icon size={13} />
-              {t.label}
+              {label}
             </button>
           );
         })}
@@ -226,6 +234,7 @@ export const CampaignDetailsPage: React.FC = () => {
 // ============ Ad Groups tab ============
 
 const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
+  const { t } = useTranslation('campaigns');
   const toast = useToast();
   const [list, setList] = useState<AdGroup[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -238,13 +247,13 @@ const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
         const data = await adGroupsApi.listByCampaign(campaignId);
         setList(Array.isArray(data) ? data : []);
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить ad groups');
+        toast.error(err instanceof ApiError ? err.message : t('details.errors.loadAdGroupsFailed'));
         setList([]);
       } finally {
         setLoading(false);
       }
     },
-    [campaignId, toast],
+    [campaignId, toast, t],
   );
 
   useEffect(() => {
@@ -258,7 +267,7 @@ const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
         prev ? prev.map((g) => (g.id === id ? { ...g, default_bid: next } : g)) : prev,
       );
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось обновить bid');
+      toast.error(err instanceof ApiError ? err.message : t('details.errors.updateBidFailed'));
       throw err;
     }
   };
@@ -280,12 +289,12 @@ const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
       {loading && !list ? (
         <LoadingRow />
       ) : !list || list.length === 0 ? (
-        <EmptyState title="У кампании нет ad groups." />
+        <EmptyState title={t('details.adGroups.empty')} />
       ) : (
         <table className="w-full text-sm table-sticky-head">
           <thead>
             <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-              <th className="text-left px-5 py-2 font-medium">Имя</th>
+              <th className="text-left px-5 py-2 font-medium">{t('details.adGroups.th.name')}</th>
               <th className="text-left px-3 py-2 font-medium">Status</th>
               <th className="text-right px-3 py-2 font-medium">Default bid</th>
               <th className="text-right px-3 py-2 font-medium">Targets</th>
@@ -304,7 +313,7 @@ const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
                     format={(n) => fmtMoney(n)}
                     min={0.02}
                     step={0.01}
-                    ariaLabel={`Default bid для ${g.name}`}
+                    ariaLabel={t('details.adGroups.ariaDefaultBid', { name: g.name })}
                   />
                 </td>
                 <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
@@ -331,6 +340,7 @@ const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
 // ============ Targets tab ============
 
 const TargetsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
+  const { t } = useTranslation('campaigns');
   const toast = useToast();
   const [adGroups, setAdGroups] = useState<AdGroup[]>([]);
   const [targets, setTargets] = useState<Target[] | null>(null);
@@ -348,13 +358,13 @@ const TargetsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
         setAdGroups(Array.isArray(ags) ? ags : []);
         setTargets(Array.isArray(ts) ? ts : []);
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить targets');
+        toast.error(err instanceof ApiError ? err.message : t('details.errors.loadTargetsFailed'));
         setTargets([]);
       } finally {
         setLoading(false);
       }
     },
-    [campaignId, toast],
+    [campaignId, toast, t],
   );
 
   useEffect(() => {
@@ -365,10 +375,10 @@ const TargetsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
     try {
       await targetsApi.update(id, { bid: next });
       setTargets((prev) =>
-        prev ? prev.map((t) => (t.id === id ? { ...t, bid: next } : t)) : prev,
+        prev ? prev.map((tg) => (tg.id === id ? { ...tg, bid: next } : tg)) : prev,
       );
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось обновить bid');
+      toast.error(err instanceof ApiError ? err.message : t('details.errors.updateBidFailed'));
       throw err;
     }
   };
@@ -391,33 +401,33 @@ const TargetsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
       {loading && !targets ? (
         <LoadingRow />
       ) : !targets || targets.length === 0 ? (
-        <EmptyState title="У кампании нет targets." />
+        <EmptyState title={t('details.targets.empty')} />
       ) : (
         <table className="w-full text-sm table-sticky-head">
           <thead>
             <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
               <th className="text-left px-5 py-2 font-medium">Target</th>
-              <th className="text-left px-3 py-2 font-medium">Тип</th>
+              <th className="text-left px-3 py-2 font-medium">{t('details.targets.th.type')}</th>
               <th className="text-left px-3 py-2 font-medium">Match</th>
               <th className="text-left px-3 py-2 font-medium">Status</th>
               <th className="text-right px-5 py-2 font-medium">Bid</th>
             </tr>
           </thead>
           <tbody>
-            {targets.map((t) => (
-              <tr key={t.id} className="border-t border-zinc-100 hover:bg-zinc-50/60">
+            {targets.map((tg) => (
+              <tr key={tg.id} className="border-t border-zinc-100 hover:bg-zinc-50/60">
                 <td className="px-5 py-2.5 text-xs text-zinc-900 font-mono truncate max-w-md">
-                  {t.keyword_text ?? t.asin ?? t.category ?? '—'}
+                  {tg.keyword_text ?? tg.asin ?? tg.category ?? '—'}
                 </td>
                 <td className="px-3 py-2.5 text-[11px] text-zinc-600 uppercase">
-                  {t.keyword_text ? 'keyword' : t.asin ? 'asin' : t.category ? 'category' : '—'}
+                  {tg.keyword_text ? 'keyword' : tg.asin ? 'asin' : tg.category ? 'category' : '—'}
                 </td>
-                <td className="px-3 py-2.5 text-[11px] text-zinc-600">{t.match_type ?? '—'}</td>
-                <td className="px-3 py-2.5 text-[11px] text-zinc-600">{t.state ?? '—'}</td>
+                <td className="px-3 py-2.5 text-[11px] text-zinc-600">{tg.match_type ?? '—'}</td>
+                <td className="px-3 py-2.5 text-[11px] text-zinc-600">{tg.state ?? '—'}</td>
                 <td className="px-5 py-2.5 text-xs text-right">
                   <EditableNumber
-                    value={t.bid}
-                    onSave={(v) => onSaveBid(t.id, v)}
+                    value={tg.bid}
+                    onSave={(v) => onSaveBid(tg.id, v)}
                     format={(n) => fmtMoney(n)}
                     min={0.02}
                     step={0.01}
@@ -444,6 +454,7 @@ const TargetsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
 // ============ Negatives tab ============
 
 const NegativesTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
+  const { t } = useTranslation('campaigns');
   const toast = useToast();
   const [list, setList] = useState<Negative[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -455,13 +466,13 @@ const NegativesTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
         const data = await negativesApi.listByCampaign(campaignId);
         setList(Array.isArray(data) ? data : []);
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить негативы');
+        toast.error(err instanceof ApiError ? err.message : t('details.errors.loadNegativesFailed'));
         setList([]);
       } finally {
         setLoading(false);
       }
     },
-    [campaignId, toast],
+    [campaignId, toast, t],
   );
 
   useEffect(() => {
@@ -472,9 +483,9 @@ const NegativesTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
     try {
       await negativesApi.delete(n.id);
       setList((prev) => (prev ? prev.filter((x) => x.id !== n.id) : prev));
-      toast.success('Удалено');
+      toast.success(t('details.removed'));
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось удалить');
+      toast.error(err instanceof ApiError ? err.message : t('details.errors.removeFailed'));
     }
   };
 
@@ -483,14 +494,14 @@ const NegativesTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
       {loading && !list ? (
         <LoadingRow />
       ) : !list || list.length === 0 ? (
-        <EmptyState title="У этой кампании нет negative keywords." />
+        <EmptyState title={t('details.negatives.empty')} />
       ) : (
         <table className="w-full text-sm table-sticky-head">
           <thead>
             <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
               <th className="text-left px-5 py-2 font-medium">Keyword</th>
               <th className="text-left px-3 py-2 font-medium">Match</th>
-              <th className="text-left px-3 py-2 font-medium">Добавлено</th>
+              <th className="text-left px-3 py-2 font-medium">{t('details.negatives.th.added')}</th>
               <th className="px-5 py-2 w-10"></th>
             </tr>
           </thead>
@@ -513,8 +524,8 @@ const NegativesTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
                       text-zinc-400 hover:text-red-600 hover:bg-red-50
                       opacity-0 group-hover:opacity-100 transition-opacity
                     "
-                    title="Удалить"
-                    aria-label={`Удалить ${n.keyword_text}`}
+                    title={t('details.negatives.removeTitle')}
+                    aria-label={t('details.negatives.removeAria', { keyword: n.keyword_text })}
                   >
                     ×
                   </button>
@@ -530,31 +541,33 @@ const NegativesTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
 
 // ============ Search Terms tab placeholder ============
 
-const SearchTermsTabPlaceholder: React.FC<{ onOpen: () => void }> = ({ onOpen }) => (
-  <Card title="Search Terms">
-    <div className="px-5 py-8 text-center space-y-3">
-      <div className="text-sm text-zinc-500">
-        Откройте полную страницу поисковых запросов с фильтром по этой кампании.
+const SearchTermsTabPlaceholder: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
+  const { t } = useTranslation('campaigns');
+  return (
+    <Card title="Search Terms">
+      <div className="px-5 py-8 text-center space-y-3">
+        <div className="text-sm text-zinc-500">{t('details.searchTerms.intro')}</div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800 transition-colors"
+        >
+          {t('details.searchTerms.openLink')}
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={onOpen}
-        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800 transition-colors"
-      >
-        Открыть Search Terms →
-      </button>
-    </div>
-  </Card>
-);
+    </Card>
+  );
+};
 
 // ============ History tab placeholder ============
 
-const HistoryTabPlaceholder: React.FC = () => (
-  <Card title="История">
-    <div className="px-5 py-8 text-center">
-      <div className="text-sm text-zinc-500">
-        Лента изменений будет доступна после реализации Action Center (Фаза 5).
+const HistoryTabPlaceholder: React.FC = () => {
+  const { t } = useTranslation('campaigns');
+  return (
+    <Card title={t('details.history.title')}>
+      <div className="px-5 py-8 text-center">
+        <div className="text-sm text-zinc-500">{t('details.history.placeholder')}</div>
       </div>
-    </div>
-  </Card>
-);
+    </Card>
+  );
+};

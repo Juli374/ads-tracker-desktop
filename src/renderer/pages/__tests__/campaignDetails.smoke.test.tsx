@@ -33,7 +33,7 @@ const renderApp = () =>
 const goToDetails = async (user: ReturnType<typeof userEvent.setup>) => {
   await screen.findByTestId('dashboard-page');
   await user.click(screen.getByTestId('nav-campaigns'));
-  await screen.findByRole('heading', { name: 'Кампании' });
+  await screen.findByTestId('campaigns-page');
   const row = await screen.findByText('Test Campaign');
   await user.click(row);
   // Title — имя кампании из mock'а.
@@ -50,12 +50,12 @@ describe('CampaignDetailsPage', () => {
     expect((await screen.findAllByText('Spend')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Sales')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Orders')).length).toBeGreaterThan(0);
-    // Все 5 табов через aria-label «Таб: …»
-    expect(await screen.findByRole('tab', { name: 'Таб: Ad Groups' })).toBeInTheDocument();
-    expect(await screen.findByRole('tab', { name: 'Таб: Targets' })).toBeInTheDocument();
-    expect(await screen.findByRole('tab', { name: 'Таб: Search Terms' })).toBeInTheDocument();
-    expect(await screen.findByRole('tab', { name: 'Таб: Минус-слова' })).toBeInTheDocument();
-    expect(await screen.findByRole('tab', { name: 'Таб: История' })).toBeInTheDocument();
+    // Все 5 табов через стабильные data-testid (mock ICU не интерполирует {label}).
+    expect(await screen.findByTestId('details-tab-ad_groups')).toBeInTheDocument();
+    expect(await screen.findByTestId('details-tab-targets')).toBeInTheDocument();
+    expect(await screen.findByTestId('details-tab-search_terms')).toBeInTheDocument();
+    expect(await screen.findByTestId('details-tab-negatives')).toBeInTheDocument();
+    expect(await screen.findByTestId('details-tab-history')).toBeInTheDocument();
   });
 
   it('Ad Groups таб показывает список из mock', async () => {
@@ -72,7 +72,7 @@ describe('CampaignDetailsPage', () => {
     renderApp();
     await goToDetails(user);
 
-    await user.click(screen.getByRole('tab', { name: 'Таб: Targets' }));
+    await user.click(screen.getByTestId('details-tab-targets'));
     expect(await screen.findByText('test keyword')).toBeInTheDocument();
   });
 
@@ -81,15 +81,8 @@ describe('CampaignDetailsPage', () => {
     renderApp();
     await goToDetails(user);
 
-    // Breadcrumb-кнопка «Кампании» — в верхней части CampaignDetailsPage.
-    // Их две (sidebar + breadcrumb), берём первую соответствующую.
-    const buttons = await screen.findAllByRole('button', { name: /Кампании/ });
-    // Ищем breadcrumb-кнопку с иконкой ArrowLeft (text "Кампании" ровно).
-    const breadcrumb = buttons.find((b) => b.textContent?.trim() === 'Кампании');
-    expect(breadcrumb).toBeDefined();
-    if (breadcrumb) {
-      await user.click(breadcrumb);
-      expect(await screen.findByRole('heading', { name: 'Кампании' })).toBeInTheDocument();
-    }
+    // Breadcrumb back-to-campaigns в верхней части CampaignDetailsPage.
+    await user.click(await screen.findByTestId('breadcrumb-back-to-campaigns'));
+    expect(await screen.findByTestId('campaigns-page')).toBeInTheDocument();
   });
 });

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, ArrowDownUp, Pencil, Plus } from 'lucide-react';
 import { ApiError } from '../api/client';
 import {
@@ -41,6 +42,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 const PER_PAGE = 50;
 
 export const CampaignsPage: React.FC = () => {
+  const { t } = useTranslation('campaigns');
   const toast = useToast();
   const { navigate } = useNav();
   const { list: globalMarketplaces } = useMarketplaces();
@@ -97,7 +99,7 @@ export const CampaignsPage: React.FC = () => {
         });
         setSummary(data);
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить кампании');
+        toast.error(err instanceof ApiError ? err.message : t('list.loadFailed'));
       } finally {
         setLoading(false);
       }
@@ -107,6 +109,7 @@ export const CampaignsPage: React.FC = () => {
       to,
       activeOnly,
       toast,
+      t,
       globalFilters.marketplaces,
       globalFilters.bookId,
       globalFilters.accounts,
@@ -175,13 +178,18 @@ export const CampaignsPage: React.FC = () => {
   }, [filtered]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="campaigns-page">
       <PageHeader
-        title="Кампании"
+        title={t('list.title')}
         subtitle={
           summary
-            ? `${summary.date_from} → ${summary.date_to} · ${filtered.length} из ${summary.campaigns.length}`
-            : 'Загрузка…'
+            ? t('list.subtitle.withDates', {
+                from: summary.date_from,
+                to: summary.date_to,
+                filtered: filtered.length,
+                total: summary.campaigns.length,
+              })
+            : t('list.subtitle.loading')
         }
         rightSlot={
           <div className="flex items-center gap-2">
@@ -195,7 +203,7 @@ export const CampaignsPage: React.FC = () => {
               "
             >
               <Plus size={14} strokeWidth={2.5} />
-              Кампания
+              {t('list.addCampaign')}
             </button>
             <RangePicker
               value={range}
@@ -211,7 +219,7 @@ export const CampaignsPage: React.FC = () => {
       <ActiveFiltersBar chips={chips} />
 
       <div className="grid grid-cols-4 gap-3">
-        <Kpi label="Кампаний" value={fmtNumber(filtered.length)} loading={loading} />
+        <Kpi label={t('list.kpi.campaignCount')} value={fmtNumber(filtered.length)} loading={loading} />
         <Kpi label="Spend" value={fmtMoney(totals.cost)} loading={loading} />
         <Kpi label="Sales" value={fmtMoney(totals.sales)} loading={loading} />
         <Kpi
@@ -223,14 +231,14 @@ export const CampaignsPage: React.FC = () => {
       </div>
 
       <Card
-        title="Список"
+        title={t('list.card.title')}
         rightSlot={
           <div className="flex items-center gap-2">
             <Select
               value={marketplace}
               onChange={setMarketplace}
               options={[
-                { value: 'all', label: 'Все MP' },
+                { value: 'all', label: t('list.filters.marketplaceAll') },
                 ...marketplaceOptions.map((m) => ({ value: m, label: m })),
               ]}
             />
@@ -238,14 +246,14 @@ export const CampaignsPage: React.FC = () => {
               value={campaignType}
               onChange={setCampaignType}
               options={[
-                { value: 'all', label: 'Все типы' },
-                ...typeOptions.map((t) => ({ value: t, label: t.toUpperCase() })),
+                { value: 'all', label: t('list.filters.typeAll') },
+                ...typeOptions.map((tp) => ({ value: tp, label: tp.toUpperCase() })),
               ]}
             />
             <ToggleChip
               active={activeOnly}
               onClick={() => setActiveOnly((v) => !v)}
-              label="Только активные"
+              label={t('list.filters.activeOnly')}
             />
             <SortSelect value={sortKey} onChange={setSortKey} />
             <SearchInput value={search} onChange={setSearch} />
@@ -256,18 +264,16 @@ export const CampaignsPage: React.FC = () => {
           <LoadingRow />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title={
-              search ? 'Ничего не нашлось.' : 'Нет кампаний за выбранный период.'
-            }
+            title={search ? t('list.empty.search') : t('list.empty.noData')}
           />
         ) : (
           <table className="w-full text-sm table-sticky-head">
             <thead>
               <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-2 font-medium">Кампания</th>
-                <th className="text-left px-3 py-2 font-medium">Книга</th>
+                <th className="text-left px-5 py-2 font-medium">{t('list.th.campaign')}</th>
+                <th className="text-left px-3 py-2 font-medium">{t('list.th.book')}</th>
                 <th className="text-left px-3 py-2 font-medium">MP</th>
-                <th className="text-left px-3 py-2 font-medium">Тип</th>
+                <th className="text-left px-3 py-2 font-medium">{t('list.th.type')}</th>
                 <th className="text-right px-3 py-2 font-medium">Spend</th>
                 <th className="text-right px-3 py-2 font-medium">Sales</th>
                 <th className="text-right px-3 py-2 font-medium">Orders</th>
@@ -324,11 +330,13 @@ const CampaignRow: React.FC<{
   c: CampaignAnalyticsItem;
   onDrillDown: () => void;
   onEdit: () => void;
-}> = ({ c, onDrillDown, onEdit }) => (
+}> = ({ c, onDrillDown, onEdit }) => {
+  const { t } = useTranslation('campaigns');
+  return (
   <tr
     className="group border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
     onClick={onDrillDown}
-    title="Открыть поисковые запросы этой кампании"
+    title={t('list.row.openSearchTerms')}
   >
     <td className="px-5 py-2.5 max-w-[280px]">
       <div className="text-xs text-zinc-900 truncate" title={c.campaign_name}>
@@ -379,19 +387,22 @@ const CampaignRow: React.FC<{
           text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200
           opacity-0 group-hover:opacity-100 transition-opacity
         "
-        title="Редактировать"
-        aria-label="Редактировать кампанию"
+        title={t('list.row.edit')}
+        aria-label={t('list.row.editAria')}
       >
         <Pencil size={11} />
       </button>
     </td>
   </tr>
-);
+  );
+};
 
 const SearchInput: React.FC<{ value: string; onChange: (v: string) => void }> = ({
   value,
   onChange,
-}) => (
+}) => {
+  const { t } = useTranslation('campaigns');
+  return (
   <div className="relative">
     <Search
       size={12}
@@ -401,7 +412,7 @@ const SearchInput: React.FC<{ value: string; onChange: (v: string) => void }> = 
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder="Кампания / книга…"
+      placeholder={t('list.filters.search')}
       className="
         w-52 h-7 pl-7 pr-2 text-xs rounded-md
         border border-zinc-200 bg-white
@@ -410,7 +421,8 @@ const SearchInput: React.FC<{ value: string; onChange: (v: string) => void }> = 
       "
     />
   </div>
-);
+  );
+};
 
 interface SelectProps {
   value: string;

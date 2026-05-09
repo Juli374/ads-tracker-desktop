@@ -44,7 +44,7 @@ describe('drill-down navigation', () => {
     await user.click(bookCell);
 
     expect(
-      await screen.findByRole('heading', { name: 'Кампании' }),
+      await screen.findByTestId('campaigns-page'),
     ).toBeInTheDocument();
     expect(
       await screen.findByLabelText('Сбросить книгу'),
@@ -57,7 +57,7 @@ describe('drill-down navigation', () => {
 
     await screen.findByTestId('dashboard-page');
     await user.click(screen.getByTestId('nav-campaigns'));
-    await screen.findByRole('heading', { name: 'Кампании' });
+    await screen.findByTestId('campaigns-page');
 
     const campaignRow = await screen.findByText('Test Campaign');
     await user.click(campaignRow);
@@ -66,7 +66,7 @@ describe('drill-down navigation', () => {
     const headings = await screen.findAllByRole('heading', { name: 'Test Campaign' });
     expect(headings.length).toBeGreaterThan(0);
     // Табы рендерятся
-    expect(await screen.findByRole('tab', { name: 'Таб: Ad Groups' })).toBeInTheDocument();
-    expect(await screen.findByRole('tab', { name: 'Таб: Targets' })).toBeInTheDocument();
+    expect(await screen.findByTestId('details-tab-ad_groups')).toBeInTheDocument();
+    expect(await screen.findByTestId('details-tab-targets')).toBeInTheDocument();
   });
 });
