@@ -41,6 +41,60 @@ import {
   useGlobalFilterChips,
 } from '../contexts/GlobalFiltersContext';
 import { useBooks } from '../contexts/BooksContext';
+import { BreakdownTab } from '../components/reports/BreakdownTab';
+
+type ReportTab =
+  | 'overview'
+  | 'placement'
+  | 'match_type'
+  | 'targeting_type'
+  | 'bidding_strategy'
+  | 'campaign_type';
+
+const TABS: Array<{ id: ReportTab; label: string }> = [
+  { id: 'overview', label: 'Динамика' },
+  { id: 'placement', label: 'Placement' },
+  { id: 'match_type', label: 'Match type' },
+  { id: 'targeting_type', label: 'Targeting' },
+  { id: 'bidding_strategy', label: 'Bidding strategy' },
+  { id: 'campaign_type', label: 'Campaign type' },
+];
+
+const BREAKDOWN_CONFIG: Record<
+  Exclude<ReportTab, 'overview'>,
+  { endpoint: string; pluralKey: string; dimensionLabel: string; dimensionField: string }
+> = {
+  placement: {
+    endpoint: '/api/metrics/summary/by-placement',
+    pluralKey: 'placements',
+    dimensionLabel: 'Placement',
+    dimensionField: 'placement',
+  },
+  match_type: {
+    endpoint: '/api/metrics/summary/by-match-type',
+    pluralKey: 'match_types',
+    dimensionLabel: 'Match type',
+    dimensionField: 'match_type',
+  },
+  targeting_type: {
+    endpoint: '/api/metrics/summary/by-targeting-type',
+    pluralKey: 'targeting_types',
+    dimensionLabel: 'Targeting',
+    dimensionField: 'targeting_type',
+  },
+  bidding_strategy: {
+    endpoint: '/api/metrics/summary/by-bidding-strategy',
+    pluralKey: 'bidding_strategies',
+    dimensionLabel: 'Bidding strategy',
+    dimensionField: 'bidding_strategy',
+  },
+  campaign_type: {
+    endpoint: '/api/metrics/summary/by-campaign-type',
+    pluralKey: 'campaign_types',
+    dimensionLabel: 'Campaign type',
+    dimensionField: 'campaign_type',
+  },
+};
 
 type Granularity = 'daily' | 'weekly';
 
@@ -61,6 +115,7 @@ export const ReportsPage: React.FC = () => {
   const { filters: globalFilters } = useGlobalFilters();
   const { list: booksList } = useBooks();
   const chips = useGlobalFilterChips(booksList);
+  const [tab, setTab] = useState<ReportTab>('overview');
   const [range, setRange] = useState<RangeId>('30d');
   const [granularity, setGranularity] = useState<Granularity>('weekly');
   const [daily, setDaily] = useState<DailySummary | null>(null);
@@ -187,6 +242,47 @@ export const ReportsPage: React.FC = () => {
       />
 
       <ActiveFiltersBar chips={chips} />
+
+      {/* Tabs */}
+      <div role="tablist" className="flex items-center gap-1 border-b border-zinc-200 overflow-x-auto">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            aria-label={`Таб отчётов: ${t.label}`}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={`
+              h-9 px-3 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap
+              ${tab === t.id
+                ? 'border-zinc-900 text-zinc-900'
+                : 'border-transparent text-zinc-500 hover:text-zinc-900'}
+            `}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab !== 'overview' && (
+        <BreakdownTab
+          {...BREAKDOWN_CONFIG[tab]}
+          dimensionFormat={(raw) =>
+            String(raw ?? '—').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+          }
+          from={from}
+          to={to}
+          attribution="7d"
+          marketplaces={
+            globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
+          }
+          bookIds={globalFilters.bookId != null ? [globalFilters.bookId] : undefined}
+          accounts={globalFilters.accounts.length ? globalFilters.accounts : undefined}
+        />
+      )}
+
+      {tab === 'overview' && <>
 
       <div className="grid grid-cols-4 gap-3">
         <Kpi label="Spend" value={fmtMoney(totals.spend)} loading={loading} />
@@ -449,6 +545,7 @@ export const ReportsPage: React.FC = () => {
           </>
         )}
       </Card>
+      </>}
     </div>
   );
 };

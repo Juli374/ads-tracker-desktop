@@ -24,6 +24,20 @@ const apiKeyUser: AuthUser = {
   avatar: null,
 };
 
+interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: AuthUser & {
+    can_manage_bids?: boolean;
+    can_manage_campaigns?: boolean;
+    can_create_campaigns?: boolean;
+    can_manage_negatives?: boolean;
+    can_sync_data?: boolean;
+    can_view_reports?: boolean;
+  };
+}
+
 export const authApi = {
   /**
    * Проверяет токен. Поддерживает оба формата:
@@ -39,5 +53,13 @@ export const authApi = {
     }
     const res = await apiClient.get<VerifyResponse>('/api/auth/verify');
     return res.user;
+  },
+
+  /**
+   * Email + password login. Возвращает JWT-токен и user info.
+   * Toaster в caller'е, тут только сетевая ошибка.
+   */
+  async login(email: string, password: string): Promise<LoginResponse> {
+    return apiClient.post<LoginResponse>('/api/auth/login', { email, password });
   },
 };
