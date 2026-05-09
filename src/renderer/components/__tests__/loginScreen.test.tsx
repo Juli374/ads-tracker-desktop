@@ -30,19 +30,12 @@ describe('LoginScreen', () => {
         <LoginScreen />
       </Wrap>,
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Ads Tracker' }),
-    ).toBeInTheDocument();
-    // Tabs: Email + пароль (default selected) и API-ключ
-    expect(
-      await screen.findByRole('tab', { name: 'Таб: Email' }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole('tab', { name: 'Таб: Token' }),
-    ).toBeInTheDocument();
-    // В email-режиме есть поля Email и пароль (через placeholder)
-    expect(screen.getByPlaceholderText('you@example.com')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('••••••••')).toBeInTheDocument();
+    expect(await screen.findByTestId('login-screen')).toBeInTheDocument();
+    expect(await screen.findByTestId('auth-tab-email')).toBeInTheDocument();
+    expect(await screen.findByTestId('auth-tab-token')).toBeInTheDocument();
+    // Email mode: Email and password placeholders rendered.
+    expect(screen.getByPlaceholderText('fields.emailPlaceholder')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('fields.passwordPlaceholder')).toBeInTheDocument();
   });
 
   it('переключение на Token-таб показывает textarea', async () => {
@@ -52,10 +45,10 @@ describe('LoginScreen', () => {
         <LoginScreen />
       </Wrap>,
     );
-    await screen.findByRole('heading', { name: 'Ads Tracker' });
-    await user.click(screen.getByRole('tab', { name: 'Таб: Token' }));
+    await screen.findByTestId('login-screen');
+    await user.click(screen.getByTestId('auth-tab-token'));
     expect(
-      screen.getByPlaceholderText(/at_live_/),
+      screen.getByPlaceholderText('fields.tokenPlaceholder'),
     ).toBeInTheDocument();
   });
 });

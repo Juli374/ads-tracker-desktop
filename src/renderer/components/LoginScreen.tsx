@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { KeyRound, Loader2, Mail } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../api/auth';
 import { ApiError } from '../api/client';
@@ -7,6 +8,7 @@ import { ApiError } from '../api/client';
 type Mode = 'email' | 'token';
 
 export const LoginScreen: React.FC = () => {
+  const { t } = useTranslation('auth');
   const { saveTokenAndVerify, error: ctxError } = useAuth();
   const [mode, setMode] = useState<Mode>('email');
   const [email, setEmail] = useState('');
@@ -22,13 +24,12 @@ export const LoginScreen: React.FC = () => {
     setBusy(true);
     try {
       const res = await authApi.login(email.trim(), password);
-      // Передаём JWT в общий поток — verify() сразу пройдёт.
       await saveTokenAndVerify(res.access_token);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setLocalError('Неверный email или пароль');
+        setLocalError(t('errors.invalidCredentials'));
       } else {
-        setLocalError(err instanceof Error ? err.message : 'Не удалось войти');
+        setLocalError(err instanceof Error ? err.message : t('errors.loginFailed'));
       }
     } finally {
       setBusy(false);
@@ -43,7 +44,7 @@ export const LoginScreen: React.FC = () => {
     try {
       await saveTokenAndVerify(token.trim());
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Не удалось проверить токен');
+      setLocalError(err instanceof Error ? err.message : t('errors.tokenVerifyFailed'));
     } finally {
       setBusy(false);
     }
@@ -52,7 +53,7 @@ export const LoginScreen: React.FC = () => {
   const displayError = localError ?? ctxError;
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-zinc-50">
+    <div className="h-screen w-screen flex items-center justify-center bg-zinc-50" data-testid="login-screen">
       <div className="w-full max-w-md mx-auto px-8">
         <div className="bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden">
           <div className="px-7 pt-7 pb-5 border-b border-zinc-100">
@@ -64,12 +65,10 @@ export const LoginScreen: React.FC = () => {
               )}
             </div>
             <h1 className="text-base font-semibold text-zinc-900 tracking-tight">
-              Ads Tracker
+              {t('appName')}
             </h1>
             <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
-              {mode === 'email'
-                ? 'Войди email + паролем (как на сайте). Токен сохранится в системном keychain.'
-                : 'Вставь API-ключ at_live_… с веб-версии (Настройки → API Ключи).'}
+              {mode === 'email' ? t('intro.email') : t('intro.token')}
             </p>
           </div>
 
@@ -78,8 +77,9 @@ export const LoginScreen: React.FC = () => {
               <button
                 key={m}
                 role="tab"
+                data-testid={`auth-tab-${m}`}
                 aria-selected={mode === m}
-                aria-label={`Таб: ${m === 'email' ? 'Email' : 'Token'}`}
+                aria-label={m === 'email' ? t('tabs.ariaEmail') : t('tabs.ariaToken')}
                 type="button"
                 onClick={() => {
                   setMode(m);
@@ -92,30 +92,30 @@ export const LoginScreen: React.FC = () => {
                     : 'border-transparent text-zinc-500 hover:text-zinc-900'}
                 `}
               >
-                {m === 'email' ? 'Email + пароль' : 'API-ключ'}
+                {m === 'email' ? t('tabs.email') : t('tabs.token')}
               </button>
             ))}
           </div>
 
           {mode === 'email' ? (
             <form onSubmit={onEmailSubmit} className="px-7 py-6 space-y-4">
-              <Field label="Email">
+              <Field label={t('fields.email')}>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t('fields.emailPlaceholder')}
                   autoComplete="email"
                   required
                   className={inputClass}
                 />
               </Field>
-              <Field label="Пароль">
+              <Field label={t('fields.password')}>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('fields.passwordPlaceholder')}
                   autoComplete="current-password"
                   required
                   className={inputClass}
@@ -130,16 +130,16 @@ export const LoginScreen: React.FC = () => {
                 className={submitClass}
               >
                 {busy && <Loader2 size={14} className="animate-spin" />}
-                {busy ? 'Входим…' : 'Войти'}
+                {busy ? t('actions.signingIn') : t('actions.signIn')}
               </button>
             </form>
           ) : (
             <form onSubmit={onTokenSubmit} className="px-7 py-6 space-y-4">
-              <Field label="Access token">
+              <Field label={t('fields.token')}>
                 <textarea
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
-                  placeholder="at_live_xxxxxxxxxxxxxxxx..."
+                  placeholder={t('fields.tokenPlaceholder')}
                   rows={4}
                   spellCheck={false}
                   className={`${inputClass} font-mono resize-none`}
@@ -150,18 +150,14 @@ export const LoginScreen: React.FC = () => {
 
               <button type="submit" disabled={busy || !token.trim()} className={submitClass}>
                 {busy && <Loader2 size={14} className="animate-spin" />}
-                {busy ? 'Проверяем…' : 'Войти'}
+                {busy ? t('actions.verifying') : t('actions.signIn')}
               </button>
             </form>
           )}
         </div>
 
         <div className="mt-4 text-[11px] text-zinc-400 leading-relaxed text-center">
-          {mode === 'email' ? (
-            <>Нет аккаунта? Регистрация на kdpbook.click.</>
-          ) : (
-            <>Создай ключ на kdpbook.click → Настройки → API Ключи.</>
-          )}
+          {mode === 'email' ? t('footer.noAccount') : t('footer.createKey')}
         </div>
       </div>
     </div>
