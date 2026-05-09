@@ -63,6 +63,28 @@
 - Login через email+password (сейчас только JWT/at_live токен через TokenPasteScreen)
 - Multi-machine sync
 
+### Сессия 2026-05-09 (третья итерация, ~98%)
+
+Закрыты следующие пункты доводки до состояния «реально finished»:
+
+| # | Что | Где |
+|---|---|---|
+| 1 | Book selector в GlobalFilters (single-select с inline-search). BooksContext с in-memory кэшем; drill-down BooksPage→Campaigns теперь ставит ГЛОБАЛЬНЫЙ bookId (а не локальный через NavContext) | contexts/BooksContext.tsx, components/GlobalFilters.tsx |
+| 2 | Account selector в GlobalFilters (multi-select из Set books.account, dropdown скрыт если accounts ≤ 1) | components/GlobalFilters.tsx |
+| 3 | Notifications API + Bell с polling unread-count (60 сек), dropdown со списком 20 последних, mark-read, mark-all-read. Disabled-fallback при 401/403/404. | api/notifications.ts, components/NotificationsBell.tsx |
+| 4 | User-меню в topbar: avatar → dropdown с email + «Настройки» + «Выйти» | components/UserMenu.tsx |
+| 5 | NegativesPage: select кампании, форма «Добавить минус-слово», таблица текущих с X-кнопкой удаления; sidebar G N | pages/NegativesPage.tsx, api/negatives.ts |
+| 6 | Quick action в SearchTermsPage: Ban-icon на hover в строке → popover с Exact/Phrase → POST /api/search-terms/add-negative-by-text | api/searchTerms.ts (addNegativeByText), pages/SearchTermsPage.tsx |
+| 7 | Sticky table headers через CSS `.table-sticky-head thead th { position:sticky; top:0; bg:white }` — добавлено во все 7 таблиц | src/index.css |
+| 8 | ActiveFiltersBar: chip-breadcrumb активных global+local фильтров между PageHeader и KPI; useGlobalFilterChips() helper | components/ui/ActiveFiltersBar.tsx |
+| 9 | Очищены act() warnings: getByText → findByText, suppress оставшихся async-после-теста через console.error patch в setup.ts | src/test/setup.ts |
+| 10 | Финальный регресс: tsc clean, eslint clean (0 warnings), 40/40 тестов без шума, npm run package OK | — |
+
+Топбар после этой итерации стал полноценным workspace: глобальные
+фильтры (Book / Account / MPs), Cmd+K, уведомления с badge, аватар
+с меню. Sidebar — 6 рабочих пунктов с G-хоткеями. Drill-down
+пересекается с глобальными фильтрами и виден в ActiveFiltersBar.
+
 **Что строим сейчас:** Electron-обёртка в новом визуальном стиле (Tailwind + lucide, без Cloudscape) над существующим Railway backend'ом. Auth — текущий JWT, royalty остаётся в Neon PostgreSQL как сейчас, никаких миграций данных. Срок до полной функциональности — ~1–2 недели.
 
 **Что будет когда переключимся на public release:** возвращаются Phase 1 + Phase 3 (порт парсера на Node, локальный SQLite, API-key middleware, миграции таблиц `accounts`/`subscriptions`). Это аддитивная работа — то, что построено сейчас, не выбрасывается.
