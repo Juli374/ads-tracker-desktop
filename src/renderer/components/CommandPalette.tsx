@@ -6,6 +6,7 @@ import {
   Target,
   FileText,
   Settings,
+  Ban,
   RefreshCw,
   LogOut,
   Copy,
@@ -81,6 +82,13 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
         hint: 'G R',
         icon: FileText,
         onRun: goto('reports'),
+      },
+      {
+        id: 'go-negatives',
+        label: 'Перейти на Минус-слова',
+        hint: 'G N',
+        icon: Ban,
+        onRun: goto('negatives'),
       },
       {
         id: 'go-settings',

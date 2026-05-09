@@ -6,6 +6,7 @@ import {
   Target,
   FileText,
   Settings,
+  Ban,
   Command,
 } from 'lucide-react';
 
@@ -15,6 +16,7 @@ import { SearchTermsPage } from '../pages/SearchTermsPage';
 import { CampaignsPage } from '../pages/CampaignsPage';
 import { ReportsPage } from '../pages/ReportsPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { NegativesPage } from '../pages/NegativesPage';
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
@@ -33,6 +35,7 @@ const mainNav: NavItem[] = [
   { id: 'books', label: 'Книги', icon: BookOpen, shortcut: 'G B' },
   { id: 'search_terms', label: 'Поисковые запросы', icon: Search, shortcut: 'G S' },
   { id: 'campaigns', label: 'Кампании', icon: Target, shortcut: 'G C' },
+  { id: 'negatives', label: 'Минус-слова', icon: Ban, shortcut: 'G N' },
   { id: 'reports', label: 'Отчёты', icon: FileText, shortcut: 'G R' },
 ];
 
@@ -55,6 +58,7 @@ const HOTKEY_MAP: Record<string, ViewId> = {
   s: 'search_terms',
   c: 'campaigns',
   r: 'reports',
+  n: 'negatives',
 };
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -125,6 +129,8 @@ const Layout: React.FC = () => {
         return <CampaignsPage />;
       case 'reports':
         return <ReportsPage />;
+      case 'negatives':
+        return <NegativesPage />;
       case 'settings':
         return <SettingsPage />;
     }

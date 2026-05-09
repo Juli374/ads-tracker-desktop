@@ -13,6 +13,7 @@ export type ViewId =
   | 'search_terms'
   | 'campaigns'
   | 'reports'
+  | 'negatives'
   | 'settings';
 
 // Filters, которые могут передаваться при drill-down между страницами.
