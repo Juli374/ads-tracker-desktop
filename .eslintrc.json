@@ -12,5 +12,31 @@
     "plugin:import/electron",
     "plugin:import/typescript"
   ],
-  "parser": "@typescript-eslint/parser"
+  "parser": "@typescript-eslint/parser",
+  "overrides": [
+    {
+      "files": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx"],
+      "excludedFiles": [
+        "src/renderer/**/__tests__/**",
+        "src/renderer/i18n/resources/ru/**"
+      ],
+      "rules": {
+        "no-restricted-syntax": [
+          "warn",
+          {
+            "selector": "Literal[value=/[\\u0400-\\u04FF\\u0500-\\u052F]/]",
+            "message": "Кириллица в renderer запрещена. Используй t() из i18n. После Phase A.4 правило переключится на error."
+          },
+          {
+            "selector": "JSXText[value=/[\\u0400-\\u04FF\\u0500-\\u052F]/]",
+            "message": "Кириллица в JSX запрещена. Оберни в t() из i18n. После Phase A.4 правило переключится на error."
+          },
+          {
+            "selector": "TemplateElement[value.raw=/[\\u0400-\\u04FF\\u0500-\\u052F]/]",
+            "message": "Кириллица в template literal запрещена. Используй t() из i18n. После Phase A.4 правило переключится на error."
+          }
+        ]
+      }
+    }
+  ]
 }
