@@ -39,7 +39,7 @@ describe('drill-down navigation', () => {
     await screen.findByTestId('dashboard-page');
     await user.click(screen.getByTestId('nav-books'));
 
-    await screen.findByRole('heading', { name: 'Книги' });
+    await screen.findByTestId('books-page');
     const bookCell = await screen.findByText('Test Book');
     await user.click(bookCell);
 

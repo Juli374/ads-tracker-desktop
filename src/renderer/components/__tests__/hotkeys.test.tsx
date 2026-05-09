@@ -41,7 +41,7 @@ describe('keyboard hotkeys', () => {
     await user.keyboard('g');
     await user.keyboard('b');
 
-    expect(await screen.findByRole('heading', { name: 'Книги' })).toBeInTheDocument();
+    expect(await screen.findByTestId('books-page')).toBeInTheDocument();
   });
 
   it('g+c переключает на Campaigns', async () => {

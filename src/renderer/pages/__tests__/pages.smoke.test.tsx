@@ -56,7 +56,7 @@ describe('page smoke renders', () => {
         <BooksPage />
       </Wrap>,
     );
-    expect(await screen.findByRole('heading', { name: 'Книги' })).toBeInTheDocument();
+    expect(await screen.findByTestId('books-page')).toBeInTheDocument();
     expect(await screen.findByText('Test Book')).toBeInTheDocument();
   });
 

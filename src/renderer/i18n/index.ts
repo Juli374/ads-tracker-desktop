@@ -6,6 +6,7 @@ import enCommon from './resources/en/common.json';
 import enNav from './resources/en/nav.json';
 import enDashboard from './resources/en/dashboard.json';
 import enCampaigns from './resources/en/campaigns.json';
+import enBooks from './resources/en/books.json';
 
 void i18next
   .use(ICU)
@@ -14,13 +15,14 @@ void i18next
     lng: 'en',
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['common', 'nav', 'dashboard', 'campaigns'],
+    ns: ['common', 'nav', 'dashboard', 'campaigns', 'books'],
     resources: {
       en: {
         common: enCommon,
         nav: enNav,
         dashboard: enDashboard,
         campaigns: enCampaigns,
+        books: enBooks,
       },
     },
     interpolation: { escapeValue: false },

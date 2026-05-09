@@ -1,0 +1,28 @@
+{
+  "title": "Books",
+  "subtitle": {
+    "withDates": "{from} → {to} · {count, plural, one {# book} other {# books}}",
+    "loading": "Loading…"
+  },
+  "loadFailed": "Failed to load data",
+  "kpi": {
+    "books": "Books"
+  },
+  "card": {
+    "title": "By book"
+  },
+  "empty": {
+    "search": "No matches.",
+    "noData": "No data for the selected period."
+  },
+  "th": {
+    "book": "Book"
+  },
+  "row": {
+    "openCampaigns": "Open campaigns for this book",
+    "openCampaignsForMp": "Open campaigns for this book in this MP",
+    "expandAria": "Expand marketplaces",
+    "collapseAria": "Collapse"
+  },
+  "search": "Search…"
+}

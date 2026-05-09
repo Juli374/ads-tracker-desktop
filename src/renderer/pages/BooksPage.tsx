@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { ApiError } from '../api/client';
 import { metricsApi, BookMetric, BookSummary } from '../api/metrics';
@@ -41,6 +42,7 @@ interface BookGroup {
 type SortKey = 'spend' | 'sales' | 'orders' | 'acos';
 
 export const BooksPage: React.FC = () => {
+  const { t } = useTranslation('books');
   const toast = useToast();
   const { navigate } = useNav();
   const { filters: globalFilters, setBookId } = useGlobalFilters();
@@ -71,12 +73,12 @@ export const BooksPage: React.FC = () => {
         });
         setSummary(data);
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить данные');
+        toast.error(err instanceof ApiError ? err.message : t('loadFailed'));
       } finally {
         setLoading(false);
       }
     },
-    [from, to, toast, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
+    [from, to, toast, t, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
   );
 
   useEffect(() => {
@@ -166,15 +168,17 @@ export const BooksPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="books-page">
       <PageHeader
-        title="Книги"
+        title={t('title')}
         subtitle={
           summary
-            ? `${summary.date_from} → ${summary.date_to} · ${groups.length} ${
-                groups.length === 1 ? 'книга' : 'книг'
-              }`
-            : 'Загрузка…'
+            ? t('subtitle.withDates', {
+                from: summary.date_from,
+                to: summary.date_to,
+                count: groups.length,
+              })
+            : t('subtitle.loading')
         }
         rightSlot={
           <RangePicker
@@ -190,7 +194,7 @@ export const BooksPage: React.FC = () => {
       <ActiveFiltersBar chips={chips} />
 
       <div className="grid grid-cols-4 gap-3">
-        <Kpi label="Книг" value={fmtNumber(filtered.length)} loading={loading} />
+        <Kpi label={t('kpi.books')} value={fmtNumber(filtered.length)} loading={loading} />
         <Kpi label="Spend" value={fmtMoney(totals.cost)} loading={loading} />
         <Kpi label="Orders" value={fmtNumber(totals.orders)} loading={loading} />
         <Kpi
@@ -202,7 +206,7 @@ export const BooksPage: React.FC = () => {
       </div>
 
       <Card
-        title="По книгам"
+        title={t('card.title')}
         rightSlot={
           <div className="flex items-center gap-2">
             <SortControl value={sortKey} onChange={setSortKey} />
@@ -214,13 +218,13 @@ export const BooksPage: React.FC = () => {
           <LoadingRow />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title={search ? 'Ничего не нашлось.' : 'Нет данных за выбранный период.'}
+            title={search ? t('empty.search') : t('empty.noData')}
           />
         ) : (
           <table className="w-full text-sm table-sticky-head">
             <thead>
               <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-2 font-medium">Книга</th>
+                <th className="text-left px-5 py-2 font-medium">{t('th.book')}</th>
                 <th className="text-left px-3 py-2 font-medium">MPs</th>
                 <th className="text-right px-3 py-2 font-medium">Spend</th>
                 <th className="text-right px-3 py-2 font-medium">Sales</th>
@@ -259,13 +263,14 @@ const BookGroupRows: React.FC<{
   onToggle: () => void;
   onDrillDown: (marketplace?: string) => void;
 }> = ({ group, expanded, onToggle, onDrillDown }) => {
+  const { t } = useTranslation('books');
   const Chevron = expanded ? ChevronDown : ChevronRight;
   return (
     <>
       <tr
         className="border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
         onClick={() => onDrillDown()}
-        title="Открыть кампании этой книги"
+        title={t('row.openCampaigns')}
       >
         <td className="px-5 py-2.5">
           <div className="flex items-center gap-2.5">
@@ -275,8 +280,8 @@ const BookGroupRows: React.FC<{
                 onToggle();
               }}
               className="flex-shrink-0 p-0.5 -m-0.5 rounded hover:bg-zinc-200 transition-colors"
-              title={expanded ? 'Свернуть' : 'Раскрыть маркетплейсы'}
-              aria-label={expanded ? 'Свернуть' : 'Раскрыть маркетплейсы'}
+              title={expanded ? t('row.collapseAria') : t('row.expandAria')}
+              aria-label={expanded ? t('row.collapseAria') : t('row.expandAria')}
             >
               <Chevron size={14} className="text-zinc-400" />
             </button>
@@ -326,7 +331,7 @@ const BookGroupRows: React.FC<{
             key={`${row.book_id}-${row.marketplace}`}
             className="border-t border-zinc-100 bg-zinc-50/40 hover:bg-zinc-100/60 cursor-pointer transition-colors"
             onClick={() => onDrillDown(row.marketplace ?? undefined)}
-            title="Открыть кампании этой книги в этом MP"
+            title={t('row.openCampaignsForMp')}
           >
             <td className="pl-14 pr-5 py-2 text-[11px] text-zinc-600">
               <span className="font-mono uppercase">{row.marketplace || '—'}</span>
@@ -361,7 +366,9 @@ const BookGroupRows: React.FC<{
 const SearchInput: React.FC<{ value: string; onChange: (v: string) => void }> = ({
   value,
   onChange,
-}) => (
+}) => {
+  const { t } = useTranslation('books');
+  return (
   <div className="relative">
     <Search
       size={12}
@@ -371,7 +378,7 @@ const SearchInput: React.FC<{ value: string; onChange: (v: string) => void }> = 
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder="Поиск…"
+      placeholder={t('search')}
       className="
         w-44 h-7 pl-7 pr-2 text-xs rounded-md
         border border-zinc-200 bg-white
@@ -380,7 +387,8 @@ const SearchInput: React.FC<{ value: string; onChange: (v: string) => void }> = 
       "
     />
   </div>
-);
+  );
+};
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'spend', label: 'Spend' },
