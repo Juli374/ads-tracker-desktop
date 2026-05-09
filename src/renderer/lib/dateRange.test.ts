@@ -43,4 +43,10 @@ describe('dateRangeFor', () => {
     expect(to).toBe('2026-05-15');
     expect(from).toBe('2026-01-01');
   });
+
+  it('lastMonth covers the full previous calendar month', () => {
+    const { from, to } = dateRangeFor('lastMonth');
+    expect(from).toBe('2026-04-01');
+    expect(to).toBe('2026-04-30');
+  });
 });

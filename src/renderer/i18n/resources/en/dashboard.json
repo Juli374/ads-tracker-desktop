@@ -5,6 +5,31 @@
     "loading": "Loading…"
   },
   "loadFailed": "Failed to load data",
+  "quickPeriod": {
+    "last30": "Last 30",
+    "thisMonth": "This month",
+    "lastMonth": "Last month",
+    "custom": "Custom"
+  },
+  "organicPaid": {
+    "title": "Organic vs Paid",
+    "loading": "Loading…",
+    "empty": "No data for this period",
+    "organic": "Organic",
+    "paid": "Paid",
+    "ordersSuffix": "orders",
+    "perMarketplace": "Per marketplace"
+  },
+  "kpi": {
+    "profit": "Profit",
+    "acos": "ACOS",
+    "sales": "Sales",
+    "spend": "Spend",
+    "royalty": "Royalty",
+    "orders": "Orders",
+    "tacos": "TACoS",
+    "roas": "ROAS"
+  },
   "metrics": {
     "limitReached": "Maximum 6 metrics at once",
     "clickHint": "click a metric — line on the chart (max 6)"

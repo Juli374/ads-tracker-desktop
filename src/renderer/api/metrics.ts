@@ -316,6 +316,30 @@ export interface AlertsResponse {
 }
 
 // ============================================================================
+// Organic vs Paid (Dashboard)
+// ============================================================================
+
+export interface OrganicTotalRow {
+  marketplace: string;
+  organic_orders: number;
+  paid_orders: number;
+  total_orders: number;
+  organic_share?: number;
+  paid_share?: number;
+}
+
+export interface OrganicTotalSummary {
+  date_from: string;
+  date_to: string;
+  attribution_window: string;
+  total_organic_orders: number;
+  total_paid_orders: number;
+  total_orders: number;
+  marketplaces: OrganicTotalRow[];
+  error?: string;
+}
+
+// ============================================================================
 // Common types
 // ============================================================================
 
@@ -415,6 +439,15 @@ export const metricsApi = {
 
   alerts(params: RangeParams & BookFilters = {}): Promise<AlertsResponse> {
     return apiClient.get<AlertsResponse>('/api/alerts', buildSummaryQuery(params));
+  },
+
+  summaryOrganicTotal(
+    params: RangeParams & BookFilters = {},
+  ): Promise<OrganicTotalSummary> {
+    return apiClient.get<OrganicTotalSummary>(
+      '/api/metrics/summary/organic-total',
+      buildSummaryQuery(params),
+    );
   },
 
   summaryByKeyword(

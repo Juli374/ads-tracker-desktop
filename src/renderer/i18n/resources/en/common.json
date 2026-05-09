@@ -80,7 +80,8 @@
     "30d": "30 days",
     "90d": "90 days",
     "mtd": "MTD",
-    "ytd": "YTD"
+    "ytd": "YTD",
+    "lastMonth": "Last month"
   },
   "rangePicker": {
     "refresh": "Refresh",

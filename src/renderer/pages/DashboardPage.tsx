@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DollarSign, ShoppingCart, Target as TargetIcon, TrendingDown } from 'lucide-react';
+import {
+  BookOpen,
+  DollarSign,
+  Package,
+  Percent,
+  PiggyBank,
+  ShoppingCart,
+  Target as TargetIcon,
+  TrendingDown,
+} from 'lucide-react';
 import {
   metricsApi,
   type BookMetric,
@@ -22,6 +31,7 @@ import {
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { useSessionState } from '../lib/useSessionState';
 import { useToast } from '../contexts/ToastContext';
 import {
   useGlobalFilters,
@@ -33,6 +43,13 @@ import { TopPerformers } from '../components/dashboard/TopPerformers';
 import { MarketplaceDistribution } from '../components/dashboard/MarketplaceDistribution';
 import { FunnelChart } from '../components/dashboard/FunnelChart';
 import { AlertsWidget } from '../components/dashboard/AlertsWidget';
+import {
+  QuickPeriod,
+  QuickPeriodSegment,
+  quickFromRange,
+  rangeFromQuick,
+} from '../components/dashboard/QuickPeriodSegment';
+import { OrganicPaidBlock } from '../components/dashboard/OrganicPaidBlock';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation('dashboard');
@@ -41,7 +58,23 @@ export const DashboardPage: React.FC = () => {
   const { list: booksList } = useBooks();
   const chips = useGlobalFilterChips(booksList);
 
-  const [range, setRange] = useState<RangeId>('30d');
+  const [quickPeriod, setQuickPeriod] = useSessionState<QuickPeriod>(
+    'dashboard:quickPeriod',
+    'thisMonth',
+  );
+  const [customRange, setCustomRange] = useState<RangeId>('30d');
+  const range: RangeId = rangeFromQuick(quickPeriod) ?? customRange;
+  const setRange = (r: RangeId) => {
+    setCustomRange(r);
+    setQuickPeriod(quickFromRange(r));
+  };
+
+  const handleQuickChange = (next: QuickPeriod) => {
+    setQuickPeriod(next);
+    const mapped = rangeFromQuick(next);
+    if (mapped) setCustomRange(mapped);
+  };
+
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<OverviewMetrics | null>(null);
   const [daily, setDaily] = useState<DailySummary | null>(null);
@@ -135,13 +168,16 @@ export const DashboardPage: React.FC = () => {
         title={t('title')}
         subtitle={subtitle}
         rightSlot={
-          <RangePicker
-            value={range}
-            onChange={setRange}
-            onRefresh={() => load()}
-            refreshing={loading}
-            autoRefresh={{ storageKey: 'auto-refresh-dashboard' }}
-          />
+          <div className="flex items-center gap-2">
+            <QuickPeriodSegment value={quickPeriod} onChange={handleQuickChange} />
+            <RangePicker
+              value={range}
+              onChange={setRange}
+              onRefresh={() => load()}
+              refreshing={loading}
+              autoRefresh={{ storageKey: 'auto-refresh-dashboard' }}
+            />
+          </div>
         }
       />
 
@@ -149,7 +185,7 @@ export const DashboardPage: React.FC = () => {
 
       <div className="grid grid-cols-4 gap-3">
         <KpiDelta
-          label="Profit"
+          label={t('kpi.profit')}
           value={fmtMoney(cur?.profit)}
           change={ch?.profit}
           loading={loading && !overview}
@@ -157,7 +193,7 @@ export const DashboardPage: React.FC = () => {
           icon={<DollarSign size={14} />}
         />
         <KpiDelta
-          label="ACOS"
+          label={t('kpi.acos')}
           value={cur?.acos != null && cur.acos > 0 ? fmtPct(cur.acos) : '—'}
           change={ch?.acos}
           inverseChange
@@ -166,19 +202,52 @@ export const DashboardPage: React.FC = () => {
           icon={<TrendingDown size={14} />}
         />
         <KpiDelta
-          label="Sales"
+          label={t('kpi.sales')}
           value={fmtMoney(cur?.sales)}
           change={ch?.sales}
           loading={loading && !overview}
           icon={<ShoppingCart size={14} />}
         />
         <KpiDelta
-          label="Spend"
+          label={t('kpi.spend')}
           value={fmtMoney(cur?.spend)}
           change={ch?.spend}
           inverseChange
           loading={loading && !overview}
           icon={<TargetIcon size={14} />}
+        />
+        <KpiDelta
+          label={t('kpi.royalty')}
+          value={fmtMoney(cur?.royalty)}
+          change={ch?.royalty}
+          loading={loading && !overview}
+          icon={<BookOpen size={14} />}
+        />
+        <KpiDelta
+          label={t('kpi.orders')}
+          value={fmtNumber(cur?.orders)}
+          change={ch?.orders}
+          loading={loading && !overview}
+          icon={<Package size={14} />}
+        />
+        <KpiDelta
+          label={t('kpi.tacos')}
+          value={cur?.tacos != null && cur.tacos > 0 ? fmtPct(cur.tacos) : '—'}
+          change={ch?.tacos}
+          inverseChange
+          loading={loading && !overview}
+          icon={<Percent size={14} />}
+        />
+        <KpiDelta
+          label={t('kpi.roas')}
+          value={
+            cur?.roas != null && cur.roas > 0
+              ? `${cur.roas.toFixed(2)}×`
+              : '—'
+          }
+          change={ch?.roas}
+          loading={loading && !overview}
+          icon={<PiggyBank size={14} />}
         />
       </div>
 
@@ -221,6 +290,15 @@ export const DashboardPage: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      <OrganicPaidBlock
+        from={from}
+        to={to}
+        attribution="7d"
+        marketplaces={filterParams.marketplaces}
+        bookIds={filterParams.bookIds}
+        accounts={filterParams.accounts}
+      />
 
       <Card title={t('cards.marketplaceShare')} bodyClassName="px-5 py-4">
         <MarketplaceDistribution summary={mpSummary} loading={loading && !mpSummary} />

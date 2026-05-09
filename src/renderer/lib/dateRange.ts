@@ -1,10 +1,10 @@
 import { formatDate } from './format';
 
-export type RangeId = '7d' | '30d' | '90d' | 'mtd' | 'ytd';
+export type RangeId = '7d' | '30d' | '90d' | 'mtd' | 'ytd' | 'lastMonth';
 
 // Список id'ов диапазона. Метки берутся через t(`ranges.${id}`) из common.json
 // в местах использования (RangePicker, ComparisonPage).
-export const RANGE_IDS: RangeId[] = ['7d', '30d', '90d', 'mtd', 'ytd'];
+export const RANGE_IDS: RangeId[] = ['7d', '30d', '90d', 'mtd', 'ytd', 'lastMonth'];
 
 export interface RangeOption {
   id: RangeId;
@@ -28,6 +28,11 @@ export function dateRangeFor(range: RangeId): { from: string; to: string } {
   if (range === 'ytd') {
     const first = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
     return { from: formatDate(first), to };
+  }
+  if (range === 'lastMonth') {
+    const first = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+    const last = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 0));
+    return { from: formatDate(first), to: formatDate(last) };
   }
   const days = range === '7d' ? 7 : range === '30d' ? 30 : 90;
   const from = new Date(today);
