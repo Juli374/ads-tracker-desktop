@@ -43,9 +43,16 @@ import {
 } from '../contexts/GlobalFiltersContext';
 import { useBooks } from '../contexts/BooksContext';
 import { BreakdownTab } from '../components/reports/BreakdownTab';
+import { MatrixTab } from '../components/reports/MatrixTab';
 
 type ReportTab =
   | 'overview'
+  | 'marketplace'
+  | 'account'
+  | 'book'
+  | 'campaign'
+  | 'keyword'
+  | 'matrix'
   | 'placement'
   | 'match_type'
   | 'targeting_type'
@@ -54,6 +61,12 @@ type ReportTab =
 
 const TAB_IDS: ReportTab[] = [
   'overview',
+  'marketplace',
+  'account',
+  'book',
+  'campaign',
+  'keyword',
+  'matrix',
   'placement',
   'match_type',
   'targeting_type',
@@ -62,9 +75,34 @@ const TAB_IDS: ReportTab[] = [
 ];
 
 const BREAKDOWN_CONFIG: Record<
-  Exclude<ReportTab, 'overview'>,
+  Exclude<ReportTab, 'overview' | 'matrix'>,
   { endpoint: string; pluralKey: string; dimensionField: string }
 > = {
+  marketplace: {
+    endpoint: '/api/metrics/summary/by-marketplace',
+    pluralKey: 'marketplaces',
+    dimensionField: 'key',
+  },
+  account: {
+    endpoint: '/api/metrics/summary/by-account',
+    pluralKey: 'accounts',
+    dimensionField: 'account',
+  },
+  book: {
+    endpoint: '/api/metrics/summary/by-book',
+    pluralKey: 'books',
+    dimensionField: 'title',
+  },
+  campaign: {
+    endpoint: '/api/metrics/summary/by-campaign',
+    pluralKey: 'campaigns',
+    dimensionField: 'campaign_name',
+  },
+  keyword: {
+    endpoint: '/api/metrics/summary/by-keyword',
+    pluralKey: 'keywords',
+    dimensionField: 'keyword_text',
+  },
   placement: {
     endpoint: '/api/metrics/summary/by-placement',
     pluralKey: 'placements',
@@ -272,13 +310,28 @@ export const ReportsPage: React.FC = () => {
         })}
       </div>
 
-      {tab !== 'overview' && (
+      {tab !== 'overview' && tab !== 'matrix' && (
         <BreakdownTab
           {...BREAKDOWN_CONFIG[tab]}
           dimensionLabel={t(`tabs.${tab}` as 'tabs.placement')}
           dimensionFormat={(raw) =>
-            String(raw ?? '—').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+            String(raw ?? '—')
+              .replace(/_/g, ' ')
+              .replace(/\b\w/g, (c) => c.toUpperCase())
           }
+          from={from}
+          to={to}
+          attribution="7d"
+          marketplaces={
+            globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
+          }
+          bookIds={globalFilters.bookId != null ? [globalFilters.bookId] : undefined}
+          accounts={globalFilters.accounts.length ? globalFilters.accounts : undefined}
+        />
+      )}
+
+      {tab === 'matrix' && (
+        <MatrixTab
           from={from}
           to={to}
           attribution="7d"

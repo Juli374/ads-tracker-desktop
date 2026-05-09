@@ -10,11 +10,34 @@
   "tabs": {
     "ariaLabel": "Reports tab: {label}",
     "overview": "Overview",
+    "marketplace": "Marketplace",
+    "account": "Account",
+    "book": "Book",
+    "campaign": "Campaign",
+    "keyword": "Keyword",
+    "matrix": "Matrix",
     "placement": "Placement",
     "match_type": "Match type",
     "targeting_type": "Targeting",
     "bidding_strategy": "Bidding strategy",
     "campaign_type": "Campaign type"
+  },
+  "matrix": {
+    "title": "Books × Marketplaces matrix",
+    "loading": "Loading…",
+    "loadFailed": "Failed to load matrix",
+    "empty": "No data for this period",
+    "th": {
+      "book": "Book",
+      "total": "Total"
+    },
+    "metric": {
+      "label": "Metric",
+      "spend": "Spend",
+      "sales": "Sales",
+      "orders": "Orders",
+      "acos": "ACOS"
+    }
   },
   "kpi": {
     "spend": "Spend",
