@@ -1,12 +1,13 @@
 import React from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { MarketplacesProvider } from './contexts/MarketplacesContext';
 import { BooksProvider } from './contexts/BooksContext';
 import { GlobalFiltersProvider } from './contexts/GlobalFiltersContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './components/MainLayout';
-import { TokenPasteScreen } from './components/TokenPasteScreen';
+import { LoginScreen } from './components/LoginScreen';
 import { Loader2 } from 'lucide-react';
 
 const Gate: React.FC = () => {
@@ -19,22 +20,24 @@ const Gate: React.FC = () => {
       </div>
     );
   }
-  if (status === 'unauthenticated') return <TokenPasteScreen />;
+  if (status === 'unauthenticated') return <LoginScreen />;
   return <MainLayout />;
 };
 
 export const App: React.FC = () => (
   <ErrorBoundary>
-    <ToastProvider>
-      <AuthProvider>
-        <MarketplacesProvider>
-          <BooksProvider>
-            <GlobalFiltersProvider>
-              <Gate />
-            </GlobalFiltersProvider>
-          </BooksProvider>
-        </MarketplacesProvider>
-      </AuthProvider>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <MarketplacesProvider>
+            <BooksProvider>
+              <GlobalFiltersProvider>
+                <Gate />
+              </GlobalFiltersProvider>
+            </BooksProvider>
+          </MarketplacesProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   </ErrorBoundary>
 );

@@ -13,6 +13,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Card, PageHeader } from '../components/ui';
+import { AmazonAdsSection } from '../components/AmazonAdsSection';
+import { UpdateChecker } from '../components/UpdateChecker';
 import { AppInfo } from '../../shared/ipc';
 
 interface ConnectionInfo {
@@ -144,6 +146,12 @@ export const SettingsPage: React.FC = () => {
           }
         />
       </Card>
+
+      {/* Amazon Ads OAuth + profiles */}
+      <AmazonAdsSection />
+
+      {/* Auto-update scaffold */}
+      <UpdateChecker />
 
       {/* Backend connection */}
       <Card title="Backend">

@@ -2,6 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
+/* === Dark theme === */
+/* Подход: переопределяем самые-часто-используемые Tailwind-утилиты через .dark
+   селектор. Это позволяет включить тёмную тему без правки сотен файлов —
+   `bg-white`, `text-zinc-900`, `border-zinc-200` и т.п. сами адаптируются.
+   Минус: Tailwind opacity-модификаторы (bg-zinc-50/60) теряют opacity в dark.
+   Для первого прохода допустимо. */
+@layer utilities {
+  /* Surfaces (фон) */
+  .dark .bg-white       { background-color: rgb(24 24 27); }   /* zinc-900 */
+  .dark .bg-zinc-50     { background-color: rgb(39 39 42); }   /* zinc-800 */
+  .dark .bg-zinc-100    { background-color: rgb(63 63 70); }   /* zinc-700 */
+  .dark .bg-zinc-50\/40 { background-color: rgb(39 39 42 / 0.4); }
+  .dark .bg-zinc-50\/60 { background-color: rgb(39 39 42 / 0.6); }
+  .dark .bg-zinc-50\/80 { background-color: rgb(39 39 42 / 0.8); }
+  .dark .bg-zinc-100\/40 { background-color: rgb(63 63 70 / 0.4); }
+  .dark .bg-zinc-200    { background-color: rgb(82 82 91); }   /* zinc-600 */
+  .dark .bg-zinc-900    { background-color: rgb(228 228 231); } /* zinc-200 — для inverted-кнопок */
+  .dark .bg-zinc-800    { background-color: rgb(212 212 216); } /* zinc-300 */
+
+  /* Text */
+  .dark .text-zinc-900  { color: rgb(244 244 245); }  /* zinc-100 */
+  .dark .text-zinc-800  { color: rgb(228 228 231); }  /* zinc-200 */
+  .dark .text-zinc-700  { color: rgb(212 212 216); }  /* zinc-300 */
+  .dark .text-zinc-600  { color: rgb(161 161 170); }  /* zinc-400 */
+  .dark .text-zinc-500  { color: rgb(161 161 170); }
+  .dark .text-zinc-400  { color: rgb(113 113 122); }  /* zinc-500 */
+  .dark .text-zinc-300  { color: rgb(82 82 91); }     /* zinc-600 */
+  .dark .text-white     { color: rgb(24 24 27); }     /* для inverted-кнопок */
+
+  /* Borders */
+  .dark .border-zinc-100 { border-color: rgb(39 39 42); }
+  .dark .border-zinc-200 { border-color: rgb(63 63 70); }
+  .dark .border-zinc-300 { border-color: rgb(82 82 91); }
+
+  /* Hover-states (часто .hover\:bg-zinc-50/100) */
+  .dark .hover\:bg-zinc-50:hover  { background-color: rgb(39 39 42); }
+  .dark .hover\:bg-zinc-100:hover { background-color: rgb(63 63 70); }
+  .dark .hover\:bg-zinc-200:hover { background-color: rgb(82 82 91); }
+  .dark .hover\:bg-zinc-800:hover { background-color: rgb(212 212 216); }
+  .dark .hover\:text-zinc-900:hover { color: rgb(244 244 245); }
+  .dark .hover\:text-zinc-700:hover { color: rgb(212 212 216); }
+  .dark .hover\:border-zinc-300:hover { border-color: rgb(82 82 91); }
+
+  /* Сильные акцентные surfaces (alerts, badges) — оставляем readable.
+     Слабее тонируем фон при сохранении hue. */
+  .dark .bg-red-50   { background-color: rgb(127 29 29 / 0.3); }
+  .dark .bg-red-100  { background-color: rgb(127 29 29 / 0.4); }
+  .dark .bg-emerald-50 { background-color: rgb(6 78 59 / 0.3); }
+  .dark .bg-amber-50 { background-color: rgb(120 53 15 / 0.3); }
+  .dark .bg-sky-50   { background-color: rgb(12 74 110 / 0.3); }
+  .dark .bg-blue-50  { background-color: rgb(30 58 138 / 0.3); }
+  .dark .bg-violet-50 { background-color: rgb(76 29 149 / 0.3); }
+
+  .dark .border-red-100    { border-color: rgb(127 29 29 / 0.5); }
+  .dark .border-red-200    { border-color: rgb(127 29 29 / 0.7); }
+  .dark .border-emerald-100 { border-color: rgb(6 78 59 / 0.5); }
+  .dark .border-emerald-200 { border-color: rgb(6 78 59 / 0.7); }
+  .dark .border-amber-100  { border-color: rgb(120 53 15 / 0.5); }
+  .dark .border-amber-200  { border-color: rgb(120 53 15 / 0.7); }
+  .dark .border-sky-100    { border-color: rgb(12 74 110 / 0.5); }
+  .dark .border-sky-200    { border-color: rgb(12 74 110 / 0.7); }
+  .dark .border-blue-100   { border-color: rgb(30 58 138 / 0.5); }
+  .dark .border-violet-200 { border-color: rgb(76 29 149 / 0.7); }
+
+  /* Текст оставляем светлее версий цветных */
+  .dark .text-red-600     { color: rgb(248 113 113); }
+  .dark .text-red-700     { color: rgb(252 165 165); }
+  .dark .text-emerald-600 { color: rgb(52 211 153); }
+  .dark .text-emerald-700 { color: rgb(110 231 183); }
+  .dark .text-amber-500   { color: rgb(252 211 77); }
+  .dark .text-amber-700   { color: rgb(253 224 71); }
+  .dark .text-sky-500     { color: rgb(56 189 248); }
+  .dark .text-sky-700     { color: rgb(125 211 252); }
+  .dark .text-blue-700    { color: rgb(147 197 253); }
+  .dark .text-violet-700  { color: rgb(196 181 253); }
+}
+
 @layer components {
   /* Stick table header to the top of the nearest scroll container.
      Inset bottom shadow эмулирует border-bottom, чтобы при скролле граница
@@ -12,6 +89,10 @@
     background-color: white;
     z-index: 10;
     box-shadow: inset 0 -1px 0 rgb(244 244 245);
+  }
+  .dark .table-sticky-head thead th {
+    background-color: rgb(24 24 27);
+    box-shadow: inset 0 -1px 0 rgb(63 63 70);
   }
 }
 
@@ -31,6 +112,11 @@
     @apply font-sans text-foreground bg-background text-base;
   }
 
+  .dark body {
+    background-color: rgb(9 9 11);   /* zinc-950 */
+    color: rgb(244 244 245);          /* zinc-100 */
+  }
+
   * {
     box-sizing: border-box;
   }
@@ -38,5 +124,13 @@
   button {
     font-family: inherit;
     cursor: pointer;
+  }
+
+  /* Form controls: при тёмной теме браузер по умолчанию рисует светлые input'ы.
+     Заставляем их подхватить тёмный цвет через color-scheme. */
+  .dark input,
+  .dark select,
+  .dark textarea {
+    color-scheme: dark;
   }
 }
