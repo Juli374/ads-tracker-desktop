@@ -90,3 +90,21 @@ typings/
 
 # Electron-Forge
 out/
+
+# Ruflo runtime (definitions in .claude/ and .mcp.json may be committed)
+.claude-flow/
+.swarm/
+ruvector.db
+*.db-shm
+*.db-wal
+_install.log
+_mcp_tools.txt
+CLAUDE.md.before-ruflo
+
+# Claude Code local state (commit definitions only, not local cache)
+.claude/memory.db
+.claude/settings.local.json
+
+# Webpack bundles produced outside of Forge dist (e.g. accidental root build)
+/index.js
+/index.js.LICENSE.txt
