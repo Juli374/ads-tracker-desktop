@@ -1,6 +1,19 @@
 import '@testing-library/jest-dom/vitest';
+import React from 'react';
 import { afterEach, vi } from 'vitest';
 import { cleanup, configure } from '@testing-library/react';
+
+// react-i18next mock — t() возвращает ключ, чтобы тесты ассертили на стабильных ключах
+// (data-testid + ключ), а не на переводимом тексте. Trans/I18nextProvider — passthrough.
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'en', changeLanguage: vi.fn() },
+  }),
+  Trans: ({ children }: { children: React.ReactNode }) => children,
+  I18nextProvider: ({ children }: { children: React.ReactNode }) => children,
+  initReactI18next: { type: '3rdParty', init: () => undefined },
+}));
 
 // React.lazy + Suspense fallback на страницах увеличил время до появления
 // heading'а до >1s в jsdom (default RTL timeout). Поднимаем asyncUtilTimeout

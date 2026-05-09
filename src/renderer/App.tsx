@@ -1,4 +1,6 @@
 import React from 'react';
+import { I18nextProvider } from 'react-i18next';
+import i18n from './i18n';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -26,18 +28,20 @@ const Gate: React.FC = () => {
 
 export const App: React.FC = () => (
   <ErrorBoundary>
-    <ThemeProvider>
-      <ToastProvider>
-        <AuthProvider>
-          <MarketplacesProvider>
-            <BooksProvider>
-              <GlobalFiltersProvider>
-                <Gate />
-              </GlobalFiltersProvider>
-            </BooksProvider>
-          </MarketplacesProvider>
-        </AuthProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    <I18nextProvider i18n={i18n}>
+      <ThemeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <MarketplacesProvider>
+              <BooksProvider>
+                <GlobalFiltersProvider>
+                  <Gate />
+                </GlobalFiltersProvider>
+              </BooksProvider>
+            </MarketplacesProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </I18nextProvider>
   </ErrorBoundary>
 );
