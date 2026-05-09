@@ -195,6 +195,12 @@ export function mockApiResponses(): Record<string, unknown> {
       classificationCounts: {},
     },
     '/api/marketplaces': ['USA', 'UK', 'CA', 'AU', 'DE', 'FR', 'ES', 'IT'],
+    '/api/notifications/unread-count': {
+      unread_count: 0,
+      billing_alerts_count: 0,
+      total: 0,
+    },
+    '/api/notifications': { notifications: [], count: 0 },
     '/api/books': [
       {
         id: 1,

@@ -6,7 +6,6 @@ import {
   Target,
   FileText,
   Settings,
-  Bell,
   Command,
 } from 'lucide-react';
 
@@ -19,6 +18,7 @@ import { SettingsPage } from '../pages/SettingsPage';
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
+import { NotificationsBell } from './NotificationsBell';
 
 interface NavItem {
   id: ViewId;
@@ -195,9 +195,7 @@ const Layout: React.FC = () => {
             </span>
           </button>
 
-          <button className="h-7 w-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors">
-            <Bell size={14} strokeWidth={2} />
-          </button>
+          <NotificationsBell />
 
           <button className="ml-1 h-7 w-7 rounded-full bg-zinc-200 hover:bg-zinc-300 transition-colors flex items-center justify-center text-xs font-medium text-zinc-700">
             J

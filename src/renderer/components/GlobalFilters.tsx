@@ -5,7 +5,7 @@ import { useMarketplaces } from '../contexts/MarketplacesContext';
 import { useBooks } from '../contexts/BooksContext';
 
 export const GlobalFilters: React.FC = () => {
-  const { filters, reset, hasAny } = useGlobalFilters();
+  const { reset, hasAny } = useGlobalFilters();
   const { list: books } = useBooks();
 
   const accounts = useMemo(() => {
