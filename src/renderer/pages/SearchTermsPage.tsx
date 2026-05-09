@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Ban, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
   searchTermsApi,
@@ -31,18 +32,19 @@ import { useBooks } from '../contexts/BooksContext';
 
 type SortKey = NonNullable<SearchTermsFilters['sortBy']>;
 
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: 'clicks', label: 'Clicks' },
-  { value: 'cost', label: 'Spend' },
-  { value: 'sales', label: 'Sales' },
-  { value: 'orders', label: 'Orders' },
-  { value: 'acos', label: 'ACOS' },
-  { value: 'impressions', label: 'Impr.' },
+const SORT_KEYS: SortKey[] = [
+  'clicks',
+  'cost',
+  'sales',
+  'orders',
+  'acos',
+  'impressions',
 ];
 
 const PER_PAGE = 50;
 
 export const SearchTermsPage: React.FC = () => {
+  const { t } = useTranslation('searchTerms');
   const toast = useToast();
   const { filters: globalFilters } = useGlobalFilters();
   const { list: booksList } = useBooks();
@@ -85,14 +87,11 @@ export const SearchTermsPage: React.FC = () => {
       search: search || undefined,
       localCampaignId: campaignFilter?.localId,
       campaignId: campaignFilter?.amazonId,
-      // Backend этого endpoint принимает только одиночный marketplace.
-      // Используем первый из глобальных фильтров если он есть.
       marketplace:
         globalFilters.marketplaces.length === 1
           ? globalFilters.marketplaces[0]
           : undefined,
       bookId: globalFilters.bookId,
-      // backend search-terms тоже принимает account как одиночный
       account:
         globalFilters.accounts.length === 1 ? globalFilters.accounts[0] : undefined,
     }),
@@ -119,22 +118,19 @@ export const SearchTermsPage: React.FC = () => {
         setData(res);
       } catch (err) {
         toast.error(
-          err instanceof ApiError
-            ? err.message
-            : 'Не удалось загрузить поисковые запросы',
+          err instanceof ApiError ? err.message : t('errors.load'),
         );
       } finally {
         setLoading(false);
       }
     },
-    [filters, toast],
+    [filters, toast, t],
   );
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // Сброс на первую страницу при смене любого фильтра кроме самой страницы
   useEffect(() => {
     setPage(1);
   }, [from, to, sortKey, termType, minClicks, search, campaignFilter]);
@@ -146,14 +142,17 @@ export const SearchTermsPage: React.FC = () => {
     setSearch(searchInput.trim());
   };
 
+  const campaignChipId =
+    campaignFilter?.localId ?? campaignFilter?.amazonId ?? '';
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="search_terms-page">
       <PageHeader
-        title="Поисковые запросы"
+        title={t('title')}
         subtitle={
           data
-            ? `${from} → ${to} · ${fmtNumber(data.total)} запросов`
-            : 'Загрузка…'
+            ? t('subtitle', { from, to, count: data.total })
+            : t('loading')
         }
         rightSlot={
           <RangePicker
@@ -171,7 +170,7 @@ export const SearchTermsPage: React.FC = () => {
           ...(campaignFilter
             ? [
                 {
-                  label: `🎯 кампания #${campaignFilter.localId ?? campaignFilter.amazonId}`,
+                  label: t('card.campaignChip', { id: campaignChipId }),
                   onRemove: () => setCampaignFilter(null),
                 } as ActiveFilterChip,
               ]
@@ -181,22 +180,22 @@ export const SearchTermsPage: React.FC = () => {
 
       <div className="grid grid-cols-4 gap-3">
         <Kpi
-          label="Запросов"
+          label={t('kpi.terms')}
           value={totals ? fmtNumber(totals.termsCount) : '—'}
           loading={loading}
         />
         <Kpi
-          label="Spend"
+          label={t('kpi.spend')}
           value={totals ? fmtMoney(totals.totalCost) : '—'}
           loading={loading}
         />
         <Kpi
-          label="Orders"
+          label={t('kpi.orders')}
           value={totals ? fmtNumber(totals.totalOrders) : '—'}
           loading={loading}
         />
         <Kpi
-          label="ACOS"
+          label={t('kpi.acos')}
           value={totals ? fmtPct(totals.avgAcos) : '—'}
           loading={loading}
           tone={totals && totals.avgAcos > 100 ? 'negative' : 'default'}
@@ -206,7 +205,7 @@ export const SearchTermsPage: React.FC = () => {
       <Card
         title={
           <div className="flex items-center gap-2">
-            <span>Запросы</span>
+            <span>{t('card.title')}</span>
             {campaignFilter && (
               <button
                 onClick={() => setCampaignFilter(null)}
@@ -215,10 +214,10 @@ export const SearchTermsPage: React.FC = () => {
                   text-[11px] font-medium bg-zinc-100 text-zinc-700
                   hover:bg-zinc-200 transition-colors
                 "
-                title="Сбросить фильтр по кампании"
+                title={t('card.clearCampaign')}
               >
                 <span className="max-w-[200px] truncate">
-                  🎯 кампания #{campaignFilter.localId ?? campaignFilter.amazonId}
+                  {t('card.campaignChip', { id: campaignChipId })}
                 </span>
                 <span className="text-zinc-500">×</span>
               </button>
@@ -247,27 +246,23 @@ export const SearchTermsPage: React.FC = () => {
           <LoadingRow />
         ) : !data || data.items.length === 0 ? (
           <EmptyState
-            title={
-              search
-                ? 'Ничего не нашлось.'
-                : 'Нет запросов за выбранный период.'
-            }
-            hint={search && 'Попробуй другой запрос или расширить диапазон.'}
+            title={search ? t('empty.noResults') : t('empty.noPeriod')}
+            hint={search ? t('empty.noResultsHint') : undefined}
           />
         ) : (
           <>
             <table className="w-full text-sm table-sticky-head">
               <thead>
                 <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                  <th className="text-left px-5 py-2 font-medium">Запрос</th>
-                  <th className="text-left px-3 py-2 font-medium">Кампания</th>
-                  <th className="text-left px-3 py-2 font-medium">MP</th>
-                  <th className="text-right px-3 py-2 font-medium">Impr.</th>
-                  <th className="text-right px-3 py-2 font-medium">Clicks</th>
-                  <th className="text-right px-3 py-2 font-medium">Spend</th>
-                  <th className="text-right px-3 py-2 font-medium">Sales</th>
-                  <th className="text-right px-3 py-2 font-medium">Orders</th>
-                  <th className="text-right px-3 py-2 font-medium">ACOS</th>
+                  <th className="text-left px-5 py-2 font-medium">{t('th.term')}</th>
+                  <th className="text-left px-3 py-2 font-medium">{t('th.campaign')}</th>
+                  <th className="text-left px-3 py-2 font-medium">{t('th.marketplace')}</th>
+                  <th className="text-right px-3 py-2 font-medium">{t('th.impressions')}</th>
+                  <th className="text-right px-3 py-2 font-medium">{t('th.clicks')}</th>
+                  <th className="text-right px-3 py-2 font-medium">{t('th.spend')}</th>
+                  <th className="text-right px-3 py-2 font-medium">{t('th.sales')}</th>
+                  <th className="text-right px-3 py-2 font-medium">{t('th.orders')}</th>
+                  <th className="text-right px-3 py-2 font-medium">{t('th.acos')}</th>
                   <th className="px-3 py-2 w-9"></th>
                 </tr>
               </thead>
@@ -359,6 +354,7 @@ const NegativeQuickAction: React.FC<{
   item: SearchTermItem;
   onAdded: () => void;
 }> = ({ item, onAdded }) => {
+  const { t } = useTranslation('searchTerms');
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -384,10 +380,12 @@ const NegativeQuickAction: React.FC<{
         campaignId: item.localCampaignId as number,
         matchType,
       });
-      toast.success(`Добавлено как negative (${matchType})`);
+      toast.success(t('negative.added', { matchType }));
       onAdded();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось добавить');
+      toast.error(
+        err instanceof ApiError ? err.message : t('errors.addNegative'),
+      );
     } finally {
       setSubmitting(false);
       setOpen(false);
@@ -408,15 +406,15 @@ const NegativeQuickAction: React.FC<{
           text-zinc-400 hover:text-red-600 hover:bg-red-50
           opacity-0 group-hover:opacity-100 transition-opacity
         "
-        title="Добавить как negative"
-        aria-label="Добавить как negative"
+        title={t('negative.trigger')}
+        aria-label={t('negative.trigger')}
       >
         {submitting ? <Loader2 size={11} className="animate-spin" /> : <Ban size={11} />}
       </button>
       {open && (
         <div className="absolute right-0 top-7 z-30 w-44 bg-white border border-zinc-200 rounded-md shadow-card overflow-hidden">
           <div className="px-3 py-1.5 border-b border-zinc-100 text-[10px] text-zinc-500 uppercase tracking-wider">
-            Match type
+            {t('negative.menuTitle')}
           </div>
           {(['Exact', 'Phrase'] as const).map((m) => (
             <button
@@ -442,44 +440,48 @@ const SearchInput: React.FC<{
   value: string;
   onChange: (v: string) => void;
   onClear: () => void;
-}> = ({ value, onChange, onClear }) => (
-  <div className="relative">
-    <Search
-      size={12}
-      className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400"
-    />
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="Поиск… (Enter)"
-      className="
-        w-52 h-7 pl-7 pr-7 text-xs rounded-md
-        border border-zinc-200 bg-white
-        text-zinc-900 placeholder:text-zinc-400
-        focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
-      "
-    />
-    {value && (
-      <button
-        type="button"
-        onClick={onClear}
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 text-xs"
-      >
-        ×
-      </button>
-    )}
-  </div>
-);
+}> = ({ value, onChange, onClear }) => {
+  const { t } = useTranslation('searchTerms');
+  return (
+    <div className="relative">
+      <Search
+        size={12}
+        className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400"
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t('filters.search.placeholder')}
+        className="
+          w-52 h-7 pl-7 pr-7 text-xs rounded-md
+          border border-zinc-200 bg-white
+          text-zinc-900 placeholder:text-zinc-400
+          focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+        "
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 text-xs"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+};
 
 const TypeToggle: React.FC<{
   value: 'all' | 'keywords' | 'asins';
   onChange: (v: 'all' | 'keywords' | 'asins') => void;
 }> = ({ value, onChange }) => {
-  const options = [
-    { value: 'all' as const, label: 'Все' },
-    { value: 'keywords' as const, label: 'Слова' },
-    { value: 'asins' as const, label: 'ASINs' },
+  const { t } = useTranslation('searchTerms');
+  const options: { value: 'all' | 'keywords' | 'asins'; label: string }[] = [
+    { value: 'all', label: t('filters.type.all') },
+    { value: 'keywords', label: t('filters.type.keywords') },
+    { value: 'asins', label: t('filters.type.asins') },
   ];
   return (
     <div className="inline-flex items-center bg-white border border-zinc-200 rounded-md p-0.5">
@@ -502,17 +504,19 @@ const TypeToggle: React.FC<{
   );
 };
 
+const MIN_CLICKS_OPTIONS = [
+  { value: 0, label: '≥0' },
+  { value: 1, label: '≥1' },
+  { value: 5, label: '≥5' },
+  { value: 10, label: '≥10' },
+  { value: 50, label: '≥50' },
+];
+
 const MinClicksFilter: React.FC<{
   value: number;
   onChange: (v: number) => void;
 }> = ({ value, onChange }) => {
-  const options = [
-    { value: 0, label: '≥0' },
-    { value: 1, label: '≥1' },
-    { value: 5, label: '≥5' },
-    { value: 10, label: '≥10' },
-    { value: 50, label: '≥50' },
-  ];
+  const { t } = useTranslation('searchTerms');
   return (
     <select
       value={value}
@@ -524,11 +528,11 @@ const MinClicksFilter: React.FC<{
         focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
         cursor-pointer
       "
-      title="Min clicks"
+      title={t('filters.minClicks.title')}
     >
-      {options.map((o) => (
+      {MIN_CLICKS_OPTIONS.map((o) => (
         <option key={o.value} value={o.value}>
-          clicks {o.label}
+          {t('filters.minClicks.label', { label: o.label })}
         </option>
       ))}
     </select>
@@ -538,23 +542,25 @@ const MinClicksFilter: React.FC<{
 const SortSelect: React.FC<{
   value: SortKey;
   onChange: (v: SortKey) => void;
-}> = ({ value, onChange }) => (
-  <select
-    value={value}
-    onChange={(e) => onChange(e.target.value as SortKey)}
-    className="
-      h-7 px-2 pr-6 text-xs rounded-md
-      border border-zinc-200 bg-white
-      text-zinc-700
-      focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
-      cursor-pointer
-    "
-  >
-    {SORT_OPTIONS.map((o) => (
-      <option key={o.value} value={o.value}>
-        sort: {o.label}
-      </option>
-    ))}
-  </select>
-);
-
+}> = ({ value, onChange }) => {
+  const { t } = useTranslation('searchTerms');
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as SortKey)}
+      className="
+        h-7 px-2 pr-6 text-xs rounded-md
+        border border-zinc-200 bg-white
+        text-zinc-700
+        focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+        cursor-pointer
+      "
+    >
+      {SORT_KEYS.map((key) => (
+        <option key={key} value={key}>
+          {t('filters.sort.label', { label: t(`filters.sort.${key}` as 'filters.sort.clicks') })}
+        </option>
+      ))}
+    </select>
+  );
+};

@@ -1,0 +1,64 @@
+{
+  "title": "Search terms",
+  "loading": "Loading…",
+  "subtitle": "{from} → {to} · {count, plural, one {# term} other {# terms}}",
+  "errors": {
+    "load": "Failed to load search terms",
+    "addNegative": "Failed to add negative"
+  },
+  "kpi": {
+    "terms": "Terms",
+    "spend": "Spend",
+    "orders": "Orders",
+    "acos": "ACOS"
+  },
+  "card": {
+    "title": "Terms",
+    "campaignChip": "🎯 campaign #{id}",
+    "clearCampaign": "Clear campaign filter"
+  },
+  "filters": {
+    "type": {
+      "all": "All",
+      "keywords": "Keywords",
+      "asins": "ASINs"
+    },
+    "minClicks": {
+      "title": "Min clicks",
+      "label": "clicks {label}"
+    },
+    "sort": {
+      "label": "sort: {label}",
+      "clicks": "Clicks",
+      "cost": "Spend",
+      "sales": "Sales",
+      "orders": "Orders",
+      "acos": "ACOS",
+      "impressions": "Impr."
+    },
+    "search": {
+      "placeholder": "Search… (Enter)"
+    }
+  },
+  "th": {
+    "term": "Term",
+    "campaign": "Campaign",
+    "marketplace": "MP",
+    "impressions": "Impr.",
+    "clicks": "Clicks",
+    "spend": "Spend",
+    "sales": "Sales",
+    "orders": "Orders",
+    "acos": "ACOS"
+  },
+  "empty": {
+    "noResults": "Nothing found.",
+    "noResultsHint": "Try a different query or widen the range.",
+    "noPeriod": "No terms in the selected period."
+  },
+  "negative": {
+    "trigger": "Add as negative",
+    "menuTitle": "Match type",
+    "added": "Added as negative ({matchType})"
+  }
+}

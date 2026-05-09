@@ -4,6 +4,7 @@ import type enNav from './resources/en/nav.json';
 import type enDashboard from './resources/en/dashboard.json';
 import type enCampaigns from './resources/en/campaigns.json';
 import type enBooks from './resources/en/books.json';
+import type enSearchTerms from './resources/en/searchTerms.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -14,6 +15,7 @@ declare module 'i18next' {
       dashboard: typeof enDashboard;
       campaigns: typeof enCampaigns;
       books: typeof enBooks;
+      searchTerms: typeof enSearchTerms;
     };
     returnNull: false;
   }

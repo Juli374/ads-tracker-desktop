@@ -76,10 +76,8 @@ describe('page smoke renders', () => {
         <SearchTermsPage />
       </Wrap>,
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Поисковые запросы' }),
-    ).toBeInTheDocument();
-    expect(await screen.findByText(/Нет запросов/)).toBeInTheDocument();
+    expect(await screen.findByTestId('search_terms-page')).toBeInTheDocument();
+    expect(await screen.findByText('empty.noPeriod')).toBeInTheDocument();
   });
 
   it('ReportsPage renders header, table and marketplace card', async () => {
