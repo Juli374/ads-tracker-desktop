@@ -10,6 +10,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Card, PageHeader } from '../components/ui';
@@ -25,6 +26,7 @@ interface ConnectionInfo {
 }
 
 export const SettingsPage: React.FC = () => {
+  const { t } = useTranslation('settings');
   const { user, signOut } = useAuth();
   const toast = useToast();
   const [info, setInfo] = useState<ConnectionInfo>({
@@ -58,42 +60,39 @@ export const SettingsPage: React.FC = () => {
       } catch (err) {
         if (cancelled) return;
         setInfo((s) => ({ ...s, loading: false }));
-        toast.error(err instanceof Error ? err.message : 'Не удалось загрузить данные');
+        toast.error(err instanceof Error ? err.message : t('errors.load'));
       }
     })();
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
 
   const handleCopyUrl = async () => {
     if (!info.apiBaseUrl) return;
     await navigator.clipboard.writeText(info.apiBaseUrl);
     setCopied(true);
-    toast.success('Скопировано');
+    toast.success(t('backend.copied'));
     setTimeout(() => setCopied(false), 1500);
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Настройки"
-        subtitle="API-доступ, информация об установке."
-      />
+    <div className="space-y-6" data-testid="settings-page">
+      <PageHeader title={t('title')} subtitle={t('subtitle')} />
 
-      {/* Account */}
-      <Card title="Учётная запись">
+      <Card title={t('account.cardTitle')}>
         {info.loading ? (
-          <Row label="Статус" value={<Loader2 size={14} className="animate-spin text-zinc-400" />} />
+          <Row label={t('account.status')} value={<Loader2 size={14} className="animate-spin text-zinc-400" />} />
         ) : (
           <>
             <Row
-              label="Email"
+              label={t('account.email')}
               value={user?.email ?? '—'}
               icon={<KeyRound size={14} className="text-zinc-400" />}
             />
-            <Row label="Роль" value={<RoleBadge role={user?.role ?? 'user'} />} />
-            {user?.full_name && <Row label="Имя" value={user.full_name} />}
+            <Row label={t('account.role')} value={<RoleBadge role={user?.role ?? 'user'} />} />
+            {user?.full_name && <Row label={t('account.fullName')} value={user.full_name} />}
             <div className="px-5 py-3 border-t border-zinc-100">
               <button
                 onClick={signOut}
@@ -105,30 +104,26 @@ export const SettingsPage: React.FC = () => {
                 "
               >
                 <LogOut size={13} />
-                Выйти и сменить токен
+                {t('account.signOut')}
               </button>
-              <p className="text-[11px] text-zinc-400 mt-2">
-                Токен будет удалён из системного keychain. Потребуется заново
-                вставить ключ при следующем запуске.
-              </p>
+              <p className="text-[11px] text-zinc-400 mt-2">{t('account.signOutHint')}</p>
             </div>
           </>
         )}
       </Card>
 
-      {/* API token */}
-      <Card title="API-ключ">
+      <Card title={t('apiKey.cardTitle')}>
         <Row
-          label="Хранилище"
+          label={t('apiKey.storage')}
           value={
             <span className="inline-flex items-center gap-1.5 text-xs text-zinc-700">
               <ShieldCheck size={13} className="text-emerald-600" />
-              OS keychain · safeStorage
+              {t('apiKey.storageValue')}
             </span>
           }
         />
         <Row
-          label="Превью"
+          label={t('apiKey.preview')}
           value={
             <span className="font-mono text-xs text-zinc-700">
               {tokenPreview ?? '—'}
@@ -136,27 +131,24 @@ export const SettingsPage: React.FC = () => {
           }
         />
         <Row
-          label="Тип"
+          label={t('apiKey.type')}
           value={
             tokenPreview?.startsWith('at_live_')
-              ? 'API key (at_live_*)'
+              ? t('apiKey.typeApiKey')
               : tokenPreview
-              ? 'JWT'
+              ? t('apiKey.typeJwt')
               : '—'
           }
         />
       </Card>
 
-      {/* Amazon Ads OAuth + profiles */}
       <AmazonAdsSection />
 
-      {/* Auto-update scaffold */}
       <UpdateChecker />
 
-      {/* Backend connection */}
-      <Card title="Backend">
+      <Card title={t('backend.cardTitle')}>
         <Row
-          label="Base URL"
+          label={t('backend.baseUrl')}
           value={
             info.apiBaseUrl ? (
               <span className="inline-flex items-center gap-2">
@@ -165,7 +157,7 @@ export const SettingsPage: React.FC = () => {
                 <button
                   onClick={handleCopyUrl}
                   className="text-zinc-400 hover:text-zinc-700 transition-colors"
-                  title="Скопировать"
+                  title={t('backend.copyTitle')}
                 >
                   {copied ? <Check size={12} /> : <Copy size={12} />}
                 </button>
@@ -176,7 +168,7 @@ export const SettingsPage: React.FC = () => {
           }
         />
         <Row
-          label="Override env"
+          label={t('backend.overrideEnv')}
           value={
             <span className="font-mono text-[11px] text-zinc-500">
               ADS_TRACKER_API_URL
@@ -185,11 +177,10 @@ export const SettingsPage: React.FC = () => {
         />
       </Card>
 
-      {/* App info */}
-      <Card title="Приложение">
-        <Row label="Версия" value={info.appInfo?.version ?? '—'} />
+      <Card title={t('app.cardTitle')}>
+        <Row label={t('app.version')} value={info.appInfo?.version ?? '—'} />
         <Row
-          label="Платформа"
+          label={t('app.platform')}
           value={
             <span className="inline-flex items-center gap-1.5 text-xs text-zinc-700">
               <Cpu size={13} className="text-zinc-400" />
@@ -198,11 +189,11 @@ export const SettingsPage: React.FC = () => {
           }
         />
         <Row
-          label="Сборка"
-          value={info.appInfo?.isPackaged ? 'production' : 'dev'}
+          label={t('app.build')}
+          value={info.appInfo?.isPackaged ? t('app.buildProduction') : t('app.buildDev')}
         />
         <Row
-          label="Backend репо"
+          label={t('app.backendRepo')}
           value={
             <a
               href="https://github.com/Juli374/ads-tracker"

@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Settings, LogOut, Moon, Sun, Monitor } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useNav } from '../contexts/NavContext';
 import { useTheme, type ThemeMode } from '../contexts/ThemeContext';
 
 export const UserMenu: React.FC = () => {
+  const { t } = useTranslation('settings');
   const { user, signOut } = useAuth();
   const { navigate } = useNav();
   const { mode, setMode } = useTheme();
@@ -37,7 +39,7 @@ export const UserMenu: React.FC = () => {
       <button
         onClick={() => setOpen((v) => !v)}
         className="ml-1 h-7 w-7 rounded-full bg-zinc-200 hover:bg-zinc-300 transition-colors flex items-center justify-center text-xs font-medium text-zinc-700"
-        aria-label="Меню пользователя"
+        aria-label={t('userMenu.userAria')}
         aria-expanded={open}
       >
         {initial}
@@ -47,7 +49,7 @@ export const UserMenu: React.FC = () => {
         <div className="absolute right-0 top-9 z-40 w-60 bg-white border border-zinc-200 rounded-lg shadow-card overflow-hidden">
           <div className="px-3 py-2.5 border-b border-zinc-100">
             <div className="text-xs font-medium text-zinc-900 truncate">
-              {user?.full_name || 'Пользователь'}
+              {user?.full_name || t('userMenu.fallbackUser')}
             </div>
             <div className="text-[11px] text-zinc-500 truncate">
               {user?.email || '—'}
@@ -55,13 +57,13 @@ export const UserMenu: React.FC = () => {
           </div>
           <div className="px-3 py-2 border-b border-zinc-100">
             <div className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
-              Тема
+              {t('userMenu.themeLabel')}
             </div>
             <ThemeSegment mode={mode} onChange={setMode} />
           </div>
           <div className="py-1">
-            <MenuItem icon={Settings} label="Настройки" onClick={goToSettings} />
-            <MenuItem icon={LogOut} label="Выйти" onClick={onSignOut} tone="danger" />
+            <MenuItem icon={Settings} label={t('userMenu.settings')} onClick={goToSettings} />
+            <MenuItem icon={LogOut} label={t('userMenu.signOut')} onClick={onSignOut} tone="danger" />
           </div>
         </div>
       )}
@@ -73,21 +75,23 @@ const ThemeSegment: React.FC<{
   mode: ThemeMode;
   onChange: (m: ThemeMode) => void;
 }> = ({ mode, onChange }) => {
-  const opts: Array<{ id: ThemeMode; label: string; Icon: React.ElementType }> = [
-    { id: 'light', label: 'Светлая', Icon: Sun },
-    { id: 'dark', label: 'Тёмная', Icon: Moon },
-    { id: 'system', label: 'Авто', Icon: Monitor },
+  const { t } = useTranslation('settings');
+  const opts: Array<{ id: ThemeMode; labelKey: 'userMenu.themeLight' | 'userMenu.themeDark' | 'userMenu.themeSystem'; Icon: React.ElementType }> = [
+    { id: 'light', labelKey: 'userMenu.themeLight', Icon: Sun },
+    { id: 'dark', labelKey: 'userMenu.themeDark', Icon: Moon },
+    { id: 'system', labelKey: 'userMenu.themeSystem', Icon: Monitor },
   ];
   return (
-    <div role="radiogroup" aria-label="Тема" className="inline-flex w-full bg-zinc-100 rounded-md p-0.5">
-      {opts.map(({ id, label, Icon }) => {
+    <div role="radiogroup" aria-label={t('userMenu.themeAria')} className="inline-flex w-full bg-zinc-100 rounded-md p-0.5">
+      {opts.map(({ id, labelKey, Icon }) => {
+        const label = t(labelKey);
         const active = mode === id;
         return (
           <button
             key={id}
             role="radio"
             aria-checked={active}
-            aria-label={`Тема: ${label}`}
+            aria-label={t('userMenu.themeOptionAria', { label })}
             type="button"
             onClick={() => onChange(id)}
             className={`

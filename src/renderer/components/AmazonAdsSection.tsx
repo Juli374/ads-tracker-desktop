@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import { amazonAdsApi, type AmazonAdsProfile } from '../api/amazonAds';
 import { Card } from './ui';
@@ -9,6 +10,7 @@ import { useDeepLink } from '../lib/useDeepLink';
 const REDIRECT_URI = 'ads-tracker-desktop://callback';
 
 export const AmazonAdsSection: React.FC = () => {
+  const { t } = useTranslation('settings');
   const toast = useToast();
   const [profiles, setProfiles] = useState<AmazonAdsProfile[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,18 +31,18 @@ export const AmazonAdsSection: React.FC = () => {
         setProfiles([]);
         return;
       }
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить профили');
+      toast.error(err instanceof ApiError ? err.message : t('amazonAds.loadFailed'));
       setProfiles([]);
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
 
   useEffect(() => {
     loadProfiles();
   }, [loadProfiles]);
 
-  // Подписываемся на deeplink: ads-tracker-desktop://callback?code=...&state=...
   useDeepLink(
     useCallback(
       async (event) => {
@@ -54,27 +56,26 @@ export const AmazonAdsSection: React.FC = () => {
         const code = url.searchParams.get('code');
         const state = url.searchParams.get('state');
         if (!code) {
-          toast.error('OAuth: code отсутствует в callback URL');
+          toast.error(t('amazonAds.errors.missingCode'));
           return;
         }
-        // Critical: оба значения должны быть и совпадать. Если oauthState пустой
-        // (deeplink пришёл до того как startOAuth вернул state) — отвергаем.
         if (!oauthState || !state || state !== oauthState) {
-          toast.error('OAuth: state не совпадает или отсутствует (возможна CSRF-атака)');
+          toast.error(t('amazonAds.errors.stateMismatch'));
           return;
         }
         setCompleting(true);
         try {
           await amazonAdsApi.completeOAuth(code, state ?? '', REDIRECT_URI);
-          toast.success('Amazon Ads подключён');
+          toast.success(t('amazonAds.connected'));
           setOauthState(null);
           loadProfiles();
         } catch (err) {
-          toast.error(err instanceof ApiError ? err.message : 'OAuth callback не прошёл');
+          toast.error(err instanceof ApiError ? err.message : t('amazonAds.errors.callbackFailed'));
         } finally {
           setCompleting(false);
         }
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       [oauthState, loadProfiles, toast],
     ),
   );
@@ -84,14 +85,13 @@ export const AmazonAdsSection: React.FC = () => {
     try {
       const res = await amazonAdsApi.startOAuth(REDIRECT_URI);
       setOauthState(res.state);
-      // Открываем системный браузер с consent-страницей Amazon.
       await window.api.shell.openExternal(res.url);
-      toast.info('Открой браузер и подтверди доступ. Возвращайся в это окно.');
+      toast.info(t('amazonAds.openHint'));
     } catch (err) {
       if (err instanceof ApiError && [401, 403, 404].includes(err.status)) {
-        toast.error('OAuth-эндпоинт недоступен на этом окружении');
+        toast.error(t('amazonAds.errors.endpointUnavailable'));
       } else {
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось начать OAuth');
+        toast.error(err instanceof ApiError ? err.message : t('amazonAds.errors.startFailed'));
       }
     } finally {
       setConnecting(false);
@@ -101,16 +101,16 @@ export const AmazonAdsSection: React.FC = () => {
   const handleSync = async () => {
     try {
       await amazonAdsApi.syncProfiles();
-      toast.success('Sync запущен');
+      toast.success(t('amazonAds.syncSuccess'));
       await loadProfiles();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось синхронизировать');
+      toast.error(err instanceof ApiError ? err.message : t('amazonAds.syncFailed'));
     }
   };
 
   return (
     <Card
-      title="Amazon Ads"
+      title={t('amazonAds.cardTitle')}
       rightSlot={
         !unsupported && profiles && profiles.length > 0 ? (
           <button
@@ -119,23 +119,18 @@ export const AmazonAdsSection: React.FC = () => {
             className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
           >
             <RefreshCw size={11} />
-            Sync profiles
+            {t('amazonAds.syncProfiles')}
           </button>
         ) : null
       }
     >
       {unsupported ? (
-        <div className="px-5 py-4 text-xs text-zinc-500">
-          OAuth-endpoint недоступен на этом backend'е.
-        </div>
+        <div className="px-5 py-4 text-xs text-zinc-500">{t('amazonAds.unsupported')}</div>
       ) : loading && !profiles ? (
-        <div className="px-5 py-4 text-xs text-zinc-400">Загрузка профилей…</div>
+        <div className="px-5 py-4 text-xs text-zinc-400">{t('amazonAds.loading')}</div>
       ) : !profiles || profiles.length === 0 ? (
         <div className="px-5 py-4 space-y-3">
-          <div className="text-xs text-zinc-500">
-            Ни одного подключённого профиля. Начни OAuth — откроется страница
-            авторизации Amazon, после consent вернёшься сюда автоматически.
-          </div>
+          <div className="text-xs text-zinc-500">{t('amazonAds.emptyHint')}</div>
           <button
             type="button"
             onClick={handleConnect}
@@ -147,10 +142,14 @@ export const AmazonAdsSection: React.FC = () => {
             ) : (
               <ExternalLink size={12} />
             )}
-            {completing ? 'Завершаем OAuth…' : connecting ? 'Открываем браузер…' : 'Подключить'}
+            {completing
+              ? t('amazonAds.completing')
+              : connecting
+              ? t('amazonAds.connecting')
+              : t('amazonAds.connect')}
           </button>
           <div className="text-[10px] text-zinc-400 font-mono">
-            redirect_uri: {REDIRECT_URI}
+            {t('amazonAds.redirectUriPrefix', { uri: REDIRECT_URI })}
           </div>
         </div>
       ) : (
@@ -163,7 +162,7 @@ export const AmazonAdsSection: React.FC = () => {
               <CheckCircle2 size={13} className="text-emerald-600 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-zinc-900 truncate">
-                  {p.account_name ?? `Profile #${p.profile_id}`}
+                  {p.account_name ?? t('amazonAds.fallbackProfile', { id: p.profile_id })}
                 </div>
                 <div className="text-[11px] text-zinc-500">
                   {p.country_code ?? '—'}
@@ -188,7 +187,7 @@ export const AmazonAdsSection: React.FC = () => {
               ) : (
                 <ExternalLink size={11} />
               )}
-              {completing ? 'Завершаем…' : 'Переподключить'}
+              {completing ? t('amazonAds.reconnectShort') : t('amazonAds.reconnect')}
             </button>
           </div>
         </div>

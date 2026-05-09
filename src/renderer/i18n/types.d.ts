@@ -14,6 +14,7 @@ import type enOperations from './resources/en/operations.json';
 import type enAutomation from './resources/en/automation.json';
 import type enAccounting from './resources/en/accounting.json';
 import type enRoyalties from './resources/en/royalties.json';
+import type enSettings from './resources/en/settings.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -34,6 +35,7 @@ declare module 'i18next' {
       automation: typeof enAutomation;
       accounting: typeof enAccounting;
       royalties: typeof enRoyalties;
+      settings: typeof enSettings;
     };
     returnNull: false;
   }

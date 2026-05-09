@@ -98,10 +98,10 @@ describe('page smoke renders', () => {
         <SettingsPage />
       </Wrap>,
     );
-    expect(await screen.findByRole('heading', { name: 'Настройки' })).toBeInTheDocument();
-    expect(await screen.findByText('Учётная запись')).toBeInTheDocument();
-    expect(await screen.findByText('API-ключ')).toBeInTheDocument();
-    expect(await screen.findByText('Backend')).toBeInTheDocument();
-    expect(await screen.findByText('Приложение')).toBeInTheDocument();
+    expect(await screen.findByTestId('settings-page')).toBeInTheDocument();
+    expect(await screen.findByText('account.cardTitle')).toBeInTheDocument();
+    expect(await screen.findByText('apiKey.cardTitle')).toBeInTheDocument();
+    expect(await screen.findByText('backend.cardTitle')).toBeInTheDocument();
+    expect(await screen.findByText('app.cardTitle')).toBeInTheDocument();
   });
 });

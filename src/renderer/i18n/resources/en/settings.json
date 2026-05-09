@@ -1,0 +1,93 @@
+{
+  "title": "Settings",
+  "subtitle": "API access and install information.",
+  "errors": {
+    "load": "Failed to load data"
+  },
+  "account": {
+    "cardTitle": "Account",
+    "status": "Status",
+    "email": "Email",
+    "role": "Role",
+    "fullName": "Name",
+    "signOut": "Sign out and change token",
+    "signOutHint": "Token will be removed from system keychain. You'll need to paste a key on the next launch."
+  },
+  "apiKey": {
+    "cardTitle": "API key",
+    "storage": "Storage",
+    "storageValue": "OS keychain · safeStorage",
+    "preview": "Preview",
+    "type": "Type",
+    "typeApiKey": "API key (at_live_*)",
+    "typeJwt": "JWT"
+  },
+  "amazonAds": {
+    "cardTitle": "Amazon Ads",
+    "syncProfiles": "Sync profiles",
+    "unsupported": "OAuth endpoint unavailable on this backend.",
+    "loading": "Loading profiles…",
+    "emptyHint": "No connected profiles. Start OAuth — Amazon authorization page will open, after consent you'll come back here automatically.",
+    "loadFailed": "Failed to load profiles",
+    "connect": "Connect",
+    "connecting": "Opening browser…",
+    "completing": "Completing OAuth…",
+    "reconnect": "Reconnect",
+    "reconnectShort": "Completing…",
+    "redirectUriPrefix": "redirect_uri: {uri}",
+    "fallbackProfile": "Profile #{id}",
+    "syncSuccess": "Sync started",
+    "syncFailed": "Failed to sync",
+    "openHint": "Open the browser and confirm access. Come back to this window.",
+    "errors": {
+      "missingCode": "OAuth: code missing in callback URL",
+      "stateMismatch": "OAuth: state missing or mismatched (possible CSRF)",
+      "callbackFailed": "OAuth callback failed",
+      "endpointUnavailable": "OAuth endpoint unavailable in this environment",
+      "startFailed": "Failed to start OAuth"
+    },
+    "connected": "Amazon Ads connected"
+  },
+  "updates": {
+    "cardTitle": "Updates",
+    "currentVersion": "Current version: {version}",
+    "stateLine": "State: {state}{version, select, none {} other { ({version})}}",
+    "scaffoldHint": "Auto-update — scaffold (electron-updater not connected). Architecture is ready: main/updater.ts, IPC update:getStatus / update:check, contract in shared/ipc.ts.",
+    "checkButton": "Check for updates",
+    "errors": {
+      "ipcUnavailable": "Update IPC unavailable",
+      "checkFailed": "Failed to check"
+    },
+    "scaffoldDisabled": "Auto-update is currently disabled (scaffold).",
+    "available": "Update available {version}",
+    "upToDate": "Latest version is installed"
+  },
+  "backend": {
+    "cardTitle": "Backend",
+    "baseUrl": "Base URL",
+    "copyTitle": "Copy",
+    "copied": "Copied",
+    "overrideEnv": "Override env"
+  },
+  "app": {
+    "cardTitle": "Application",
+    "version": "Version",
+    "platform": "Platform",
+    "build": "Build",
+    "buildProduction": "production",
+    "buildDev": "dev",
+    "backendRepo": "Backend repo"
+  },
+  "userMenu": {
+    "userAria": "User menu",
+    "fallbackUser": "User",
+    "themeLabel": "Theme",
+    "themeAria": "Theme",
+    "themeOptionAria": "Theme: {label}",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "Auto",
+    "settings": "Settings",
+    "signOut": "Sign out"
+  }
+}
