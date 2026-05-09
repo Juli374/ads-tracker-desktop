@@ -24,18 +24,33 @@
     "aHint": "A: {value}"
   },
   "card": {
-    "title": "By book — top 50 by absolute Spend delta"
+    "title": "By {dimension} — top 50 by absolute Spend delta",
+    "byBookTitle": "By book — top 50 by absolute Spend delta"
   },
   "empty": "No data",
   "th": {
     "book": "Book",
     "marketplace": "MP",
+    "item": "Item",
     "spendA": "Spend A",
     "spendB": "Spend B",
     "deltaSpend": "Δ Spend",
     "salesA": "Sales A",
     "salesB": "Sales B",
     "deltaSales": "Δ Sales",
-    "deltaOrders": "Δ Orders"
+    "deltaOrders": "Δ Orders",
+    "acosA": "ACOS A",
+    "acosB": "ACOS B"
+  },
+  "dimension": {
+    "label": "Dimension",
+    "aria": "Comparison dimension",
+    "book": "Book",
+    "campaign": "Campaign",
+    "keyword": "Keyword",
+    "marketplace": "Marketplace",
+    "account": "Account",
+    "placement": "Placement",
+    "match_type": "Match type"
   }
 }
