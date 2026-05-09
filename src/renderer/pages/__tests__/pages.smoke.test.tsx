@@ -86,10 +86,10 @@ describe('page smoke renders', () => {
         <ReportsPage />
       </Wrap>,
     );
-    expect(await screen.findByRole('heading', { name: 'Отчёты' })).toBeInTheDocument();
-    expect(await screen.findByText('Динамика по дням')).toBeInTheDocument();
-    expect(await screen.findByText('Сводка')).toBeInTheDocument();
-    expect(await screen.findByText('По маркетплейсам')).toBeInTheDocument();
+    expect(await screen.findByTestId('reports-page')).toBeInTheDocument();
+    expect(await screen.findByText('daily.title')).toBeInTheDocument();
+    expect(await screen.findByText('summary.title')).toBeInTheDocument();
+    expect(await screen.findByText('marketplace.title')).toBeInTheDocument();
   });
 
   it('SettingsPage renders sections', async () => {

@@ -1,0 +1,75 @@
+{
+  "title": "Reports",
+  "loading": "Loading…",
+  "subtitle": "{from} → {to} · {count, plural, one {# day} other {# {unit}}}",
+  "subtitleDays": "{from} → {to} · {count, plural, one {# day} other {# days}}",
+  "subtitleWeeks": "{from} → {to} · {count, plural, one {# week} other {# weeks}}",
+  "errors": {
+    "load": "Failed to load reports"
+  },
+  "tabs": {
+    "ariaLabel": "Reports tab: {label}",
+    "overview": "Overview",
+    "placement": "Placement",
+    "match_type": "Match type",
+    "targeting_type": "Targeting",
+    "bidding_strategy": "Bidding strategy",
+    "campaign_type": "Campaign type"
+  },
+  "kpi": {
+    "spend": "Spend",
+    "sales": "Sales",
+    "acos": "ACOS",
+    "tacos": "TACoS"
+  },
+  "daily": {
+    "title": "Day-over-day dynamics",
+    "spend": "Spend",
+    "sales": "Sales"
+  },
+  "summary": {
+    "title": "Summary",
+    "th": {
+      "period": "Period",
+      "spend": "Spend",
+      "sales": "Sales",
+      "orders": "Orders",
+      "clicks": "Clicks",
+      "acos": "ACOS",
+      "royalty": "Royalty",
+      "profit": "Profit"
+    },
+    "exported": "Exported: {count, plural, one {# day} other {# days}}",
+    "exportedWeeks": "Exported: {count, plural, one {# week} other {# weeks}}",
+    "granularityDaily": "Daily",
+    "granularityWeekly": "Weekly"
+  },
+  "marketplace": {
+    "title": "By marketplace",
+    "th": {
+      "marketplace": "MP",
+      "spend": "Spend",
+      "sales": "Sales",
+      "orders": "Orders",
+      "acos": "ACOS",
+      "tacos": "TACoS"
+    },
+    "tooltipSpend": "Spend",
+    "tooltipSales": "Sales"
+  },
+  "breakdown": {
+    "title": "Breakdown by: {dimension}",
+    "loadFailed": "Failed to load breakdown",
+    "unsupported": "Endpoint {endpoint} returned 401/403/404 — breakdown unavailable.",
+    "empty": "No data for the selected period",
+    "th": {
+      "impressions": "Impr",
+      "clicks": "Clicks",
+      "ctr": "CTR",
+      "spend": "Spend",
+      "sales": "Sales",
+      "orders": "Orders",
+      "acos": "ACOS"
+    }
+  }
+}

@@ -40,20 +40,14 @@ describe('ReportsPage tabs', () => {
         <ReportsPage />
       </Wrap>,
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Отчёты' }),
-    ).toBeInTheDocument();
-    // Все 6 табов
-    expect(
-      await screen.findByRole('tab', { name: 'Таб отчётов: Динамика' }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole('tab', { name: 'Таб отчётов: Placement' }),
-    ).toBeInTheDocument();
-    // Переключаем на Placement
-    await user.click(screen.getByRole('tab', { name: 'Таб отчётов: Placement' }));
-    expect(await screen.findByText(/Разрез по: Placement/)).toBeInTheDocument();
-    // Mock placement → 'Top Of Search' после форматирования
+    expect(await screen.findByTestId('reports-page')).toBeInTheDocument();
+    // All 6 tabs are rendered with stable testids.
+    expect(await screen.findByTestId('reports-tab-overview')).toBeInTheDocument();
+    expect(await screen.findByTestId('reports-tab-placement')).toBeInTheDocument();
+    // Switch to Placement
+    await user.click(screen.getByTestId('reports-tab-placement'));
+    expect(await screen.findByTestId('reports-breakdown-card')).toBeInTheDocument();
+    // Mock placement → 'Top Of Search' after format helper.
     expect(await screen.findByText(/Top Of Search/)).toBeInTheDocument();
   });
 });

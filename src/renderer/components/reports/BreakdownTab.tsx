@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../../api/client';
 import { metricsApi } from '../../api/metrics';
 import { Card, EmptyState, ErrorBanner, LoadingRow } from '../ui';
@@ -8,13 +9,9 @@ import { useToast } from '../../contexts/ToastContext';
 interface BreakdownTabProps {
   endpoint: string;
   pluralKey: string;
-  // Заголовок dimension-колонки (e.g. "Placement", "Match Type").
   dimensionLabel: string;
-  // Поле в item, которое читать как dimension-метку.
   dimensionField: string;
-  // Опциональный форматтер dimension (e.g. uppercase для placement codes).
   dimensionFormat?: (raw: unknown) => string;
-  // Параметры фильтрации.
   from: string;
   to: string;
   attribution: '7d' | '14d' | '30d' | '1d';
@@ -23,7 +20,6 @@ interface BreakdownTabProps {
   accounts?: string[];
 }
 
-// Извлекает число из разнотипного поля (cost / spend / sales и т.п.)
 const num = (item: Record<string, unknown>, ...keys: string[]): number => {
   for (const k of keys) {
     const v = item[k];
@@ -45,6 +41,7 @@ export const BreakdownTab: React.FC<BreakdownTabProps> = ({
   bookIds,
   accounts,
 }) => {
+  const { t } = useTranslation('reports');
   const toast = useToast();
   const [items, setItems] = useState<Record<string, unknown>[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,7 +64,7 @@ export const BreakdownTab: React.FC<BreakdownTabProps> = ({
           setItems([]);
           return;
         }
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить разрез');
+        toast.error(err instanceof ApiError ? err.message : t('breakdown.loadFailed'));
         setItems([]);
       })
       .finally(() => {
@@ -76,7 +73,7 @@ export const BreakdownTab: React.FC<BreakdownTabProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [endpoint, pluralKey, from, to, attribution, marketplaces, bookIds, accounts, toast]);
+  }, [endpoint, pluralKey, from, to, attribution, marketplaces, bookIds, accounts, toast, t]);
 
   const enriched = useMemo(() => {
     if (!items) return [];
@@ -99,29 +96,27 @@ export const BreakdownTab: React.FC<BreakdownTabProps> = ({
   }, [items, dimensionField, dimensionFormat]);
 
   if (unsupported) {
-    return (
-      <ErrorBanner message={`Endpoint ${endpoint} вернул 401/403/404 — разрез недоступен.`} />
-    );
+    return <ErrorBanner message={t('breakdown.unsupported', { endpoint })} />;
   }
 
   return (
-    <Card title={`Разрез по: ${dimensionLabel}`}>
+    <Card title={t('breakdown.title', { dimension: dimensionLabel })} data-testid="reports-breakdown-card">
       {loading && !items ? (
         <LoadingRow />
       ) : enriched.length === 0 ? (
-        <EmptyState title="Нет данных за выбранный период" />
+        <EmptyState title={t('breakdown.empty')} />
       ) : (
         <table className="w-full text-sm table-sticky-head">
           <thead>
             <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
               <th className="text-left px-5 py-2 font-medium">{dimensionLabel}</th>
-              <th className="text-right px-3 py-2 font-medium">Impr</th>
-              <th className="text-right px-3 py-2 font-medium">Clicks</th>
-              <th className="text-right px-3 py-2 font-medium">CTR</th>
-              <th className="text-right px-3 py-2 font-medium">Spend</th>
-              <th className="text-right px-3 py-2 font-medium">Sales</th>
-              <th className="text-right px-3 py-2 font-medium">Orders</th>
-              <th className="text-right px-5 py-2 font-medium">ACOS</th>
+              <th className="text-right px-3 py-2 font-medium">{t('breakdown.th.impressions')}</th>
+              <th className="text-right px-3 py-2 font-medium">{t('breakdown.th.clicks')}</th>
+              <th className="text-right px-3 py-2 font-medium">{t('breakdown.th.ctr')}</th>
+              <th className="text-right px-3 py-2 font-medium">{t('breakdown.th.spend')}</th>
+              <th className="text-right px-3 py-2 font-medium">{t('breakdown.th.sales')}</th>
+              <th className="text-right px-3 py-2 font-medium">{t('breakdown.th.orders')}</th>
+              <th className="text-right px-5 py-2 font-medium">{t('breakdown.th.acos')}</th>
             </tr>
           </thead>
           <tbody>

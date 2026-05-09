@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Download, BarChart3 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
   metricsApi,
@@ -51,47 +52,42 @@ type ReportTab =
   | 'bidding_strategy'
   | 'campaign_type';
 
-const TABS: Array<{ id: ReportTab; label: string }> = [
-  { id: 'overview', label: 'Динамика' },
-  { id: 'placement', label: 'Placement' },
-  { id: 'match_type', label: 'Match type' },
-  { id: 'targeting_type', label: 'Targeting' },
-  { id: 'bidding_strategy', label: 'Bidding strategy' },
-  { id: 'campaign_type', label: 'Campaign type' },
+const TAB_IDS: ReportTab[] = [
+  'overview',
+  'placement',
+  'match_type',
+  'targeting_type',
+  'bidding_strategy',
+  'campaign_type',
 ];
 
 const BREAKDOWN_CONFIG: Record<
   Exclude<ReportTab, 'overview'>,
-  { endpoint: string; pluralKey: string; dimensionLabel: string; dimensionField: string }
+  { endpoint: string; pluralKey: string; dimensionField: string }
 > = {
   placement: {
     endpoint: '/api/metrics/summary/by-placement',
     pluralKey: 'placements',
-    dimensionLabel: 'Placement',
     dimensionField: 'placement',
   },
   match_type: {
     endpoint: '/api/metrics/summary/by-match-type',
     pluralKey: 'match_types',
-    dimensionLabel: 'Match type',
     dimensionField: 'match_type',
   },
   targeting_type: {
     endpoint: '/api/metrics/summary/by-targeting-type',
     pluralKey: 'targeting_types',
-    dimensionLabel: 'Targeting',
     dimensionField: 'targeting_type',
   },
   bidding_strategy: {
     endpoint: '/api/metrics/summary/by-bidding-strategy',
     pluralKey: 'bidding_strategies',
-    dimensionLabel: 'Bidding strategy',
     dimensionField: 'bidding_strategy',
   },
   campaign_type: {
     endpoint: '/api/metrics/summary/by-campaign-type',
     pluralKey: 'campaign_types',
-    dimensionLabel: 'Campaign type',
     dimensionField: 'campaign_type',
   },
 };
@@ -111,6 +107,7 @@ interface PeriodRow {
 }
 
 export const ReportsPage: React.FC = () => {
+  const { t } = useTranslation('reports');
   const toast = useToast();
   const { filters: globalFilters } = useGlobalFilters();
   const { list: booksList } = useBooks();
@@ -149,13 +146,13 @@ export const ReportsPage: React.FC = () => {
         setByMp(mp);
       } catch (err) {
         toast.error(
-          err instanceof ApiError ? err.message : 'Не удалось загрузить отчёты',
+          err instanceof ApiError ? err.message : t('errors.load'),
         );
       } finally {
         setLoading(false);
       }
     },
-    [from, to, toast, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
+    [from, to, toast, t, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
   );
 
   useEffect(() => {
@@ -217,17 +214,23 @@ export const ReportsPage: React.FC = () => {
       `ads-tracker-${granularity}-${from}-${to}.csv`,
       toCsv(data, columns),
     );
-    toast.success(`Экспортировано: ${rows.length} ${granularity === 'daily' ? 'дней' : 'недель'}`);
+    toast.success(
+      granularity === 'daily'
+        ? t('summary.exported', { count: rows.length })
+        : t('summary.exportedWeeks', { count: rows.length }),
+    );
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="reports-page">
       <PageHeader
-        title="Отчёты"
+        title={t('title')}
         subtitle={
           daily || weekly
-            ? `${from} → ${to} · ${rows.length} ${granularity === 'daily' ? 'дней' : 'недель'}`
-            : 'Загрузка…'
+            ? granularity === 'daily'
+              ? t('subtitleDays', { from, to, count: rows.length })
+              : t('subtitleWeeks', { from, to, count: rows.length })
+            : t('loading')
         }
         rightSlot={
           <RangePicker
@@ -245,29 +248,34 @@ export const ReportsPage: React.FC = () => {
 
       {/* Tabs */}
       <div role="tablist" className="flex items-center gap-1 border-b border-zinc-200 overflow-x-auto">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={tab === t.id}
-            aria-label={`Таб отчётов: ${t.label}`}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`
-              h-9 px-3 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap
-              ${tab === t.id
-                ? 'border-zinc-900 text-zinc-900'
-                : 'border-transparent text-zinc-500 hover:text-zinc-900'}
-            `}
-          >
-            {t.label}
-          </button>
-        ))}
+        {TAB_IDS.map((tabId) => {
+          const label = t(`tabs.${tabId}` as 'tabs.overview');
+          return (
+            <button
+              key={tabId}
+              role="tab"
+              data-testid={`reports-tab-${tabId}`}
+              aria-selected={tab === tabId}
+              aria-label={t('tabs.ariaLabel', { label })}
+              type="button"
+              onClick={() => setTab(tabId)}
+              className={`
+                h-9 px-3 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap
+                ${tab === tabId
+                  ? 'border-zinc-900 text-zinc-900'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-900'}
+              `}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {tab !== 'overview' && (
         <BreakdownTab
           {...BREAKDOWN_CONFIG[tab]}
+          dimensionLabel={t(`tabs.${tab}` as 'tabs.placement')}
           dimensionFormat={(raw) =>
             String(raw ?? '—').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
           }
@@ -285,23 +293,23 @@ export const ReportsPage: React.FC = () => {
       {tab === 'overview' && <>
 
       <div className="grid grid-cols-4 gap-3">
-        <Kpi label="Spend" value={fmtMoney(totals.spend)} loading={loading} />
-        <Kpi label="Sales" value={fmtMoney(totals.sales)} loading={loading} />
+        <Kpi label={t('kpi.spend')} value={fmtMoney(totals.spend)} loading={loading} />
+        <Kpi label={t('kpi.sales')} value={fmtMoney(totals.sales)} loading={loading} />
         <Kpi
-          label="ACOS"
+          label={t('kpi.acos')}
           value={fmtPct(totals.acos)}
           loading={loading}
           tone={totals.acos > 100 ? 'negative' : 'default'}
         />
-        <Kpi label="TACoS" value={fmtPct(totals.tacos)} loading={loading} />
+        <Kpi label={t('kpi.tacos')} value={fmtPct(totals.tacos)} loading={loading} />
       </div>
 
       {/* Daily spend/sales line chart */}
       <Card
         title={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-testid="reports-daily-card">
             <BarChart3 size={14} className="text-zinc-400" />
-            Динамика по дням
+            {t('daily.title')}
           </div>
         }
       >
@@ -337,7 +345,7 @@ export const ReportsPage: React.FC = () => {
                 <Line
                   type="monotone"
                   dataKey="spend"
-                  name="Spend"
+                  name={t('daily.spend')}
                   stroke="#3f3f46"
                   strokeWidth={1.5}
                   dot={false}
@@ -345,7 +353,7 @@ export const ReportsPage: React.FC = () => {
                 <Line
                   type="monotone"
                   dataKey="sales"
-                  name="Sales"
+                  name={t('daily.sales')}
                   stroke="#a1a1aa"
                   strokeWidth={1.5}
                   dot={false}
@@ -359,9 +367,9 @@ export const ReportsPage: React.FC = () => {
       {/* Periodic breakdown */}
       <Card
         title={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-testid="reports-summary-card">
             <BarChart3 size={14} className="text-zinc-400" />
-            Сводка
+            {t('summary.title')}
           </div>
         }
         rightSlot={
@@ -391,14 +399,14 @@ export const ReportsPage: React.FC = () => {
           <table className="w-full text-sm table-sticky-head">
             <thead>
               <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-2 font-medium">Период</th>
-                <th className="text-right px-3 py-2 font-medium">Spend</th>
-                <th className="text-right px-3 py-2 font-medium">Sales</th>
-                <th className="text-right px-3 py-2 font-medium">Orders</th>
-                <th className="text-right px-3 py-2 font-medium">Clicks</th>
-                <th className="text-right px-3 py-2 font-medium">ACOS</th>
-                <th className="text-right px-3 py-2 font-medium">Royalty</th>
-                <th className="text-right px-5 py-2 font-medium">Profit</th>
+                <th className="text-left px-5 py-2 font-medium">{t('summary.th.period')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('summary.th.spend')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('summary.th.sales')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('summary.th.orders')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('summary.th.clicks')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('summary.th.acos')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('summary.th.royalty')}</th>
+                <th className="text-right px-5 py-2 font-medium">{t('summary.th.profit')}</th>
               </tr>
             </thead>
             <tbody>
@@ -456,7 +464,7 @@ export const ReportsPage: React.FC = () => {
       </Card>
 
       {/* By marketplace */}
-      <Card title="По маркетплейсам">
+      <Card title={t('marketplace.title')} data-testid="reports-mp-card">
         {loading && !byMp ? (
           <LoadingRow />
         ) : !byMp || Object.keys(byMp.marketplaces).length === 0 ? (
@@ -502,12 +510,12 @@ export const ReportsPage: React.FC = () => {
             <table className="w-full text-sm table-sticky-head">
             <thead>
               <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-2 font-medium">MP</th>
-                <th className="text-right px-3 py-2 font-medium">Spend</th>
-                <th className="text-right px-3 py-2 font-medium">Sales</th>
-                <th className="text-right px-3 py-2 font-medium">Orders</th>
-                <th className="text-right px-3 py-2 font-medium">ACOS</th>
-                <th className="text-right px-5 py-2 font-medium">TACoS</th>
+                <th className="text-left px-5 py-2 font-medium">{t('marketplace.th.marketplace')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('marketplace.th.spend')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('marketplace.th.sales')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('marketplace.th.orders')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('marketplace.th.acos')}</th>
+                <th className="text-right px-5 py-2 font-medium">{t('marketplace.th.tacos')}</th>
               </tr>
             </thead>
             <tbody>
@@ -574,11 +582,12 @@ const DailyTooltip: React.FC<RechartsTooltipProps> = ({ active, payload, label }
 };
 
 const MarketplaceTooltip: React.FC<RechartsTooltipProps> = ({ active, payload }) => {
+  const { t } = useTranslation('reports');
   if (!active || !payload || payload.length === 0) return null;
   const data = payload[0].payload as { code: string; spend: number; sales: number };
   const rows: ChartTooltipRow[] = [
-    { label: 'Spend', value: fmtMoney(data.spend), color: '#3f3f46' },
-    { label: 'Sales', value: fmtMoney(data.sales), color: '#a1a1aa' },
+    { label: t('marketplace.tooltipSpend'), value: fmtMoney(data.spend), color: '#3f3f46' },
+    { label: t('marketplace.tooltipSales'), value: fmtMoney(data.sales), color: '#a1a1aa' },
   ];
   return <ChartTooltip active title={data.code} rows={rows} />;
 };
@@ -586,25 +595,28 @@ const MarketplaceTooltip: React.FC<RechartsTooltipProps> = ({ active, payload })
 const GranularityToggle: React.FC<{
   value: Granularity;
   onChange: (v: Granularity) => void;
-}> = ({ value, onChange }) => (
-  <div className="inline-flex items-center bg-white border border-zinc-200 rounded-md p-0.5">
-    {(['daily', 'weekly'] as const).map((g) => (
-      <button
-        key={g}
-        onClick={() => onChange(g)}
-        className={`
-          px-2.5 h-6 text-[11px] font-medium rounded
-          transition-colors
-          ${value === g
-            ? 'bg-zinc-100 text-zinc-900'
-            : 'text-zinc-500 hover:text-zinc-900'}
-        `}
-      >
-        {g === 'daily' ? 'По дням' : 'По неделям'}
-      </button>
-    ))}
-  </div>
-);
+}> = ({ value, onChange }) => {
+  const { t } = useTranslation('reports');
+  return (
+    <div className="inline-flex items-center bg-white border border-zinc-200 rounded-md p-0.5">
+      {(['daily', 'weekly'] as const).map((g) => (
+        <button
+          key={g}
+          onClick={() => onChange(g)}
+          className={`
+            px-2.5 h-6 text-[11px] font-medium rounded
+            transition-colors
+            ${value === g
+              ? 'bg-zinc-100 text-zinc-900'
+              : 'text-zinc-500 hover:text-zinc-900'}
+          `}
+        >
+          {g === 'daily' ? t('summary.granularityDaily') : t('summary.granularityWeekly')}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 function toPeriodRowDaily(d: DailySummaryMetric): PeriodRow {
   return {

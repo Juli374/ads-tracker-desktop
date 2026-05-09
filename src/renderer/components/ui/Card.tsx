@@ -6,6 +6,7 @@ interface CardProps {
   className?: string;
   bodyClassName?: string;
   children: React.ReactNode;
+  'data-testid'?: string;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -14,8 +15,10 @@ export const Card: React.FC<CardProps> = ({
   className = '',
   bodyClassName = '',
   children,
+  'data-testid': dataTestId,
 }) => (
   <div
+    data-testid={dataTestId}
     className={`bg-white border border-zinc-200 rounded-lg shadow-soft overflow-hidden ${className}`}
   >
     {(title || rightSlot) && (
