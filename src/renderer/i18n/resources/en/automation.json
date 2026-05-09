@@ -1,0 +1,50 @@
+{
+  "title": "Automation",
+  "loading": "Loading…",
+  "subtitle": {
+    "unsupported": "Endpoint unavailable",
+    "recCount": "{count, plural, one {# recommendation} other {# recommendations}} in this tab"
+  },
+  "errors": {
+    "load": "Failed to load recommendations",
+    "unsupportedBanner": "Endpoint /api/automation/recommendations returned 401/403/404.",
+    "applyFailed": "Failed to apply",
+    "dismissFailed": "Failed to dismiss"
+  },
+  "applied": "Applied",
+  "dismissed": "Dismissed",
+  "dismissPrompt": "Why are we dismissing it?",
+  "dismissDefault": "not relevant",
+  "kpi": {
+    "pending": "Pending",
+    "applied": "Applied",
+    "dismissed": "Dismissed",
+    "snoozed": "Snoozed"
+  },
+  "tabs": {
+    "pending": "Pending",
+    "applied": "Applied",
+    "dismissed": "Dismissed",
+    "snoozed": "Snoozed",
+    "ariaLabel": "Tab: {label}"
+  },
+  "card": {
+    "title": "Recommendations"
+  },
+  "empty": {
+    "pending": "No active recommendations",
+    "other": "No recommendations with status {status}",
+    "hint": "Backend will create recommendations after analysis"
+  },
+  "row": {
+    "dismiss": "Dismiss",
+    "apply": "Apply",
+    "fallbackCampaign": "Campaign #{id}"
+  },
+  "priority": {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  }
+}

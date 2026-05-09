@@ -10,6 +10,8 @@ import type enNegatives from './resources/en/negatives.json';
 import type enReports from './resources/en/reports.json';
 import type enComparison from './resources/en/comparison.json';
 import type enAlerts from './resources/en/alerts.json';
+import type enOperations from './resources/en/operations.json';
+import type enAutomation from './resources/en/automation.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -26,6 +28,8 @@ declare module 'i18next' {
       reports: typeof enReports;
       comparison: typeof enComparison;
       alerts: typeof enAlerts;
+      operations: typeof enOperations;
+      automation: typeof enAutomation;
     };
     returnNull: false;
   }

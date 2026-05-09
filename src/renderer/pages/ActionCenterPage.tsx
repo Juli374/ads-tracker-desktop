@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, BellOff, History as HistoryIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
   actionCenterApi,
-  actionTypeLabel,
-  entityTypeLabel,
+  KNOWN_ACTION_TYPES,
+  KNOWN_ENTITY_TYPES,
   type ActionLog,
   type MetricsSnapshot,
 } from '../api/actionCenter';
@@ -13,9 +14,23 @@ import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
 
+const useActionTypeLabel = () => {
+  const { t } = useTranslation('operations');
+  return (type: string): string =>
+    KNOWN_ACTION_TYPES.has(type) ? t(`actionType.${type}` as 'actionType.pause') : type;
+};
+
+const useEntityTypeLabel = () => {
+  const { t } = useTranslation('operations');
+  return (type: string): string =>
+    KNOWN_ENTITY_TYPES.has(type) ? t(`entityType.${type}` as 'entityType.campaign') : type;
+};
+
 export const ActionCenterPage: React.FC = () => {
+  const { t } = useTranslation('operations');
   const toast = useToast();
   const { navigate } = useNav();
+  const actionTypeLabel = useActionTypeLabel();
   const [actions, setActions] = useState<ActionLog[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [unsupported, setUnsupported] = useState(false);
@@ -27,7 +42,6 @@ export const ActionCenterPage: React.FC = () => {
       setUnsupported(false);
       try {
         const res = await actionCenterApi.recent({ limit: 100 });
-        // Backend на разных деплоях возвращает либо массив, либо { actions, total }.
         const arr = Array.isArray(res) ? res : Array.isArray(res?.actions) ? res.actions : [];
         setActions(arr);
       } catch (err) {
@@ -36,13 +50,13 @@ export const ActionCenterPage: React.FC = () => {
           setActions([]);
           return;
         }
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить ленту');
+        toast.error(err instanceof ApiError ? err.message : t('errors.load'));
         setActions([]);
       } finally {
         setLoading(false);
       }
     },
-    [toast],
+    [toast, t],
   );
 
   useEffect(() => {
@@ -61,11 +75,10 @@ export const ActionCenterPage: React.FC = () => {
     return actions.filter((a) => a.action_type === filterType);
   }, [actions, filterType]);
 
-  // Группируем по дню (created_at YYYY-MM-DD).
   const grouped = useMemo(() => {
     const map = new Map<string, ActionLog[]>();
     for (const a of filtered) {
-      const day = (a.created_at || '').slice(0, 10) || 'без даты';
+      const day = (a.created_at || '').slice(0, 10) || t('group.dateless');
       const existing = map.get(day);
       if (existing) {
         existing.push(a);
@@ -74,28 +87,26 @@ export const ActionCenterPage: React.FC = () => {
       }
     }
     return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  }, [filtered]);
+  }, [filtered, t]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="action-center-page">
       <PageHeader
-        title="Центр действий"
+        title={t('title')}
         subtitle={
           unsupported
-            ? 'Endpoint недоступен в текущем окружении'
+            ? t('subtitle.unsupported')
             : actions != null
-            ? `${filtered.length} событий за последний период`
-            : 'Загрузка…'
+            ? t('subtitle.eventCount', { count: filtered.length })
+            : t('loading')
         }
       />
 
-      {unsupported && (
-        <ErrorBanner message="Endpoint /api/actions/recent вернул 401/403/404. Возможно, фича не задеплоена на этом окружении." />
-      )}
+      {unsupported && <ErrorBanner message={t('errors.unsupportedBanner')} />}
 
       {!unsupported && (
         <Card
-          title="Лента"
+          title={t('card.title')}
           rightSlot={
             <select
               value={filterType}
@@ -106,10 +117,10 @@ export const ActionCenterPage: React.FC = () => {
                 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
               "
             >
-              <option value="all">Все типы</option>
-              {types.map((t) => (
-                <option key={t} value={t}>
-                  {actionTypeLabel(t)}
+              <option value="all">{t('filters.allTypes')}</option>
+              {types.map((tp) => (
+                <option key={tp} value={tp}>
+                  {actionTypeLabel(tp)}
                 </option>
               ))}
             </select>
@@ -119,12 +130,12 @@ export const ActionCenterPage: React.FC = () => {
             <LoadingRow />
           ) : filtered.length === 0 ? (
             <EmptyState
-              title={actions?.length === 0 ? 'Нет событий' : 'Ничего не нашлось'}
+              title={actions?.length === 0 ? t('empty.noEvents') : t('empty.notFound')}
               hint={
                 actions?.length === 0 ? (
                   <span className="inline-flex items-center gap-1.5">
                     <BellOff size={11} />
-                    Действия начнут появляться после первых изменений в кампаниях
+                    {t('empty.hint')}
                   </span>
                 ) : undefined
               }
@@ -163,6 +174,9 @@ const ActionRow: React.FC<{
   action: ActionLog;
   onNav: ReturnType<typeof useNav>['navigate'];
 }> = ({ action, onNav }) => {
+  const { t } = useTranslation('operations');
+  const actionTypeLabel = useActionTypeLabel();
+  const entityTypeLabel = useEntityTypeLabel();
   const time = (action.created_at || '').slice(11, 16);
   const canDrillCampaign = action.campaign_id != null;
 
@@ -215,7 +229,7 @@ const ActionRow: React.FC<{
                 }
                 className="ml-auto text-zinc-500 hover:text-zinc-900 hover:underline"
               >
-                К кампании →
+                {t('row.toCampaign')}
               </button>
             )}
           </div>
@@ -229,13 +243,13 @@ const ImpactRow: React.FC<{
   before: MetricsSnapshot | null;
   after: MetricsSnapshot | null;
 }> = ({ before, after }) => {
+  const { t } = useTranslation('operations');
   const cells: Array<{ label: string; before?: number; after?: number; fmt: (n?: number) => string }> = [
-    { label: 'Spend', before: before?.spend, after: after?.spend, fmt: (n) => fmtMoney(n) },
-    { label: 'Sales', before: before?.sales, after: after?.sales, fmt: (n) => fmtMoney(n) },
-    { label: 'Orders', before: before?.orders, after: after?.orders, fmt: (n) => fmtNumber(n) },
-    { label: 'ACOS', before: before?.acos, after: after?.acos, fmt: (n) => (n != null && n > 0 ? fmtPct(n) : '—') },
+    { label: t('impact.spend'), before: before?.spend, after: after?.spend, fmt: (n) => fmtMoney(n) },
+    { label: t('impact.sales'), before: before?.sales, after: after?.sales, fmt: (n) => fmtMoney(n) },
+    { label: t('impact.orders'), before: before?.orders, after: after?.orders, fmt: (n) => fmtNumber(n) },
+    { label: t('impact.acos'), before: before?.acos, after: after?.acos, fmt: (n) => (n != null && n > 0 ? fmtPct(n) : '—') },
   ];
-  // Не показываем если все before/after пустые.
   if (cells.every((c) => c.before == null && c.after == null)) return null;
 
   return (

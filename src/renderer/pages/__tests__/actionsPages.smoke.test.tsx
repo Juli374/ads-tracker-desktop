@@ -55,11 +55,9 @@ describe('ActionCenterPage', () => {
         <ActionCenterPage />
       </Wrap>,
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Центр действий' }),
-    ).toBeInTheDocument();
-    // Action_type 'change_bid' рендерится как «Изменение бида» — в фильтре <option> и в карточке.
-    const labels = await screen.findAllByText('Изменение бида');
+    expect(await screen.findByTestId('action-center-page')).toBeInTheDocument();
+    // action_type 'change_bid' через t('actionType.change_bid') → mock возвращает ключ.
+    const labels = await screen.findAllByText('actionType.change_bid');
     expect(labels.length).toBeGreaterThanOrEqual(1);
     // Entity name из mock — в карточке action.
     expect(await screen.findByText(/«test keyword»/)).toBeInTheDocument();
@@ -73,14 +71,12 @@ describe('AutomationPage', () => {
         <AutomationPage />
       </Wrap>,
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Автоматизация' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('automation-page')).toBeInTheDocument();
     // Rule name из mock
     expect(await screen.findByText('ACOS выше цели')).toBeInTheDocument();
-    // Кнопки apply/dismiss есть на pending
+    // Кнопки apply/dismiss есть на pending — мок t() возвращает ключи.
     expect(
-      await screen.findByRole('button', { name: /Применить/ }),
+      await screen.findByRole('button', { name: /row\.apply/ }),
     ).toBeInTheDocument();
   });
 });
@@ -104,9 +100,7 @@ describe('Хоткеи G A / G U / G L', () => {
     renderApp();
     await screen.findByTestId('dashboard-page');
     await user.keyboard('ga');
-    expect(
-      await screen.findByRole('heading', { name: 'Центр действий' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('action-center-page')).toBeInTheDocument();
   });
 
   it('G U → Автоматизация', async () => {
@@ -114,9 +108,7 @@ describe('Хоткеи G A / G U / G L', () => {
     renderApp();
     await screen.findByTestId('dashboard-page');
     await user.keyboard('gu');
-    expect(
-      await screen.findByRole('heading', { name: 'Автоматизация' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('automation-page')).toBeInTheDocument();
   });
 
   it('G L → Мониторинг', async () => {

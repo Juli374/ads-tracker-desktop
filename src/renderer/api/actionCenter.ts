@@ -55,35 +55,30 @@ export const actionCenterApi = {
   },
 };
 
-// Утилиты-форматтеры для UI.
-const ACTION_TYPE_RU: Record<string, string> = {
-  pause: 'Пауза',
-  unpause: 'Запуск',
-  change_bid: 'Изменение бида',
-  add_negative: 'Добавлен negative',
-  scale: 'Скейл',
-  transfer: 'Перенос',
-  add_to_targeting: 'Добавлен в targeting',
-  adjust_default_bid: 'Default bid',
-  adjust_placement_modifier: 'Placement modifier',
-  optimize_placements_3step: 'Optimize placements',
-  alert: 'Alert',
-  no_action: 'Мониторинг',
-};
+// Known enum types — UI должна локализовать через t(`actionType.${type}`).
+// Для незнакомых значений компонент покажет raw type fallback'ом.
+export const KNOWN_ACTION_TYPES = new Set<string>([
+  'pause',
+  'unpause',
+  'change_bid',
+  'add_negative',
+  'scale',
+  'transfer',
+  'add_to_targeting',
+  'adjust_default_bid',
+  'adjust_placement_modifier',
+  'optimize_placements_3step',
+  'alert',
+  'no_action',
+]);
 
-export const actionTypeLabel = (type: string): string =>
-  ACTION_TYPE_RU[type] ?? type;
-
-const ENTITY_TYPE_RU: Record<string, string> = {
-  campaign: 'кампания',
-  ad_group: 'ad group',
-  target: 'target',
-  keyword: 'keyword',
-  search_term: 'search term',
-  book: 'книга',
-  asin: 'ASIN',
-  placement: 'placement',
-};
-
-export const entityTypeLabel = (type: string): string =>
-  ENTITY_TYPE_RU[type] ?? type;
+export const KNOWN_ENTITY_TYPES = new Set<string>([
+  'campaign',
+  'ad_group',
+  'target',
+  'keyword',
+  'search_term',
+  'book',
+  'asin',
+  'placement',
+]);

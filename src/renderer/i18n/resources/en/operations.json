@@ -1,0 +1,59 @@
+{
+  "title": "Action Center",
+  "loading": "Loading…",
+  "subtitle": {
+    "unsupported": "Endpoint unavailable in the current environment",
+    "eventCount": "{count, plural, one {# event} other {# events}} in the latest period"
+  },
+  "errors": {
+    "load": "Failed to load activity feed",
+    "unsupportedBanner": "Endpoint /api/actions/recent returned 401/403/404. The feature may not be deployed in this environment."
+  },
+  "card": {
+    "title": "Activity"
+  },
+  "filters": {
+    "allTypes": "All types"
+  },
+  "empty": {
+    "noEvents": "No events",
+    "notFound": "Nothing found",
+    "hint": "Actions will start appearing after the first changes in campaigns"
+  },
+  "group": {
+    "dateless": "no date"
+  },
+  "row": {
+    "toCampaign": "Open campaign →"
+  },
+  "impact": {
+    "spend": "Spend",
+    "sales": "Sales",
+    "orders": "Orders",
+    "acos": "ACOS"
+  },
+  "actionType": {
+    "pause": "Pause",
+    "unpause": "Resume",
+    "change_bid": "Bid change",
+    "add_negative": "Negative added",
+    "scale": "Scale",
+    "transfer": "Transfer",
+    "add_to_targeting": "Added to targeting",
+    "adjust_default_bid": "Default bid",
+    "adjust_placement_modifier": "Placement modifier",
+    "optimize_placements_3step": "Optimize placements",
+    "alert": "Alert",
+    "no_action": "Monitoring"
+  },
+  "entityType": {
+    "campaign": "campaign",
+    "ad_group": "ad group",
+    "target": "target",
+    "keyword": "keyword",
+    "search_term": "search term",
+    "book": "book",
+    "asin": "ASIN",
+    "placement": "placement"
+  }
+}

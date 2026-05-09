@@ -108,15 +108,8 @@ export const automationApi = {
   },
 };
 
-// UI-метки.
-const PRIORITY_RU: Record<string, string> = {
-  critical: 'Критично',
-  high: 'Высокий',
-  medium: 'Средний',
-  low: 'Низкий',
-};
-
-export const priorityLabel = (p: string): string => PRIORITY_RU[p] ?? p;
+// Локализуется через t(`priority.${p}`); неизвестные значения пробрасываются как есть.
+export const KNOWN_PRIORITIES = new Set<string>(['critical', 'high', 'medium', 'low']);
 
 export const priorityClasses = (p: string): string => {
   switch (p) {

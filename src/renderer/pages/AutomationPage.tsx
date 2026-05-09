@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check, X, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
   automationApi,
+  KNOWN_PRIORITIES,
   priorityClasses,
-  priorityLabel,
   type Recommendation,
   type RecommendationStatus,
 } from '../api/automation';
@@ -20,14 +21,16 @@ import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
 
-const STATUSES: Array<{ id: RecommendationStatus; label: string }> = [
-  { id: 'pending', label: 'Pending' },
-  { id: 'applied', label: 'Applied' },
-  { id: 'dismissed', label: 'Dismissed' },
-  { id: 'snoozed', label: 'Snoozed' },
-];
+const STATUS_IDS: RecommendationStatus[] = ['pending', 'applied', 'dismissed', 'snoozed'];
+
+const usePriorityLabel = () => {
+  const { t } = useTranslation('automation');
+  return (p: string): string =>
+    KNOWN_PRIORITIES.has(p) ? t(`priority.${p}` as 'priority.critical') : p;
+};
 
 export const AutomationPage: React.FC = () => {
+  const { t } = useTranslation('automation');
   const toast = useToast();
   const { navigate } = useNav();
   const [tab, setTab] = useState<RecommendationStatus>('pending');
@@ -64,13 +67,13 @@ export const AutomationPage: React.FC = () => {
           setItems([]);
           return;
         }
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить рекомендации');
+        toast.error(err instanceof ApiError ? err.message : t('errors.load'));
         setItems([]);
       } finally {
         setLoading(false);
       }
     },
-    [tab, toast],
+    [tab, toast, t],
   );
 
   useEffect(() => {
@@ -80,89 +83,89 @@ export const AutomationPage: React.FC = () => {
   const handleApply = async (rec: Recommendation) => {
     try {
       await automationApi.apply(rec.id);
-      toast.success('Применено');
+      toast.success(t('applied'));
       setItems((prev) => prev?.filter((r) => r.id !== rec.id) ?? prev);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось применить');
+      toast.error(err instanceof ApiError ? err.message : t('errors.applyFailed'));
     }
   };
 
   const handleDismiss = async (rec: Recommendation) => {
-    const reason = prompt('Почему отклоняем?', 'не актуально');
+    const reason = prompt(t('dismissPrompt'), t('dismissDefault'));
     if (reason == null) return;
     try {
       await automationApi.dismiss(rec.id, reason);
-      toast.success('Отклонено');
+      toast.success(t('dismissed'));
       setItems((prev) => prev?.filter((r) => r.id !== rec.id) ?? prev);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось отклонить');
+      toast.error(err instanceof ApiError ? err.message : t('errors.dismissFailed'));
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="automation-page">
       <PageHeader
-        title="Автоматизация"
+        title={t('title')}
         subtitle={
           unsupported
-            ? 'Endpoint недоступен'
+            ? t('subtitle.unsupported')
             : items != null
-            ? `${items.length} рекомендаций в этой вкладке`
-            : 'Загрузка…'
+            ? t('subtitle.recCount', { count: items.length })
+            : t('loading')
         }
       />
 
-      {unsupported && (
-        <ErrorBanner message="Endpoint /api/automation/recommendations вернул 401/403/404." />
-      )}
+      {unsupported && <ErrorBanner message={t('errors.unsupportedBanner')} />}
 
       {!unsupported && (
         <>
-          {/* Stats */}
           <div className="grid grid-cols-4 gap-3">
-            <Kpi label="Pending" value={fmtNumber(stats?.pending)} loading={loading && !stats} />
-            <Kpi label="Applied" value={fmtNumber(stats?.applied)} loading={loading && !stats} />
-            <Kpi label="Dismissed" value={fmtNumber(stats?.dismissed)} loading={loading && !stats} />
-            <Kpi label="Snoozed" value={fmtNumber(stats?.snoozed)} loading={loading && !stats} />
+            <Kpi label={t('kpi.pending')} value={fmtNumber(stats?.pending)} loading={loading && !stats} />
+            <Kpi label={t('kpi.applied')} value={fmtNumber(stats?.applied)} loading={loading && !stats} />
+            <Kpi label={t('kpi.dismissed')} value={fmtNumber(stats?.dismissed)} loading={loading && !stats} />
+            <Kpi label={t('kpi.snoozed')} value={fmtNumber(stats?.snoozed)} loading={loading && !stats} />
           </div>
 
-          {/* Tabs */}
           <div role="tablist" className="flex items-center gap-1 border-b border-zinc-200">
-            {STATUSES.map((s) => (
-              <button
-                key={s.id}
-                role="tab"
-                aria-selected={tab === s.id}
-                aria-label={`Таб: ${s.label}`}
-                type="button"
-                onClick={() => setTab(s.id)}
-                className={`
-                  h-9 px-3 text-xs font-medium border-b-2 -mb-px transition-colors
-                  ${tab === s.id
-                    ? 'border-zinc-900 text-zinc-900'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-900'}
-                `}
-              >
-                {s.label}
-              </button>
-            ))}
+            {STATUS_IDS.map((id) => {
+              const label = t(`tabs.${id}` as 'tabs.pending');
+              return (
+                <button
+                  key={id}
+                  role="tab"
+                  data-testid={`automation-tab-${id}`}
+                  aria-selected={tab === id}
+                  aria-label={t('tabs.ariaLabel', { label })}
+                  type="button"
+                  onClick={() => setTab(id)}
+                  className={`
+                    h-9 px-3 text-xs font-medium border-b-2 -mb-px transition-colors
+                    ${tab === id
+                      ? 'border-zinc-900 text-zinc-900'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-900'}
+                  `}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
-          <Card title="Рекомендации">
+          <Card title={t('card.title')}>
             {loading && !items ? (
               <LoadingRow />
             ) : !items || items.length === 0 ? (
               <EmptyState
                 title={
                   tab === 'pending'
-                    ? 'Нет активных рекомендаций'
-                    : `Нет рекомендаций со статусом ${tab}`
+                    ? t('empty.pending')
+                    : t('empty.other', { status: tab })
                 }
                 hint={
                   tab === 'pending' ? (
                     <span className="inline-flex items-center gap-1.5">
                       <Zap size={11} />
-                      Backend будет создавать рекомендации после анализа
+                      {t('empty.hint')}
                     </span>
                   ) : undefined
                 }
@@ -195,6 +198,8 @@ const RecommendationRow: React.FC<{
   onDismiss(): void;
   onCampaign(id: number): void;
 }> = ({ rec, showActions, onApply, onDismiss, onCampaign }) => {
+  const { t } = useTranslation('automation');
+  const priorityLabel = usePriorityLabel();
   const ms = rec.metricsSnapshot ?? {};
   return (
     <li className="px-5 py-3 hover:bg-zinc-50/40 transition-colors">
@@ -242,7 +247,7 @@ const RecommendationRow: React.FC<{
                 onClick={() => onCampaign(rec.campaignId as number)}
                 className="text-[11px] text-zinc-500 hover:text-zinc-900 hover:underline"
               >
-                {rec.campaignName ?? `Кампания #${rec.campaignId}`} →
+                {rec.campaignName ?? t('row.fallbackCampaign', { id: rec.campaignId })} →
               </button>
             )}
             {showActions && (
@@ -256,7 +261,7 @@ const RecommendationRow: React.FC<{
                   "
                 >
                   <X size={11} />
-                  Отклонить
+                  {t('row.dismiss')}
                 </button>
                 <button
                   type="button"
@@ -267,7 +272,7 @@ const RecommendationRow: React.FC<{
                   "
                 >
                   <Check size={11} />
-                  Применить
+                  {t('row.apply')}
                 </button>
               </div>
             )}
