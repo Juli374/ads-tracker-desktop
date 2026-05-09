@@ -1,4 +1,32 @@
 {
+  "kanban": {
+    "title": "Operations Center",
+    "loading": "Loading…",
+    "subtitle": {
+      "unsupported": "Endpoint unavailable",
+      "taskCount": "{count, plural, one {# task} other {# tasks}}"
+    },
+    "errors": {
+      "load": "Failed to load tasks",
+      "updateStatus": "Failed to update status",
+      "createFailed": "Failed to create task",
+      "unsupportedBanner": "Endpoint /api/tasks returned 401/403/404."
+    },
+    "addTask": "Task",
+    "newCardTitle": "New task",
+    "placeholder": "What needs to be done?",
+    "submit": "Add",
+    "cancel": "Cancel",
+    "created": "Task created",
+    "columns": {
+      "todo": "Todo",
+      "in_progress": "In progress",
+      "blocked": "Blocked",
+      "done": "Done"
+    },
+    "columnEmpty": "empty",
+    "statusAria": "Task status: {title}"
+  },
   "title": "Action Center",
   "loading": "Loading…",
   "subtitle": {

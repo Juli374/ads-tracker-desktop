@@ -33,7 +33,7 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-import { dateRangeFor, RangeId, RANGES } from '../lib/dateRange';
+import { dateRangeFor, RangeId, RANGE_IDS } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { toCsv, downloadCsv } from '../lib/csv';
 import { useToast } from '../contexts/ToastContext';
@@ -239,7 +239,7 @@ export const ReportsPage: React.FC = () => {
             onChange={setRange}
             onRefresh={() => load()}
             refreshing={loading}
-            ranges={RANGES}
+            ranges={RANGE_IDS}
             autoRefresh={{ storageKey: 'auto-refresh-reports' }}
           />
         }

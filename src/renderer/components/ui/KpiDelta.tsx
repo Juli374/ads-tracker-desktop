@@ -1,16 +1,14 @@
 import React from 'react';
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface KpiDeltaProps {
   label: string;
   value: React.ReactNode;
-  // Изменение к прошлому периоду в %. undefined = «нет данных».
   change?: number | null;
-  // Для метрик где рост = плохо (ACOS, Spend) — стрелка зелёная вниз, красная вверх.
   inverseChange?: boolean;
   changeLabel?: string;
   loading?: boolean;
-  // Подкрашиваем значение в особых случаях (например, ACOS > 100 → красный).
   tone?: 'default' | 'positive' | 'negative';
   icon?: React.ReactNode;
 }
@@ -36,11 +34,13 @@ export const KpiDelta: React.FC<KpiDeltaProps> = ({
   value,
   change,
   inverseChange = false,
-  changeLabel = 'к прошлому периоду',
+  changeLabel,
   loading = false,
   tone = 'default',
   icon,
 }) => {
+  const { t } = useTranslation('common');
+  const effectiveChangeLabel = changeLabel ?? t('kpi.vsPrevious');
   const hasChange = isFiniteNumber(change) && change !== 0;
   const isUp = isFiniteNumber(change) && change > 0;
   const isPositive = inverseChange ? !isUp : isUp;
@@ -75,7 +75,7 @@ export const KpiDelta: React.FC<KpiDeltaProps> = ({
           <ArrowIcon size={11} strokeWidth={2.5} />
           {isFiniteNumber(change) ? formatChange(change) : '—'}
         </span>
-        <span className="text-zinc-400">{changeLabel}</span>
+        <span className="text-zinc-400">{effectiveChangeLabel}</span>
       </div>
     </div>
   );

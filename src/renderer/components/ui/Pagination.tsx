@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { fmtNumber } from '../../lib/format';
 
 interface Props {
@@ -19,13 +20,14 @@ export const Pagination: React.FC<Props> = ({
   onChange,
   disabled = false,
 }) => {
+  const { t } = useTranslation('common');
   if (pages <= 1) return null;
   const from = (page - 1) * perPage + 1;
   const to = Math.min(page * perPage, total);
   return (
     <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-between">
       <div className="text-[11px] text-zinc-500">
-        {from}–{to} из {fmtNumber(total)}
+        {t('pagination.showingRange', { from, to, total: fmtNumber(total) })}
       </div>
       <div className="flex items-center gap-1">
         <button
@@ -36,7 +38,7 @@ export const Pagination: React.FC<Props> = ({
             text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100
             disabled:opacity-40 disabled:cursor-not-allowed transition-colors
           "
-          aria-label="Предыдущая страница"
+          aria-label={t('pagination.prevPage')}
         >
           <ChevronLeft size={14} />
         </button>
@@ -51,7 +53,7 @@ export const Pagination: React.FC<Props> = ({
             text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100
             disabled:opacity-40 disabled:cursor-not-allowed transition-colors
           "
-          aria-label="Следующая страница"
+          aria-label={t('pagination.nextPage')}
         >
           <ChevronRight size={14} />
         </button>

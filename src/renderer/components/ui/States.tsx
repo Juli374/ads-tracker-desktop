@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const ErrorBanner: React.FC<{ message: string }> = ({ message }) => (
   <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -18,9 +19,12 @@ export const LoadingRow: React.FC<{ message?: string }> = ({ message }) => (
 export const EmptyState: React.FC<{
   title?: string;
   hint?: React.ReactNode;
-}> = ({ title = 'Нет данных за выбранный период.', hint }) => (
-  <div className="px-5 py-12 text-center">
-    <div className="text-sm text-zinc-500">{title}</div>
-    {hint && <div className="text-xs text-zinc-400 mt-1">{hint}</div>}
-  </div>
-);
+}> = ({ title, hint }) => {
+  const { t } = useTranslation('common');
+  return (
+    <div className="px-5 py-12 text-center">
+      <div className="text-sm text-zinc-500">{title ?? t('states.emptyForPeriod')}</div>
+      {hint && <div className="text-xs text-zinc-400 mt-1">{hint}</div>}
+    </div>
+  );
+};

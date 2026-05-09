@@ -1,7 +1,8 @@
 import React from 'react';
 import { AlertOctagon } from 'lucide-react';
+import { withTranslation, WithTranslation } from 'react-i18next';
 
-interface Props {
+interface Props extends WithTranslation {
   children: React.ReactNode;
 }
 
@@ -9,7 +10,7 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
+class ErrorBoundaryClass extends React.Component<Props, State> {
   state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State {
@@ -17,7 +18,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo): void {
-    // Логируем в консоль renderer'а для дев-инспекции
     console.error('[ErrorBoundary]', error, info.componentStack);
   }
 
@@ -26,6 +26,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   };
 
   render() {
+    const { t } = this.props;
     if (this.state.error) {
       return (
         <div className="h-screen w-screen flex items-center justify-center bg-zinc-50 px-6">
@@ -34,11 +35,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
               <AlertOctagon size={16} className="text-red-600" strokeWidth={2.2} />
             </div>
             <h1 className="text-base font-semibold text-zinc-900 tracking-tight">
-              Что-то пошло не так
+              {t('errorBoundary.title')}
             </h1>
             <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
-              В интерфейсе случилась непредвиденная ошибка. Перезагрузка обычно решает.
-              Если повторяется — проверь консоль (View → Developer → DevTools).
+              {t('errorBoundary.hint')}
             </p>
             <div className="mt-3 px-3 py-2 rounded-md bg-zinc-50 border border-zinc-100 text-[11px] font-mono text-zinc-700 break-all">
               {this.state.error.message}
@@ -50,7 +50,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 hover:bg-zinc-800 transition-colors
               "
             >
-              Перезагрузить
+              {t('errorBoundary.reload')}
             </button>
           </div>
         </div>
@@ -59,3 +59,5 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return this.props.children;
   }
 }
+
+export const ErrorBoundary = withTranslation('common')(ErrorBoundaryClass);

@@ -148,7 +148,7 @@ const ToastItem: React.FC<{
       <button
         onClick={onDismiss}
         className="text-zinc-400 hover:text-zinc-700 transition-colors mt-0.5"
-        aria-label="Закрыть"
+        aria-label="Close"
       >
         <X size={13} />
       </button>

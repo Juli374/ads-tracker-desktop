@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setStatus('authenticated');
     } catch (err) {
       await window.api.auth.clearToken();
-      const msg = err instanceof Error ? err.message : 'Не удалось проверить токен';
+      const msg = err instanceof Error ? err.message : 'Failed to verify token';
       setError(msg);
       setStatus('unauthenticated');
       throw err;

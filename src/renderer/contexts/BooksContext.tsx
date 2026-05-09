@@ -35,7 +35,7 @@ export const BooksProvider: React.FC<{ children: React.ReactNode }> = ({
       const data = await booksApi.list();
       setList(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить книги');
+      setError(err instanceof Error ? err.message : 'Failed to load books');
     } finally {
       setLoading(false);
     }

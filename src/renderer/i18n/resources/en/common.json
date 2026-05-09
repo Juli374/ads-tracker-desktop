@@ -41,7 +41,8 @@
     "deleting": "Deleting…",
     "loadFailed": "Failed to load",
     "saveFailed": "Failed to save",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "emptyForPeriod": "No data for the selected period."
   },
   "time": {
     "today": "Today",
@@ -61,7 +62,9 @@
   "pagination": {
     "page": "Page {current} of {total}",
     "rowsPerPage": "Rows per page",
-    "showingRange": "Showing {from}–{to} of {total}"
+    "showingRange": "{from}–{to} of {total}",
+    "prevPage": "Previous page",
+    "nextPage": "Next page"
   },
   "general": {
     "yes": "Yes",
@@ -71,5 +74,69 @@
     "of": "of",
     "or": "or",
     "and": "and"
+  },
+  "ranges": {
+    "7d": "7 days",
+    "30d": "30 days",
+    "90d": "90 days",
+    "mtd": "MTD",
+    "ytd": "YTD"
+  },
+  "rangePicker": {
+    "refresh": "Refresh",
+    "refreshAria": "Refresh",
+    "autoOnTitle": "Auto-refresh enabled",
+    "autoOffTitle": "Enable auto-refresh every {seconds}s",
+    "autoLabel": "auto"
+  },
+  "filtersBar": {
+    "active": "Active filters",
+    "removeTitle": "Remove"
+  },
+  "kpi": {
+    "vsPrevious": "vs previous period"
+  },
+  "globalFilters": {
+    "resetAll": "Reset all",
+    "resetAllTitle": "Reset all filters",
+    "books": {
+      "all": "All books",
+      "search": "Search book…",
+      "noMatch": "Nothing found",
+      "resetAria": "Reset book"
+    },
+    "marketplaces": {
+      "all": "All MPs",
+      "label": "Marketplaces",
+      "loading": "Loading…",
+      "resetAria": "Reset marketplaces",
+      "countSuffix": "MPs"
+    },
+    "accounts": {
+      "all": "All accounts",
+      "label": "Account",
+      "resetAria": "Reset account",
+      "countSuffix": "acc."
+    }
+  },
+  "calendarBell": {
+    "aria": "Calendar",
+    "closeAria": "Close",
+    "title": "Calendar · upcoming",
+    "loading": "Loading…",
+    "empty": "No upcoming events"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "hint": "An unexpected error occurred. Reloading usually fixes it. If it persists — check the console (View → Developer → DevTools).",
+    "reload": "Reload"
+  },
+  "errors": {
+    "loadBooks": "Failed to load books",
+    "loadMarketplaces": "Failed to load marketplaces",
+    "verifyToken": "Failed to verify token"
+  },
+  "toast": {
+    "closeAria": "Close"
   }
 }

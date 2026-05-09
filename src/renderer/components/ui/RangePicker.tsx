@@ -1,14 +1,14 @@
 import React, { useEffect } from 'react';
 import { RefreshCw, Zap } from 'lucide-react';
-import { RANGES, RangeId, RangeOption } from '../../lib/dateRange';
+import { useTranslation } from 'react-i18next';
+import { RANGE_IDS, RangeId } from '../../lib/dateRange';
 
 interface RangePickerProps {
   value: RangeId;
   onChange: (next: RangeId) => void;
   onRefresh?: () => void;
   refreshing?: boolean;
-  ranges?: RangeOption[];
-  // Включает кнопку «auto 30s». storageKey должен быть уникален для страницы.
+  ranges?: RangeId[];
   autoRefresh?: {
     storageKey: string;
     intervalMs?: number;
@@ -38,9 +38,10 @@ export const RangePicker: React.FC<RangePickerProps> = ({
   onChange,
   onRefresh,
   refreshing = false,
-  ranges = RANGES.slice(0, 3),
+  ranges = RANGE_IDS.slice(0, 3),
   autoRefresh,
 }) => {
+  const { t } = useTranslation('common');
   const [autoOn, setAutoOn] = React.useState<boolean>(() =>
     autoRefresh ? readAuto(autoRefresh.storageKey) : false,
   );
@@ -59,22 +60,24 @@ export const RangePicker: React.FC<RangePickerProps> = ({
     writeAuto(autoRefresh.storageKey, next);
   };
 
+  const intervalSeconds = (autoRefresh?.intervalMs ?? DEFAULT_INTERVAL_MS) / 1000;
+
   return (
     <div className="flex items-center gap-1.5">
       <div className="inline-flex items-center bg-white border border-zinc-200 rounded-md p-0.5">
-        {ranges.map((r) => (
+        {ranges.map((id) => (
           <button
-            key={r.id}
-            onClick={() => onChange(r.id)}
+            key={id}
+            onClick={() => onChange(id)}
             className={`
               px-2.5 h-7 text-xs font-medium rounded
               transition-colors
-              ${value === r.id
+              ${value === id
                 ? 'bg-zinc-100 text-zinc-900'
                 : 'text-zinc-500 hover:text-zinc-900'}
             `}
           >
-            {r.label}
+            {t(`ranges.${id}` as 'ranges.7d')}
           </button>
         ))}
       </div>
@@ -82,8 +85,8 @@ export const RangePicker: React.FC<RangePickerProps> = ({
         <button
           onClick={onRefresh}
           className="h-7 w-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
-          title="Обновить"
-          aria-label="Обновить"
+          title={t('rangePicker.refresh')}
+          aria-label={t('rangePicker.refreshAria')}
         >
           <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
         </button>
@@ -99,14 +102,14 @@ export const RangePicker: React.FC<RangePickerProps> = ({
           `}
           title={
             autoOn
-              ? 'Авто-обновление включено'
-              : `Включить авто-обновление каждые ${(autoRefresh.intervalMs ?? DEFAULT_INTERVAL_MS) / 1000}с`
+              ? t('rangePicker.autoOnTitle')
+              : t('rangePicker.autoOffTitle', { seconds: intervalSeconds })
           }
           aria-pressed={autoOn}
         >
           <Zap size={11} className={autoOn ? 'fill-emerald-500 text-emerald-500' : ''} />
           <span className="font-mono text-[10px]">
-            {autoOn ? `${(autoRefresh.intervalMs ?? DEFAULT_INTERVAL_MS) / 1000}s` : 'auto'}
+            {autoOn ? `${intervalSeconds}s` : t('rangePicker.autoLabel')}
           </span>
         </button>
       )}

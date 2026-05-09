@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Filter, X, BookOpen, User, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 import { useMarketplaces } from '../contexts/MarketplacesContext';
 import { useBooks } from '../contexts/BooksContext';
 
 export const GlobalFilters: React.FC = () => {
+  const { t } = useTranslation('common');
   const { reset, hasAny } = useGlobalFilters();
   const { list: books } = useBooks();
 
@@ -29,13 +31,12 @@ export const GlobalFilters: React.FC = () => {
             text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100
             transition-colors
           "
-          title="Сбросить все фильтры"
+          title={t('globalFilters.resetAllTitle')}
         >
           <X size={11} />
-          Сбросить
+          {t('globalFilters.resetAll')}
         </button>
       )}
-      {/* keep Filter icon in tree to avoid eslint unused — used below */}
       <span className="hidden">
         <Filter size={1} />
       </span>
@@ -43,9 +44,8 @@ export const GlobalFilters: React.FC = () => {
   );
 };
 
-// ---------- Book filter (single-select with search) ----------
-
 const BookFilter: React.FC = () => {
+  const { t } = useTranslation('common');
   const { filters, setBookId } = useGlobalFilters();
   const { list: books } = useBooks();
   const [open, setOpen] = useState(false);
@@ -72,7 +72,7 @@ const BookFilter: React.FC = () => {
     [books, filters.bookId],
   );
 
-  const label = selected ? selected.title : 'Все книги';
+  const label = selected ? selected.title : t('globalFilters.books.all');
   const active = filters.bookId != null;
 
   return (
@@ -97,7 +97,7 @@ const BookFilter: React.FC = () => {
             }}
             className="ml-1 hover:text-zinc-300 transition-colors cursor-pointer"
             role="button"
-            aria-label="Сбросить книгу"
+            aria-label={t('globalFilters.books.resetAria')}
           >
             <X size={11} />
           </span>
@@ -111,7 +111,7 @@ const BookFilter: React.FC = () => {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск книги…"
+              placeholder={t('globalFilters.books.search')}
               className="w-full h-7 px-2 text-xs bg-transparent border-0 outline-none placeholder:text-zinc-400"
               autoFocus
             />
@@ -125,10 +125,10 @@ const BookFilter: React.FC = () => {
               className="w-full flex items-center gap-2.5 px-3 h-8 text-sm text-left hover:bg-zinc-50 transition-colors"
             >
               <RadioDot selected={filters.bookId == null} />
-              <span className="text-xs text-zinc-700">Все книги</span>
+              <span className="text-xs text-zinc-700">{t('globalFilters.books.all')}</span>
             </button>
             {filtered.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-zinc-400">Ничего не нашлось</div>
+              <div className="px-3 py-2 text-xs text-zinc-400">{t('globalFilters.books.noMatch')}</div>
             ) : (
               filtered.map((b) => {
                 const sel = filters.bookId === b.id;
@@ -156,9 +156,8 @@ const BookFilter: React.FC = () => {
   );
 };
 
-// ---------- Marketplaces filter (multi-select) ----------
-
 const MarketplaceFilter: React.FC = () => {
+  const { t } = useTranslation('common');
   const { list: marketplaces } = useMarketplaces();
   const { filters, toggleMarketplace, setMarketplaces } = useGlobalFilters();
   const [open, setOpen] = useState(false);
@@ -174,7 +173,12 @@ const MarketplaceFilter: React.FC = () => {
   }, [open]);
 
   const count = filters.marketplaces.length;
-  const label = count === 0 ? 'Все MPs' : count === 1 ? filters.marketplaces[0] : `${count} MPs`;
+  const label =
+    count === 0
+      ? t('globalFilters.marketplaces.all')
+      : count === 1
+      ? filters.marketplaces[0]
+      : `${count} ${t('globalFilters.marketplaces.countSuffix')}`;
   const active = count > 0;
 
   return (
@@ -199,7 +203,7 @@ const MarketplaceFilter: React.FC = () => {
             }}
             className="ml-1 hover:text-zinc-300 transition-colors cursor-pointer"
             role="button"
-            aria-label="Сбросить маркетплейсы"
+            aria-label={t('globalFilters.marketplaces.resetAria')}
           >
             <X size={11} />
           </span>
@@ -210,20 +214,20 @@ const MarketplaceFilter: React.FC = () => {
         <div className="absolute right-0 top-9 z-40 w-64 bg-white border border-zinc-200 rounded-lg shadow-card overflow-hidden">
           <div className="px-3 py-2 border-b border-zinc-100 flex items-center justify-between">
             <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-              Маркетплейсы
+              {t('globalFilters.marketplaces.label')}
             </div>
             {active && (
               <button
                 onClick={() => setMarketplaces([])}
                 className="text-[10px] text-zinc-500 hover:text-zinc-900 transition-colors"
               >
-                Сбросить
+                {t('actions.reset')}
               </button>
             )}
           </div>
           <div className="max-h-[280px] overflow-y-auto py-1">
             {marketplaces.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-zinc-400">Загрузка…</div>
+              <div className="px-3 py-2 text-xs text-zinc-400">{t('globalFilters.marketplaces.loading')}</div>
             ) : (
               marketplaces.map((code) => {
                 const selected = filters.marketplaces.includes(code);
@@ -246,9 +250,8 @@ const MarketplaceFilter: React.FC = () => {
   );
 };
 
-// ---------- Account filter (multi-select, hidden if 1) ----------
-
 const AccountFilter: React.FC<{ accounts: string[] }> = ({ accounts }) => {
+  const { t } = useTranslation('common');
   const { filters, toggleAccount, setAccounts } = useGlobalFilters();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -263,7 +266,12 @@ const AccountFilter: React.FC<{ accounts: string[] }> = ({ accounts }) => {
   }, [open]);
 
   const count = filters.accounts.length;
-  const label = count === 0 ? 'Все account' : count === 1 ? filters.accounts[0] : `${count} acc.`;
+  const label =
+    count === 0
+      ? t('globalFilters.accounts.all')
+      : count === 1
+      ? filters.accounts[0]
+      : `${count} ${t('globalFilters.accounts.countSuffix')}`;
   const active = count > 0;
 
   return (
@@ -288,7 +296,7 @@ const AccountFilter: React.FC<{ accounts: string[] }> = ({ accounts }) => {
             }}
             className="ml-1 hover:text-zinc-300 transition-colors cursor-pointer"
             role="button"
-            aria-label="Сбросить account"
+            aria-label={t('globalFilters.accounts.resetAria')}
           >
             <X size={11} />
           </span>
@@ -298,7 +306,7 @@ const AccountFilter: React.FC<{ accounts: string[] }> = ({ accounts }) => {
       {open && (
         <div className="absolute right-0 top-9 z-40 w-56 bg-white border border-zinc-200 rounded-lg shadow-card overflow-hidden">
           <div className="px-3 py-2 border-b border-zinc-100 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-            Account
+            {t('globalFilters.accounts.label')}
           </div>
           <div className="max-h-[240px] overflow-y-auto py-1">
             {accounts.map((acc) => {
@@ -320,8 +328,6 @@ const AccountFilter: React.FC<{ accounts: string[] }> = ({ accounts }) => {
     </div>
   );
 };
-
-// ---------- Helpers ----------
 
 const Checkbox: React.FC<{ selected: boolean }> = ({ selected }) => (
   <span

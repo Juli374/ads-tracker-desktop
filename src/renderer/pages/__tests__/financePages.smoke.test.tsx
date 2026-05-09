@@ -71,7 +71,7 @@ describe('OperationsCenterPage', () => {
       </Wrap>,
     );
     expect(
-      await screen.findByRole('heading', { name: 'Операционный центр' }),
+      await screen.findByTestId('operations-page'),
     ).toBeInTheDocument();
     expect(await screen.findByText('Test task')).toBeInTheDocument();
   });
@@ -107,7 +107,7 @@ describe('Hotkeys G Y / G T / G F', () => {
     await screen.findByTestId('dashboard-page');
     await user.keyboard('gt');
     expect(
-      await screen.findByRole('heading', { name: 'Операционный центр' }),
+      await screen.findByTestId('operations-page'),
     ).toBeInTheDocument();
   });
 

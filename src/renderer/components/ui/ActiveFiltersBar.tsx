@@ -1,5 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface ActiveFilterChip {
   label: string;
@@ -11,11 +12,12 @@ interface Props {
 }
 
 export const ActiveFiltersBar: React.FC<Props> = ({ chips }) => {
+  const { t } = useTranslation('common');
   if (chips.length === 0) return null;
   return (
     <div className="flex items-center flex-wrap gap-1.5">
       <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-        Активные фильтры
+        {t('filtersBar.active')}
       </span>
       {chips.map((c) => (
         <button
@@ -27,7 +29,7 @@ export const ActiveFiltersBar: React.FC<Props> = ({ chips }) => {
             border border-zinc-200
             hover:bg-zinc-200 transition-colors
           "
-          title="Сбросить"
+          title={t('filtersBar.removeTitle')}
         >
           <span className="max-w-[180px] truncate">{c.label}</span>
           <X size={10} className="text-zinc-500" />

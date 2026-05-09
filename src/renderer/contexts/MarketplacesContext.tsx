@@ -35,7 +35,7 @@ export const MarketplacesProvider: React.FC<{ children: React.ReactNode }> = ({
       const codes = await marketplacesApi.list();
       setList(Array.isArray(codes) ? codes : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить маркетплейсы');
+      setError(err instanceof Error ? err.message : 'Failed to load marketplaces');
     } finally {
       setLoading(false);
     }

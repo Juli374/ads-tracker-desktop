@@ -2,24 +2,25 @@ import { formatDate } from './format';
 
 export type RangeId = '7d' | '30d' | '90d' | 'mtd' | 'ytd';
 
+// Список id'ов диапазона. Метки берутся через t(`ranges.${id}`) из common.json
+// в местах использования (RangePicker, ComparisonPage).
+export const RANGE_IDS: RangeId[] = ['7d', '30d', '90d', 'mtd', 'ytd'];
+
 export interface RangeOption {
   id: RangeId;
   label: string;
 }
 
-export const RANGES: RangeOption[] = [
-  { id: '7d', label: '7 дней' },
-  { id: '30d', label: '30 дней' },
-  { id: '90d', label: '90 дней' },
-  { id: 'mtd', label: 'MTD' },
-  { id: 'ytd', label: 'YTD' },
-];
+/**
+ * Backwards-compat: возвращает id-only список с placeholder label = id.
+ * Места которые используют это (RangePicker default), должны вызывать
+ * `t('ranges.<id>')` и не полагаться на label из этого массива.
+ */
+export const RANGES: RangeOption[] = RANGE_IDS.map((id) => ({ id, label: id }));
 
 export function dateRangeFor(range: RangeId): { from: string; to: string } {
   const today = new Date();
   const to = formatDate(today);
-  // Используем UTC-конструкторы чтобы результат не зависел от часового пояса
-  // машины — backend оперирует UTC-датами и расчёт стабилен в тестах.
   if (range === 'mtd') {
     const first = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
     return { from: formatDate(first), to };

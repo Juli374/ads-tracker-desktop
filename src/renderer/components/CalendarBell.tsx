@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Calendar as CalendarIcon, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import { calendarApi, type CalendarEvent } from '../api/calendar';
 
 const POLL_MS = 5 * 60 * 1000;
 
 export const CalendarBell: React.FC = () => {
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
   const [unsupported, setUnsupported] = useState(false);
@@ -29,7 +31,6 @@ export const CalendarBell: React.FC = () => {
           setEvents([]);
           return;
         }
-        // Тихо: бирка наверху не должна шуметь.
         setEvents([]);
       } finally {
         if (!cancelled) setLoading(false);
@@ -44,7 +45,6 @@ export const CalendarBell: React.FC = () => {
     };
   }, []);
 
-  // Закрытие по клику снаружи.
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -70,7 +70,7 @@ export const CalendarBell: React.FC = () => {
           text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100
           transition-colors
         "
-        aria-label="Календарь"
+        aria-label={t('calendarBell.aria')}
       >
         <CalendarIcon size={14} />
         {count > 0 && (
@@ -84,22 +84,22 @@ export const CalendarBell: React.FC = () => {
           bg-white border border-zinc-200 rounded-lg shadow-card overflow-hidden
         ">
           <div className="px-4 py-2.5 border-b border-zinc-100 flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-900">Календарь · ближайшие</span>
+            <span className="text-xs font-semibold text-zinc-900">{t('calendarBell.title')}</span>
             <button
               type="button"
               onClick={() => setOpen(false)}
               className="text-zinc-400 hover:text-zinc-700"
-              aria-label="Закрыть"
+              aria-label={t('calendarBell.closeAria')}
             >
               <X size={12} />
             </button>
           </div>
           <div className="max-h-80 overflow-y-auto">
             {loading && !events ? (
-              <div className="px-4 py-6 text-xs text-zinc-400 text-center">Загрузка…</div>
+              <div className="px-4 py-6 text-xs text-zinc-400 text-center">{t('calendarBell.loading')}</div>
             ) : !events || events.length === 0 ? (
               <div className="px-4 py-6 text-xs text-zinc-400 text-center">
-                Нет ближайших событий
+                {t('calendarBell.empty')}
               </div>
             ) : (
               <ul className="divide-y divide-zinc-100">

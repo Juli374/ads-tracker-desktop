@@ -47,7 +47,7 @@ describe('drill-down navigation', () => {
       await screen.findByTestId('campaigns-page'),
     ).toBeInTheDocument();
     expect(
-      await screen.findByLabelText('Сбросить книгу'),
+      await screen.findByLabelText('globalFilters.books.resetAria'),
     ).toBeInTheDocument();
   });
 
