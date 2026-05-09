@@ -8,6 +8,7 @@ import type enSearchTerms from './resources/en/searchTerms.json';
 import type enKeywords from './resources/en/keywords.json';
 import type enNegatives from './resources/en/negatives.json';
 import type enReports from './resources/en/reports.json';
+import type enComparison from './resources/en/comparison.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -22,6 +23,7 @@ declare module 'i18next' {
       keywords: typeof enKeywords;
       negatives: typeof enNegatives;
       reports: typeof enReports;
+      comparison: typeof enComparison;
     };
     returnNull: false;
   }

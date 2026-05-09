@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
   metricsApi,
@@ -24,13 +25,7 @@ import {
 } from '../contexts/GlobalFiltersContext';
 import { useBooks } from '../contexts/BooksContext';
 
-const RANGE_OPTIONS: Array<{ id: RangeId; label: string }> = [
-  { id: '7d', label: '7 дней' },
-  { id: '30d', label: '30 дней' },
-  { id: '90d', label: '90 дней' },
-  { id: 'mtd', label: 'MTD' },
-  { id: 'ytd', label: 'YTD' },
-];
+const RANGE_IDS: RangeId[] = ['7d', '30d', '90d', 'mtd', 'ytd'];
 
 interface PeriodTotals {
   cost: number;
@@ -57,13 +52,13 @@ const totalsOf = (sum: BookSummary | null): PeriodTotals => {
   };
 };
 
-// Возвращает % изменения. Если before=0 — null (не определено).
 const pctDelta = (after: number, before: number): number | null => {
   if (!Number.isFinite(before) || before === 0) return null;
   return ((after - before) / before) * 100;
 };
 
 export const ComparisonPage: React.FC = () => {
+  const { t } = useTranslation('comparison');
   const toast = useToast();
   const { filters: globalFilters } = useGlobalFilters();
   const { list: booksList } = useBooks();
@@ -99,12 +94,12 @@ export const ComparisonPage: React.FC = () => {
         setSumA(a);
         setSumB(b);
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить сравнение');
+        toast.error(err instanceof ApiError ? err.message : t('errors.load'));
       } finally {
         setLoading(false);
       }
     },
-    [filterParams, aRange.from, aRange.to, bRange.from, bRange.to, toast],
+    [filterParams, aRange.from, aRange.to, bRange.from, bRange.to, toast, t],
   );
 
   useEffect(() => {
@@ -114,7 +109,6 @@ export const ComparisonPage: React.FC = () => {
   const totalsA = useMemo(() => totalsOf(sumA), [sumA]);
   const totalsB = useMemo(() => totalsOf(sumB), [sumB]);
 
-  // Per-book сравнение: индексируем книги периода A и B по book_id+marketplace.
   const perBook = useMemo(() => {
     const key = (b: BookMetric) => `${b.book_id}-${b.marketplace ?? ''}`;
     const aMap = new Map<string, BookMetric>();
@@ -126,7 +120,6 @@ export const ComparisonPage: React.FC = () => {
       .map((k) => {
         const a = aMap.get(k);
         const b = bMap.get(k);
-        // По построению allKeys, хотя бы один из (a, b) — defined.
         const meta = a ?? b;
         if (!meta) return null;
         return {
@@ -149,13 +142,18 @@ export const ComparisonPage: React.FC = () => {
   }, [sumA, sumB]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="comparison-page">
       <PageHeader
-        title="Сравнение"
+        title={t('title')}
         subtitle={
           sumA && sumB
-            ? `${aRange.from} → ${aRange.to}  vs  ${bRange.from} → ${bRange.to}`
-            : 'Загрузка…'
+            ? t('subtitle', {
+                aFrom: aRange.from,
+                aTo: aRange.to,
+                bFrom: bRange.from,
+                bTo: bRange.to,
+              })
+            : t('loading')
         }
         rightSlot={
           <div className="flex items-center gap-2">
@@ -168,13 +166,11 @@ export const ComparisonPage: React.FC = () => {
 
       <ActiveFiltersBar chips={chips} />
 
-      {rangeA === rangeB && (
-        <ErrorBanner message="Период A и B одинаковые — выберите разные диапазоны." />
-      )}
+      {rangeA === rangeB && <ErrorBanner message={t('sameRangeWarning')} />}
 
       <div className="grid grid-cols-4 gap-3">
         <DeltaKpi
-          label="Spend"
+          label={t('kpi.spend')}
           a={totalsA.cost}
           b={totalsB.cost}
           fmt={(n) => fmtMoney(n)}
@@ -182,21 +178,21 @@ export const ComparisonPage: React.FC = () => {
           loading={loading && !sumA}
         />
         <DeltaKpi
-          label="Sales"
+          label={t('kpi.sales')}
           a={totalsA.sales}
           b={totalsB.sales}
           fmt={(n) => fmtMoney(n)}
           loading={loading && !sumA}
         />
         <DeltaKpi
-          label="Orders"
+          label={t('kpi.orders')}
           a={totalsA.orders}
           b={totalsB.orders}
           fmt={(n) => fmtNumber(n)}
           loading={loading && !sumA}
         />
         <DeltaKpi
-          label="ACOS"
+          label={t('kpi.acos')}
           a={totalsA.acos}
           b={totalsB.acos}
           fmt={(n) => fmtPct(n)}
@@ -205,24 +201,24 @@ export const ComparisonPage: React.FC = () => {
         />
       </div>
 
-      <Card title="По книгам — top 50 по абсолютной разнице Spend">
+      <Card title={t('card.title')}>
         {loading && !sumA ? (
           <LoadingRow />
         ) : perBook.length === 0 ? (
-          <EmptyState title="Нет данных" />
+          <EmptyState title={t('empty')} />
         ) : (
           <table className="w-full text-sm table-sticky-head">
             <thead>
               <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-2 font-medium">Книга</th>
-                <th className="text-left px-3 py-2 font-medium">MP</th>
-                <th className="text-right px-3 py-2 font-medium">Spend A</th>
-                <th className="text-right px-3 py-2 font-medium">Spend B</th>
-                <th className="text-right px-3 py-2 font-medium">Δ Spend</th>
-                <th className="text-right px-3 py-2 font-medium">Sales A</th>
-                <th className="text-right px-3 py-2 font-medium">Sales B</th>
-                <th className="text-right px-3 py-2 font-medium">Δ Sales</th>
-                <th className="text-right px-5 py-2 font-medium">Δ Orders</th>
+                <th className="text-left px-5 py-2 font-medium">{t('th.book')}</th>
+                <th className="text-left px-3 py-2 font-medium">{t('th.marketplace')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.spendA')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.spendB')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.deltaSpend')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.salesA')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.salesB')}</th>
+                <th className="text-right px-3 py-2 font-medium">{t('th.deltaSales')}</th>
+                <th className="text-right px-5 py-2 font-medium">{t('th.deltaOrders')}</th>
               </tr>
             </thead>
             <tbody>
@@ -274,27 +270,31 @@ const PeriodSelect: React.FC<{
   label: string;
   value: RangeId;
   onChange: (v: RangeId) => void;
-}> = ({ label, value, onChange }) => (
-  <div className="flex items-center gap-1">
-    <span className="text-[10px] font-semibold text-zinc-500 uppercase">{label}</span>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as RangeId)}
-      className="
-        h-7 pl-2 pr-7 text-xs rounded-md cursor-pointer
-        border border-zinc-200 bg-white text-zinc-700
-        focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
-      "
-      aria-label={`Период ${label}`}
-    >
-      {RANGE_OPTIONS.map((o) => (
-        <option key={o.id} value={o.id}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+}> = ({ label, value, onChange }) => {
+  const { t } = useTranslation('comparison');
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-[10px] font-semibold text-zinc-500 uppercase">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as RangeId)}
+        className="
+          h-7 pl-2 pr-7 text-xs rounded-md cursor-pointer
+          border border-zinc-200 bg-white text-zinc-700
+          focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+        "
+        data-testid={`comparison-period-${label}`}
+        aria-label={t('range.aria', { label })}
+      >
+        {RANGE_IDS.map((id) => (
+          <option key={id} value={id}>
+            {t(`ranges.${id}` as 'ranges.7d')}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};
 
 const DeltaKpi: React.FC<{
   label: string;
@@ -304,6 +304,7 @@ const DeltaKpi: React.FC<{
   inverse?: boolean;
   loading?: boolean;
 }> = ({ label, a, b, fmt, inverse, loading }) => {
+  const { t } = useTranslation('comparison');
   const delta = pctDelta(b, a);
   const isUp = delta != null && delta > 0;
   const isPositive = inverse ? !isUp : isUp;
@@ -328,7 +329,7 @@ const DeltaKpi: React.FC<{
           </span>
         </span>
       }
-      hint={`A: ${fmt(a)}`}
+      hint={t('kpi.aHint', { value: fmt(a) })}
     />
   );
 };

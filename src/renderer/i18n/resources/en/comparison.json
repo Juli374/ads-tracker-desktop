@@ -1,0 +1,41 @@
+{
+  "title": "Comparison",
+  "loading": "Loading…",
+  "subtitle": "{aFrom} → {aTo}  vs  {bFrom} → {bTo}",
+  "errors": {
+    "load": "Failed to load comparison"
+  },
+  "ranges": {
+    "7d": "7 days",
+    "30d": "30 days",
+    "90d": "90 days",
+    "mtd": "MTD",
+    "ytd": "YTD"
+  },
+  "range": {
+    "aria": "Period {label}"
+  },
+  "sameRangeWarning": "Periods A and B are identical — pick different ranges.",
+  "kpi": {
+    "spend": "Spend",
+    "sales": "Sales",
+    "orders": "Orders",
+    "acos": "ACOS",
+    "aHint": "A: {value}"
+  },
+  "card": {
+    "title": "By book — top 50 by absolute Spend delta"
+  },
+  "empty": "No data",
+  "th": {
+    "book": "Book",
+    "marketplace": "MP",
+    "spendA": "Spend A",
+    "spendB": "Spend B",
+    "deltaSpend": "Δ Spend",
+    "salesA": "Sales A",
+    "salesB": "Sales B",
+    "deltaSales": "Δ Sales",
+    "deltaOrders": "Δ Orders"
+  }
+}

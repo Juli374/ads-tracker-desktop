@@ -59,13 +59,11 @@ describe('ComparisonPage', () => {
         <ComparisonPage />
       </Wrap>,
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Сравнение' }),
-    ).toBeInTheDocument();
-    expect(await screen.findByLabelText('Период A')).toBeInTheDocument();
-    expect(await screen.findByLabelText('Период B')).toBeInTheDocument();
-    expect((await screen.findAllByText('Spend')).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText('Sales')).length).toBeGreaterThan(0);
+    expect(await screen.findByTestId('comparison-page')).toBeInTheDocument();
+    expect(await screen.findByTestId('comparison-period-A')).toBeInTheDocument();
+    expect(await screen.findByTestId('comparison-period-B')).toBeInTheDocument();
+    expect((await screen.findAllByText('kpi.spend')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('kpi.sales')).length).toBeGreaterThan(0);
   });
 
   it('хоткей G P переключает на Сравнение', async () => {
@@ -85,8 +83,6 @@ describe('ComparisonPage', () => {
     );
     await screen.findByTestId('dashboard-page');
     await user.keyboard('gp');
-    expect(
-      await screen.findByRole('heading', { name: 'Сравнение' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('comparison-page')).toBeInTheDocument();
   });
 });

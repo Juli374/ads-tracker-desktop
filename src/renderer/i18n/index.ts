@@ -11,6 +11,7 @@ import enSearchTerms from './resources/en/searchTerms.json';
 import enKeywords from './resources/en/keywords.json';
 import enNegatives from './resources/en/negatives.json';
 import enReports from './resources/en/reports.json';
+import enComparison from './resources/en/comparison.json';
 
 void i18next
   .use(ICU)
@@ -19,7 +20,7 @@ void i18next
     lng: 'en',
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['common', 'nav', 'dashboard', 'campaigns', 'books', 'searchTerms', 'keywords', 'negatives', 'reports'],
+    ns: ['common', 'nav', 'dashboard', 'campaigns', 'books', 'searchTerms', 'keywords', 'negatives', 'reports', 'comparison'],
     resources: {
       en: {
         common: enCommon,
@@ -31,6 +32,7 @@ void i18next
         keywords: enKeywords,
         negatives: enNegatives,
         reports: enReports,
+        comparison: enComparison,
       },
     },
     interpolation: { escapeValue: false },
