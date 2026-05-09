@@ -66,7 +66,6 @@ export const SettingsPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
 
   const handleCopyUrl = async () => {

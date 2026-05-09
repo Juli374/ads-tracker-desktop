@@ -106,7 +106,6 @@ export const RoyaltiesPage: React.FC = () => {
         setLoading(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [source, toast],
   );
 
@@ -141,7 +140,6 @@ export const RoyaltiesPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth, source, toast]);
 
   const months = useMemo(() => {

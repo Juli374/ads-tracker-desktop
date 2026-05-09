@@ -74,7 +74,6 @@ export const NotificationsBell: React.FC = () => {
     } finally {
       setLoadingList(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
 
   const onToggle = () => {

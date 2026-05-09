@@ -56,7 +56,6 @@ export const ActionCenterPage: React.FC = () => {
         setLoading(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [toast],
   );
 
@@ -88,7 +87,6 @@ export const ActionCenterPage: React.FC = () => {
       }
     }
     return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered]);
 
   return (

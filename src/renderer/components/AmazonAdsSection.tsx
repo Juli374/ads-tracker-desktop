@@ -36,7 +36,6 @@ export const AmazonAdsSection: React.FC = () => {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
 
   useEffect(() => {
@@ -75,7 +74,6 @@ export const AmazonAdsSection: React.FC = () => {
           setCompleting(false);
         }
       },
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       [oauthState, loadProfiles, toast],
     ),
   );

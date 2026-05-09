@@ -57,7 +57,6 @@ export const AccountingPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
 
   const totals = useMemo(() => {

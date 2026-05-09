@@ -84,7 +84,6 @@ export const AlertsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [from, to, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts, toast],
   );
 

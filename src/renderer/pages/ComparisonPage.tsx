@@ -99,7 +99,6 @@ export const ComparisonPage: React.FC = () => {
         setLoading(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [filterParams, aRange.from, aRange.to, bRange.from, bRange.to, toast],
   );
 

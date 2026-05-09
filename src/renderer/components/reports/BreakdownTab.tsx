@@ -73,7 +73,6 @@ export const BreakdownTab: React.FC<BreakdownTabProps> = ({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endpoint, pluralKey, from, to, attribution, marketplaces, bookIds, accounts, toast]);
 
   const enriched = useMemo(() => {

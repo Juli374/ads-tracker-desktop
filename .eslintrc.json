@@ -22,18 +22,18 @@
       ],
       "rules": {
         "no-restricted-syntax": [
-          "warn",
+          "error",
           {
             "selector": "Literal[value=/[\\u0400-\\u04FF\\u0500-\\u052F]/]",
-            "message": "Кириллица в renderer запрещена. Используй t() из i18n. После Phase A.4 правило переключится на error."
+            "message": "Cyrillic в renderer запрещён. Используй t() из i18n."
           },
           {
             "selector": "JSXText[value=/[\\u0400-\\u04FF\\u0500-\\u052F]/]",
-            "message": "Кириллица в JSX запрещена. Оберни в t() из i18n. После Phase A.4 правило переключится на error."
+            "message": "Cyrillic в JSX запрещён. Оберни в t() из i18n."
           },
           {
             "selector": "TemplateElement[value.raw=/[\\u0400-\\u04FF\\u0500-\\u052F]/]",
-            "message": "Кириллица в template literal запрещена. Используй t() из i18n. После Phase A.4 правило переключится на error."
+            "message": "Cyrillic в template literal запрещён. Используй t() из i18n."
           }
         ]
       }
