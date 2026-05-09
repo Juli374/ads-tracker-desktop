@@ -183,7 +183,12 @@ This is the safety net that keeps Phase A from regressing as later phases add UI
 > Phase numbering continues from `parity-plan.md` (0–10 + R closed). New phases: A → H.
 > Each "h" = focused engineering hour; "d" = 1 working day = 6h. Estimates assume one engineer with the codebase loaded.
 
-### Phase A — i18n foundation **[P0, ~5 days, blocker for all later phases]**
+### Phase A — i18n foundation **[ЗАКРЫТА 2026-05-10]**
+
+> Финал: 17 EN namespaces, RU skeletons, ICU plurals, ESLint Cyrillic rule на `error`, Settings language toggle (locked EN), полный регресс зелёный (84/84 tests, tsc clean, lint clean, package OK). Cyrillic warnings 615→0. 19 коммитов в `origin/main`.
+> Подробная история — `parity-plan.md` секция Phase A.
+
+### Phase A — i18n foundation (исходный спек) **[P0, ~5 days, blocker for all later phases]**
 
 > Goal: drop all RU UI strings, add `react-i18next` + ICU plurals, lock `lng: 'en'`. After this, every new line added by phases B–H ships in EN immediately.
 

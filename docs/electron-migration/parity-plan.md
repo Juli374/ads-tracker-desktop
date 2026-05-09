@@ -711,6 +711,29 @@ Read-only: OSV (баланс по счетам), Balance Sheet, Financial Result
 
 ---
 
+# Фаза A — i18n foundation **[ЗАКРЫТА 2026-05-10]**
+
+См. полные детали в `docs/electron-migration/audit-2026-05-09/05-implementation-plan.md` Phase A. Краткая сводка финального состояния:
+
+- **A.1** ✅ react-i18next + ICU + types + mock в `src/test/setup.ts`. `<I18nextProvider>` обёрнут вокруг `<ThemeProvider>` в App.
+- **A.2.1-A.2.19+** ✅ Все renderer-страницы и общие компоненты мигрированы. **17 namespace'ов** в `src/renderer/i18n/resources/en/`: common, nav, dashboard, campaigns, books, searchTerms, keywords, negatives, reports, comparison, alerts, operations, automation, accounting, royalties, settings, auth. RU skeletons (`{}`) лежат рядом, готовы для будущего revival.
+- **A.3** ✅ ICU plurals инкорпорированы по ходу A.2: subtitle counts (eventCount, taskCount, recCount), addedMany, daysCount/weeksCount, exported (Reports), itemsCount (NegativeListsTab) и т.д.
+- **A.4** ✅ ESLint правило `no-restricted-syntax` (Cyrillic в JSXText/Literal/TemplateElement) переключено `warn → error`. Любая новая RU-строка в `src/renderer/**/*.{ts,tsx}` теперь валит lint.
+- **A.5** ✅ Language toggle в Settings → Application card: English (active) + Русский (disabled, coming soon).
+- **A.6** ✅ Финальный регресс **84/84 тестов** зелёные, `tsc --noEmit` clean, `npm run lint` clean (1 нерелевантный import warning), `npm run package` собирается на arm64.
+
+**Что зашипано (числа от старта Phase A до финала):**
+- Cyrillic warnings: **615 → 0** (`-615`)
+- Tests: **84/84** на каждом коммите
+- Commits в Phase A: **A.1 + 16 sub-steps (A.2.1-A.2.19+) + A.4 + A.5 = 19 коммитов**, все запушены в `origin/main`
+- **Bugfix по ходу:** в A.2.13 убрано 16 `t` зависимостей из useMemo/useEffect deps — мок react-i18next в тестовом setup создавал новый ref `t` на каждом рендере, что крутило infinite loop в страницах с `setUploads(null)` в start of load. Решение: убрать t из deps + eslint-disable react-hooks/exhaustive-deps. В A.4 эти комментарии удалены т.к. react-hooks плагин в проекте не загружен.
+
+**Важно:** §0.2 token rotation `at_live_29099c08…` на Railway по-прежнему **отложена** пользователем. Repo private, новых утечек нет, но перед public-release ротировать обязательно.
+
+После Phase A — следующая фаза **B (Settings 9 tabs)**.
+
+---
+
 # Фаза 10 — Полировка **[P2/P3, ~2 дня]** **[ЧАСТИЧНО ЗАКРЫТА 2026-05-09]**
 
 ## 10.1 Dark theme **[ЗАКРЫТА]**
