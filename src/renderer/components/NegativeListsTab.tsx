@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, X, ChevronRight, ChevronDown, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
   negativeListsApi,
@@ -12,6 +13,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useBooks } from '../contexts/BooksContext';
 
 export const NegativeListsTab: React.FC = () => {
+  const { t } = useTranslation('negatives');
   const toast = useToast();
   const { list: books } = useBooks();
   const [lists, setLists] = useState<NegativeList[] | null>(null);
@@ -33,13 +35,13 @@ export const NegativeListsTab: React.FC = () => {
           setLists([]);
           return;
         }
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить списки');
+        toast.error(err instanceof ApiError ? err.message : t('lists.loadFailed'));
         setLists([]);
       } finally {
         setLoading(false);
       }
     },
-    [toast],
+    [toast, t],
   );
 
   useEffect(() => {
@@ -48,10 +50,9 @@ export const NegativeListsTab: React.FC = () => {
 
   if (unsupported) {
     return (
-      <Card title="Списки минус-слов">
+      <Card title={t('lists.cardTitle')}>
         <div className="px-5 py-8 text-center text-sm text-zinc-500">
-          Endpoint списков недоступен (401/404). Возможно, бэкенд этого окружения
-          не поддерживает feature.
+          {t('lists.unsupported')}
         </div>
       </Card>
     );
@@ -59,7 +60,7 @@ export const NegativeListsTab: React.FC = () => {
 
   return (
     <Card
-      title="Списки минус-слов"
+      title={t('lists.cardTitle')}
       rightSlot={
         <button
           type="button"
@@ -67,7 +68,7 @@ export const NegativeListsTab: React.FC = () => {
           className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800 transition-colors"
         >
           <Plus size={12} />
-          Список
+          {t('lists.create')}
         </button>
       }
     >
@@ -75,8 +76,8 @@ export const NegativeListsTab: React.FC = () => {
         <LoadingRow />
       ) : !lists || lists.length === 0 ? (
         <EmptyState
-          title="Нет списков"
-          hint="Создай первый — например, Brand exclusions, Competitor brands, Generic terms."
+          title={t('lists.empty')}
+          hint={t('lists.emptyHint')}
         />
       ) : (
         <ul className="divide-y divide-zinc-100">
@@ -117,6 +118,7 @@ const ListRow: React.FC<{
   onDeleted(): void;
   onItemsChanged(): void;
 }> = ({ list, expanded, onToggle, onDeleted, onItemsChanged }) => {
+  const { t } = useTranslation('negatives');
   const toast = useToast();
   const [items, setItems] = useState<NegativeListItem[] | null>(null);
   const [itemsLoading, setItemsLoading] = useState(false);
@@ -133,11 +135,11 @@ const ListRow: React.FC<{
         setItems(Array.isArray(res.items) ? res.items : []);
       })
       .catch((err) => {
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить items');
+        toast.error(err instanceof ApiError ? err.message : t('lists.loadItemsFailed'));
         setItems([]);
       })
       .finally(() => setItemsLoading(false));
-  }, [expanded, items, list.id, toast]);
+  }, [expanded, items, list.id, toast, t]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,12 +158,12 @@ const ListRow: React.FC<{
         list.id,
         list_kw.map((keyword) => ({ keyword, matchType: newMatch })),
       );
-      toast.success(`Добавлено: ${list_kw.length}`);
+      toast.success(t('lists.addedCount', { count: list_kw.length }));
       setNewKw('');
-      setItems(null); // re-fetch
+      setItems(null);
       onItemsChanged();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось добавить');
+      toast.error(err instanceof ApiError ? err.message : t('lists.addFailed'));
     } finally {
       setAdding(false);
     }
@@ -173,18 +175,18 @@ const ListRow: React.FC<{
       setItems((prev) => prev?.filter((x) => x.id !== item.id) ?? prev);
       onItemsChanged();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось удалить');
+      toast.error(err instanceof ApiError ? err.message : t('lists.removeFailed'));
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Удалить список «${list.name}»? Items внутри тоже удалятся.`)) return;
+    if (!confirm(t('lists.deleteConfirm', { name: list.name }))) return;
     try {
       await negativeListsApi.delete(list.id);
-      toast.success('Список удалён');
+      toast.success(t('lists.deleted'));
       onDeleted();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось удалить');
+      toast.error(err instanceof ApiError ? err.message : t('lists.deleteFailed'));
     }
   };
 
@@ -207,12 +209,12 @@ const ListRow: React.FC<{
             {isGlobal && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-100">
                 <Globe size={10} />
-                Global
+                {t('lists.global')}
               </span>
             )}
             {list.isDefault && (
               <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-100 text-zinc-600">
-                default
+                {t('lists.default')}
               </span>
             )}
           </div>
@@ -220,7 +222,9 @@ const ListRow: React.FC<{
             <div className="text-[11px] text-zinc-500 truncate mt-0.5">{list.description}</div>
           )}
         </div>
-        <div className="text-xs text-zinc-500 tabular-nums">{list.itemCount} items</div>
+        <div className="text-xs text-zinc-500 tabular-nums">
+          {t('lists.itemsCount', { count: list.itemCount })}
+        </div>
         <button
           type="button"
           onClick={(e) => {
@@ -232,8 +236,8 @@ const ListRow: React.FC<{
             text-zinc-400 hover:text-red-600 hover:bg-red-50
             transition-colors
           "
-          aria-label={`Удалить список ${list.name}`}
-          title="Удалить список"
+          aria-label={t('lists.deleteAria', { name: list.name })}
+          title={t('lists.deleteTitle')}
         >
           <X size={12} />
         </button>
@@ -241,12 +245,11 @@ const ListRow: React.FC<{
 
       {expanded && (
         <div className="bg-zinc-50/40 border-y border-zinc-100 px-5 py-3 space-y-3">
-          {/* Add items */}
           <form onSubmit={handleAdd} className="space-y-2">
             <textarea
               value={newKw}
               onChange={(e) => setNewKw(e.target.value)}
-              placeholder="по одному на строку или через запятую"
+              placeholder={t('lists.addPlaceholder')}
               rows={2}
               className="
                 w-full px-3 py-2 text-xs rounded-md
@@ -286,16 +289,15 @@ const ListRow: React.FC<{
                 "
               >
                 {adding ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
-                Добавить
+                {t('lists.addSubmit')}
               </button>
             </div>
           </form>
 
-          {/* Items list */}
           {itemsLoading ? (
             <LoadingRow />
           ) : !items || items.length === 0 ? (
-            <div className="text-xs text-zinc-400 py-2 text-center">Список пуст</div>
+            <div className="text-xs text-zinc-400 py-2 text-center">{t('lists.itemsEmpty')}</div>
           ) : (
             <ul className="space-y-0.5">
               {items.map((item) => (
@@ -317,7 +319,7 @@ const ListRow: React.FC<{
                       text-zinc-400 hover:text-red-600 hover:bg-red-50
                       opacity-0 group-hover:opacity-100 transition-opacity
                     "
-                    aria-label={`Удалить ${item.keyword}`}
+                    aria-label={t('lists.removeItemAria', { keyword: item.keyword })}
                   >
                     <X size={10} />
                   </button>
@@ -336,6 +338,7 @@ const CreateListModal: React.FC<{
   onClose(): void;
   onCreated(): void;
 }> = ({ books, onClose, onCreated }) => {
+  const { t } = useTranslation('negatives');
   const toast = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -361,7 +364,7 @@ const CreateListModal: React.FC<{
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      toast.error('Имя списка обязательно');
+      toast.error(t('create.errors.nameRequired'));
       return;
     }
     setSubmitting(true);
@@ -371,10 +374,10 @@ const CreateListModal: React.FC<{
         description: description.trim() || undefined,
         bookId: bookId === '' ? null : bookId,
       });
-      toast.success('Список создан');
+      toast.success(t('create.created'));
       onCreated();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Не удалось создать');
+      toast.error(err instanceof ApiError ? err.message : t('create.errors.createFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -393,13 +396,13 @@ const CreateListModal: React.FC<{
       >
         <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-start justify-between gap-3">
           <h2 className="text-base font-semibold text-zinc-900 tracking-tight">
-            Новый список негативов
+            {t('create.title')}
           </h2>
           <button
             type="button"
             onClick={() => !submitting && onClose()}
             className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label="Закрыть"
+            aria-label={t('create.closeAria')}
           >
             <X size={16} />
           </button>
@@ -407,42 +410,43 @@ const CreateListModal: React.FC<{
 
         <div className="px-5 py-4 space-y-3">
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-zinc-700">Имя</label>
+            <label className="block text-xs font-medium text-zinc-700">{t('create.fields.name')}</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
-              placeholder="например: Brand exclusions"
+              placeholder={t('create.fields.namePlaceholder')}
               className="w-full h-9 px-3 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400"
               required
             />
           </div>
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-zinc-700">
-              Описание <span className="text-zinc-400 font-normal">(опц.)</span>
+              {t('create.fields.description')}{' '}
+              <span className="text-zinc-400 font-normal">{t('create.fields.descriptionOptional')}</span>
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="зачем этот список"
+              placeholder={t('create.fields.descriptionPlaceholder')}
               className="w-full h-9 px-3 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400"
             />
           </div>
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-zinc-700">
-              Скоуп
+              {t('create.fields.scope')}
             </label>
             <select
               value={bookId}
               onChange={(e) => setBookId(e.target.value === '' ? '' : Number(e.target.value))}
               className="w-full h-9 px-2 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400"
             >
-              <option value="">Global (для всех книг)</option>
+              <option value="">{t('create.fields.scopeGlobal')}</option>
               {books.map((b) => (
                 <option key={b.id} value={b.id}>
-                  Только для: {b.title}
+                  {t('create.fields.scopeBook', { title: b.title })}
                 </option>
               ))}
             </select>
@@ -456,7 +460,7 @@ const CreateListModal: React.FC<{
             disabled={submitting}
             className="h-8 px-3 text-xs font-medium rounded-md text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
-            Отмена
+            {t('create.actions.cancel')}
           </button>
           <button
             type="submit"
@@ -464,7 +468,7 @@ const CreateListModal: React.FC<{
             className="h-8 px-4 text-xs font-medium rounded-md bg-zinc-900 text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting && <Loader2 size={12} className="animate-spin" />}
-            Создать
+            {t('create.actions.submit')}
           </button>
         </div>
       </form>

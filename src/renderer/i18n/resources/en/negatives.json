@@ -1,0 +1,92 @@
+{
+  "title": "Negatives",
+  "subtitle": {
+    "campaign": "{name} · {marketplace}",
+    "campaignDefault": "Negative keywords for the campaign",
+    "lists": "Global and book-specific lists"
+  },
+  "tabs": {
+    "campaigns": "By campaign",
+    "lists": "Lists",
+    "ariaCampaigns": "Tab: By campaign",
+    "ariaLists": "Tab: Lists"
+  },
+  "errors": {
+    "loadCampaigns": "Failed to load campaigns",
+    "loadNegatives": "Failed to load negatives",
+    "addFailed": "Failed to add",
+    "deleteFailed": "Failed to delete"
+  },
+  "campaign": {
+    "cardTitle": "Campaign",
+    "empty": "No campaigns",
+    "emptyHint": "Widen the global filter or range to see campaigns."
+  },
+  "add": {
+    "cardTitle": "Add negatives",
+    "placeholder": "one keyword per line, or comma-separated\nfree\ncheap",
+    "submit": "Add",
+    "addedOne": "Added as negative",
+    "addedMany": "Added: {count}"
+  },
+  "list": {
+    "cardTitle": "Current negatives",
+    "totalCount": "{count} total",
+    "empty": "This campaign has no negatives.",
+    "th": {
+      "keyword": "Keyword",
+      "match": "Match",
+      "added": "Added"
+    },
+    "deleteAria": "Remove {keyword}",
+    "deleteTitle": "Remove",
+    "deleted": "Removed"
+  },
+  "lists": {
+    "cardTitle": "Negative lists",
+    "create": "List",
+    "unsupported": "Lists endpoint unavailable (401/404). The backend in this environment may not support the feature.",
+    "empty": "No lists",
+    "emptyHint": "Create the first one — for example, Brand exclusions, Competitor brands, Generic terms.",
+    "loadFailed": "Failed to load lists",
+    "loadItemsFailed": "Failed to load items",
+    "global": "Global",
+    "default": "default",
+    "itemsCount": "{count} items",
+    "deleteAria": "Delete list {name}",
+    "deleteTitle": "Delete list",
+    "deleteConfirm": "Delete list «{name}»? Items inside will be removed too.",
+    "deleted": "List deleted",
+    "deleteFailed": "Failed to delete",
+    "addPlaceholder": "one per line or comma-separated",
+    "addSubmit": "Add",
+    "addedCount": "Added: {count}",
+    "addFailed": "Failed to add",
+    "removeFailed": "Failed to remove",
+    "removeItemAria": "Remove {keyword}",
+    "itemsEmpty": "List is empty"
+  },
+  "create": {
+    "title": "New negative list",
+    "closeAria": "Close",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "e.g.: Brand exclusions",
+      "description": "Description",
+      "descriptionOptional": "(opt.)",
+      "descriptionPlaceholder": "what this list is for",
+      "scope": "Scope",
+      "scopeGlobal": "Global (for all books)",
+      "scopeBook": "Only for: {title}"
+    },
+    "errors": {
+      "nameRequired": "List name is required",
+      "createFailed": "Failed to create"
+    },
+    "created": "List created",
+    "actions": {
+      "cancel": "Cancel",
+      "submit": "Create"
+    }
+  }
+}
