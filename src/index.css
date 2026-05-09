@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* Stick table header to the top of the nearest scroll container.
+     Inset bottom shadow эмулирует border-bottom, чтобы при скролле граница
+     оставалась с thead, а не с первой data-row. */
+  .table-sticky-head thead th {
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 10;
+    box-shadow: inset 0 -1px 0 rgb(244 244 245);
+  }
+}
+
 @layer base {
   html,
   body,

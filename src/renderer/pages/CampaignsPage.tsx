@@ -236,7 +236,7 @@ export const CampaignsPage: React.FC = () => {
             }
           />
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-sticky-head">
             <thead>
               <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
                 <th className="text-left px-5 py-2 font-medium">Кампания</th>
