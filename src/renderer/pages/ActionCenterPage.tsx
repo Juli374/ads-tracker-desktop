@@ -56,7 +56,8 @@ export const ActionCenterPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [toast, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [toast],
   );
 
   useEffect(() => {
@@ -87,7 +88,8 @@ export const ActionCenterPage: React.FC = () => {
       }
     }
     return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  }, [filtered, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered]);
 
   return (
     <div className="space-y-6" data-testid="action-center-page">

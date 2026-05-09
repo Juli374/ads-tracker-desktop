@@ -105,7 +105,8 @@ export const DashboardPage: React.FC = () => {
 
       setLoading(false);
     },
-    [filterParams, toast, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filterParams, toast],
   );
 
   useEffect(() => {

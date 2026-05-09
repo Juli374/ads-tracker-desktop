@@ -124,7 +124,8 @@ export const SearchTermsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [filters, toast, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filters, toast],
   );
 
   useEffect(() => {

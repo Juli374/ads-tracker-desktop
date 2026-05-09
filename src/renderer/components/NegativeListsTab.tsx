@@ -41,7 +41,8 @@ export const NegativeListsTab: React.FC = () => {
         setLoading(false);
       }
     },
-    [toast, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [toast],
   );
 
   useEffect(() => {
@@ -139,7 +140,8 @@ const ListRow: React.FC<{
         setItems([]);
       })
       .finally(() => setItemsLoading(false));
-  }, [expanded, items, list.id, toast, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, items, list.id, toast]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();

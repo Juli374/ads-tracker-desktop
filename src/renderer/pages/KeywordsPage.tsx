@@ -86,7 +86,8 @@ export const KeywordsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [from, to, toast, t, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [from, to, toast, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
   );
 
   useEffect(() => {

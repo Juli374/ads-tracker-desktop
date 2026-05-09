@@ -1,0 +1,56 @@
+{
+  "title": "Royalty",
+  "loading": "Loading…",
+  "subtitle": {
+    "unsupported": "Source unavailable",
+    "loaded": "{source} · {count, plural, one {# import} other {# imports}} · {months, plural, one {# month} other {# months}}"
+  },
+  "sourceLabel": {
+    "cloud": "Cloud",
+    "local": "Local"
+  },
+  "errors": {
+    "load": "Failed to load royalty",
+    "loadSummary": "Failed to load summary",
+    "deleteFailed": "Failed to delete",
+    "importFailed": "Failed to import",
+    "cloudUnavailable": "Endpoint /api/royalties/uploads returned 401/403/404.",
+    "localUnavailable": "Local royalty store unavailable (renderer started without preload)."
+  },
+  "monthAria": "Month",
+  "source": {
+    "ariaLabel": "Royalty source",
+    "aria": "Source: {label}"
+  },
+  "kpi": {
+    "units": "Units (period)",
+    "royalty": "Royalty",
+    "revenue": "Revenue"
+  },
+  "card": {
+    "title": "Imports {month, select, none {} other {· {month}}}",
+    "demoSeed": "Demo seed",
+    "demoSeedTitle": "Add a demo upload to the local DB",
+    "demoSeedSuccess": "Demo upload added to local DB ({month})"
+  },
+  "empty": {
+    "title": "No imports for this month",
+    "hintCloud": "You can upload KDP report in the web app (Settings → Royalty Import).",
+    "hintLocal": "xlsx import will be ported from royalty_import_service.py at public release."
+  },
+  "th": {
+    "marketplace": "MP",
+    "account": "Account",
+    "units": "Units",
+    "royalty": "Royalty",
+    "revenue": "Revenue",
+    "uploadedAt": "Uploaded"
+  },
+  "row": {
+    "deleteAria": "Delete upload {id}",
+    "deleteTitle": "Delete",
+    "deleteConfirm": "Delete local import? Records inside will be removed too.",
+    "deleted": "Deleted"
+  },
+  "localDbPrefix": "local-db: {path}"
+}

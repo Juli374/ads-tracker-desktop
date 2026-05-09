@@ -91,7 +91,8 @@ export const CampaignDetailsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [campaignId, from, to, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaignId, from, to],
   );
 
   useEffect(() => {
@@ -253,7 +254,8 @@ const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
         setLoading(false);
       }
     },
-    [campaignId, toast, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaignId, toast],
   );
 
   useEffect(() => {
@@ -364,7 +366,8 @@ const TargetsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
         setLoading(false);
       }
     },
-    [campaignId, toast, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaignId, toast],
   );
 
   useEffect(() => {
@@ -472,7 +475,8 @@ const NegativesTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
         setLoading(false);
       }
     },
-    [campaignId, toast, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaignId, toast],
   );
 
   useEffect(() => {

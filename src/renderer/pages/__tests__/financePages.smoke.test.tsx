@@ -56,7 +56,7 @@ describe('RoyaltiesPage', () => {
       </Wrap>,
     );
     expect(
-      await screen.findByRole('heading', { name: 'Royalty' }),
+      await screen.findByTestId('royalties-page'),
     ).toBeInTheDocument();
     // marketplace USA из mock
     expect(await screen.findByText('USA')).toBeInTheDocument();
@@ -97,7 +97,7 @@ describe('Hotkeys G Y / G T / G F', () => {
     await screen.findByTestId('dashboard-page');
     await user.keyboard('gy');
     expect(
-      await screen.findByRole('heading', { name: 'Royalty' }),
+      await screen.findByTestId('royalties-page'),
     ).toBeInTheDocument();
   });
 

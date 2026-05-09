@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, Cloud, HardDrive, Loader2, Trash2, Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
   royaltiesApi,
@@ -42,6 +43,7 @@ const fromCloud = (u: RoyaltyUpload): NormalizedUpload => u;
 const fromLocal = (u: LocalRoyaltyUpload): NormalizedUpload => u;
 
 export const RoyaltiesPage: React.FC = () => {
+  const { t } = useTranslation('royalties');
   const toast = useToast();
   const [source, setSource] = useState<Source>(() => {
     if (typeof window === 'undefined') return 'cloud';
@@ -61,7 +63,6 @@ export const RoyaltiesPage: React.FC = () => {
     window.localStorage?.setItem(STORAGE_KEY, source);
   }, [source]);
 
-  // При смене источника подгружаем filePath (только в local).
   useEffect(() => {
     if (source !== 'local') {
       setFilePath('');
@@ -99,12 +100,13 @@ export const RoyaltiesPage: React.FC = () => {
           setUploads([]);
           return;
         }
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить royalty');
+        toast.error(err instanceof ApiError ? err.message : t('errors.load'));
         setUploads([]);
       } finally {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [source, toast],
   );
 
@@ -131,7 +133,7 @@ export const RoyaltiesPage: React.FC = () => {
           setSummary(null);
           return;
         }
-        toast.error(err instanceof ApiError ? err.message : 'Не удалось загрузить summary');
+        toast.error(err instanceof ApiError ? err.message : t('errors.loadSummary'));
       })
       .finally(() => {
         if (!cancelled) setSummaryLoading(false);
@@ -139,6 +141,7 @@ export const RoyaltiesPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth, source, toast]);
 
   const months = useMemo(() => {
@@ -166,20 +169,18 @@ export const RoyaltiesPage: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     if (source !== 'local') return;
-    if (!confirm('Удалить локальный импорт? Records внутри тоже удалятся.')) return;
+    if (!confirm(t('row.deleteConfirm'))) return;
     try {
       await localRoyaltyApi.delete(id);
-      toast.success('Удалено');
+      toast.success(t('row.deleted'));
       loadUploads();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Не удалось удалить');
+      toast.error(err instanceof Error ? err.message : t('errors.deleteFailed'));
     }
   };
 
   const handleSeed = async () => {
     if (source !== 'local') return;
-    // Demo seed для проверки локального стора. Public-release импорт пойдёт
-    // через парсер xlsx (TODO: порт royalty_import_service.py).
     const month = new Date().toISOString().slice(0, 7);
     try {
       await localRoyaltyApi.import({
@@ -199,23 +200,27 @@ export const RoyaltiesPage: React.FC = () => {
           },
         ],
       });
-      toast.success(`Demo upload добавлен в локальную БД (${month})`);
+      toast.success(t('card.demoSeedSuccess', { month }));
       loadUploads();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Не удалось импортировать');
+      toast.error(err instanceof Error ? err.message : t('errors.importFailed'));
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="royalties-page">
       <PageHeader
-        title="Royalty"
+        title={t('title')}
         subtitle={
           unsupported
-            ? 'Источник недоступен'
+            ? t('subtitle.unsupported')
             : uploads
-            ? `${source === 'cloud' ? 'Cloud' : 'Local'} · ${uploads.length} импортов · ${months.length} месяцев`
-            : 'Загрузка…'
+            ? t('subtitle.loaded', {
+                source: source === 'cloud' ? t('sourceLabel.cloud') : t('sourceLabel.local'),
+                count: uploads.length,
+                months: months.length,
+              })
+            : t('loading')
         }
         rightSlot={
           <div className="flex items-center gap-2">
@@ -229,7 +234,7 @@ export const RoyaltiesPage: React.FC = () => {
                   border border-zinc-200 bg-white text-zinc-700
                   focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
                 "
-                aria-label="Месяц"
+                aria-label={t('monthAria')}
               >
                 {months.map((m) => (
                   <option key={m} value={m}>
@@ -243,15 +248,15 @@ export const RoyaltiesPage: React.FC = () => {
       />
 
       {unsupported && source === 'cloud' && (
-        <ErrorBanner message="Endpoint /api/royalties/uploads вернул 401/403/404." />
+        <ErrorBanner message={t('errors.cloudUnavailable')} />
       )}
       {unsupported && source === 'local' && (
-        <ErrorBanner message="Локальный royalty store недоступен (renderer запущен без preload)." />
+        <ErrorBanner message={t('errors.localUnavailable')} />
       )}
 
       {!unsupported && source === 'local' && filePath && (
         <div className="text-[11px] text-zinc-400 font-mono px-1">
-          local-db: {filePath}
+          {t('localDbPrefix', { path: filePath })}
         </div>
       )}
 
@@ -259,17 +264,17 @@ export const RoyaltiesPage: React.FC = () => {
         <>
           <div className="grid grid-cols-3 gap-3">
             <Kpi
-              label="Units (период)"
+              label={t('kpi.units')}
               value={fmtNumber(monthTotals.units)}
               loading={summaryLoading && !uploads}
             />
             <Kpi
-              label="Royalty"
+              label={t('kpi.royalty')}
               value={fmtMoney(monthTotals.royalty)}
               loading={summaryLoading && !uploads}
             />
             <Kpi
-              label="Revenue"
+              label={t('kpi.revenue')}
               value={fmtMoney(monthTotals.revenue)}
               loading={summaryLoading && !uploads}
             />
@@ -279,7 +284,7 @@ export const RoyaltiesPage: React.FC = () => {
             title={
               <span className="inline-flex items-center gap-2">
                 <Calendar size={13} className="text-zinc-400" />
-                Импорты {selectedMonth ? `· ${selectedMonth}` : ''}
+                {t('card.title', { month: selectedMonth ?? 'none' })}
                 {summaryLoading && (
                   <Loader2 size={11} className="animate-spin text-zinc-400" />
                 )}
@@ -291,10 +296,10 @@ export const RoyaltiesPage: React.FC = () => {
                   type="button"
                   onClick={handleSeed}
                   className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
-                  title="Добавить demo upload в локальную БД"
+                  title={t('card.demoSeedTitle')}
                 >
                   <Upload size={11} />
-                  Demo seed
+                  {t('card.demoSeed')}
                 </button>
               ) : null
             }
@@ -303,23 +308,19 @@ export const RoyaltiesPage: React.FC = () => {
               <LoadingRow />
             ) : monthUploads.length === 0 ? (
               <EmptyState
-                title="Нет импортов за этот месяц"
-                hint={
-                  source === 'cloud'
-                    ? 'Загрузить KDP-отчёт можно в веб-версии (Settings → Royalty Import).'
-                    : 'Импорт xlsx будет порт-портирован из royalty_import_service.py при public-release.'
-                }
+                title={t('empty.title')}
+                hint={source === 'cloud' ? t('empty.hintCloud') : t('empty.hintLocal')}
               />
             ) : (
               <table className="w-full text-sm table-sticky-head">
                 <thead>
                   <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                    <th className="text-left px-5 py-2 font-medium">MP</th>
-                    <th className="text-left px-3 py-2 font-medium">Аккаунт</th>
-                    <th className="text-right px-3 py-2 font-medium">Units</th>
-                    <th className="text-right px-3 py-2 font-medium">Royalty</th>
-                    <th className="text-right px-3 py-2 font-medium">Revenue</th>
-                    <th className="text-right px-3 py-2 font-medium">Загружен</th>
+                    <th className="text-left px-5 py-2 font-medium">{t('th.marketplace')}</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('th.account')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('th.units')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('th.royalty')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('th.revenue')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('th.uploadedAt')}</th>
                     {source === 'local' && <th className="px-5 py-2 w-10"></th>}
                   </tr>
                 </thead>
@@ -354,8 +355,8 @@ export const RoyaltiesPage: React.FC = () => {
                               text-zinc-400 hover:text-red-600 hover:bg-red-50
                               opacity-0 group-hover:opacity-100 transition-opacity
                             "
-                            aria-label={`Удалить upload ${u.id}`}
-                            title="Удалить"
+                            aria-label={t('row.deleteAria', { id: u.id })}
+                            title={t('row.deleteTitle')}
                           >
                             <Trash2 size={12} />
                           </button>
@@ -376,39 +377,44 @@ export const RoyaltiesPage: React.FC = () => {
 const SourceToggle: React.FC<{
   value: Source;
   onChange: (v: Source) => void;
-}> = ({ value, onChange }) => (
-  <div role="radiogroup" aria-label="Источник royalty"
-    className="inline-flex items-center bg-zinc-100 rounded-md p-0.5"
-  >
-    {(
-      [
-        { id: 'cloud' as const, label: 'Cloud', icon: Cloud },
-        { id: 'local' as const, label: 'Local', icon: HardDrive },
-      ]
-    ).map((opt) => {
-      const Icon = opt.icon;
-      const active = value === opt.id;
-      return (
-        <button
-          key={opt.id}
-          role="radio"
-          aria-checked={active}
-          aria-label={`Источник: ${opt.label}`}
-          type="button"
-          onClick={() => onChange(opt.id)}
-          className={`
-            inline-flex items-center gap-1.5 px-2.5 h-6 text-[11px] font-medium rounded
-            transition-colors
-            ${active ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'}
-          `}
-        >
-          <Icon size={11} />
-          {opt.label}
-        </button>
-      );
-    })}
-  </div>
-);
+}> = ({ value, onChange }) => {
+  const { t } = useTranslation('royalties');
+  return (
+    <div
+      role="radiogroup"
+      aria-label={t('source.ariaLabel')}
+      className="inline-flex items-center bg-zinc-100 rounded-md p-0.5"
+    >
+      {(
+        [
+          { id: 'cloud' as const, label: t('sourceLabel.cloud'), icon: Cloud },
+          { id: 'local' as const, label: t('sourceLabel.local'), icon: HardDrive },
+        ]
+      ).map((opt) => {
+        const Icon = opt.icon;
+        const active = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            role="radio"
+            aria-checked={active}
+            aria-label={t('source.aria', { label: opt.label })}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            className={`
+              inline-flex items-center gap-1.5 px-2.5 h-6 text-[11px] font-medium rounded
+              transition-colors
+              ${active ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'}
+            `}
+          >
+            <Icon size={11} />
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
 
 function autoSelectMonth(
   uploads: NormalizedUpload[],

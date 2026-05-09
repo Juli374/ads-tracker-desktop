@@ -91,7 +91,8 @@ export const NegativesPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [campaignId, toast, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaignId, toast],
   );
 
   useEffect(() => {

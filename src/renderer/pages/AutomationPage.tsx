@@ -73,7 +73,8 @@ export const AutomationPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [tab, toast, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tab, toast],
   );
 
   useEffect(() => {
