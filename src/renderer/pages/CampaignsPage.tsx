@@ -15,13 +15,18 @@ import {
   EmptyState,
   LoadingRow,
   Pagination,
+  ActiveFiltersBar,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav, useInitialFilters } from '../contexts/NavContext';
 import { useMarketplaces } from '../contexts/MarketplacesContext';
-import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
+import {
+  useGlobalFilters,
+  useGlobalFilterChips,
+} from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 type SortKey = 'cost' | 'sales' | 'acos' | 'orders' | 'clicks';
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -39,6 +44,8 @@ export const CampaignsPage: React.FC = () => {
   const { navigate } = useNav();
   const { list: globalMarketplaces } = useMarketplaces();
   const { filters: globalFilters } = useGlobalFilters();
+  const { list: booksList } = useBooks();
+  const chips = useGlobalFilterChips(booksList);
   const incomingFilters = useInitialFilters();
   const [range, setRange] = useState<RangeId>('30d');
   const [summary, setSummary] = useState<CampaignSummary | null>(null);
@@ -184,6 +191,8 @@ export const CampaignsPage: React.FC = () => {
           />
         }
       />
+
+      <ActiveFiltersBar chips={chips} />
 
       <div className="grid grid-cols-4 gap-3">
         <Kpi label="Кампаний" value={fmtNumber(filtered.length)} loading={loading} />

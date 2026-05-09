@@ -8,15 +8,22 @@ import {
   RangePicker,
   EmptyState,
   LoadingRow,
+  ActiveFiltersBar,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
-import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
+import {
+  useGlobalFilters,
+  useGlobalFilterChips,
+} from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 export const DashboardPage: React.FC = () => {
   const toast = useToast();
   const { filters: globalFilters } = useGlobalFilters();
+  const { list: booksList } = useBooks();
+  const chips = useGlobalFilterChips(booksList);
   const [range, setRange] = useState<RangeId>('7d');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<BookSummary | null>(null);
@@ -87,6 +94,8 @@ export const DashboardPage: React.FC = () => {
           />
         }
       />
+
+      <ActiveFiltersBar chips={chips} />
 
       <div className="grid grid-cols-4 gap-3">
         <Kpi label="Spend" value={totals ? fmtMoney(totals.cost) : '—'} loading={loading} />

@@ -18,6 +18,7 @@ import {
   LoadingRow,
   ChartTooltip,
   ChartTooltipRow,
+  ActiveFiltersBar,
 } from '../components/ui';
 import {
   ResponsiveContainer,
@@ -35,7 +36,11 @@ import { dateRangeFor, RangeId, RANGES } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { toCsv, downloadCsv } from '../lib/csv';
 import { useToast } from '../contexts/ToastContext';
-import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
+import {
+  useGlobalFilters,
+  useGlobalFilterChips,
+} from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 type Granularity = 'daily' | 'weekly';
 
@@ -54,6 +59,8 @@ interface PeriodRow {
 export const ReportsPage: React.FC = () => {
   const toast = useToast();
   const { filters: globalFilters } = useGlobalFilters();
+  const { list: booksList } = useBooks();
+  const chips = useGlobalFilterChips(booksList);
   const [range, setRange] = useState<RangeId>('30d');
   const [granularity, setGranularity] = useState<Granularity>('weekly');
   const [daily, setDaily] = useState<DailySummary | null>(null);
@@ -178,6 +185,8 @@ export const ReportsPage: React.FC = () => {
           />
         }
       />
+
+      <ActiveFiltersBar chips={chips} />
 
       <div className="grid grid-cols-4 gap-3">
         <Kpi label="Spend" value={fmtMoney(totals.spend)} loading={loading} />

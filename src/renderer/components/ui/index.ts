@@ -6,3 +6,5 @@ export { ErrorBanner, LoadingRow, EmptyState } from './States';
 export { ChartTooltip } from './ChartTooltip';
 export type { ChartTooltipRow } from './ChartTooltip';
 export { Pagination } from './Pagination';
+export { ActiveFiltersBar } from './ActiveFiltersBar';
+export type { ActiveFilterChip } from './ActiveFiltersBar';

@@ -111,3 +111,31 @@ export function useGlobalFilters(): GlobalFiltersContextValue {
     throw new Error('useGlobalFilters must be used within GlobalFiltersProvider');
   return ctx;
 }
+
+// Превращает текущие global filters в массив chip-объектов для ActiveFiltersBar.
+// Caller передаёт книги (из BooksContext) чтобы перевести bookId в title.
+import type { ActiveFilterChip } from '../components/ui/ActiveFiltersBar';
+export function useGlobalFilterChips(books: Array<{ id: number; title: string }>) {
+  const ctx = useGlobalFilters();
+  const chips: ActiveFilterChip[] = [];
+  if (ctx.filters.bookId != null) {
+    const book = books.find((b) => b.id === ctx.filters.bookId);
+    chips.push({
+      label: `📕 ${book?.title ?? `book #${ctx.filters.bookId}`}`,
+      onRemove: () => ctx.setBookId(undefined),
+    });
+  }
+  for (const acc of ctx.filters.accounts) {
+    chips.push({
+      label: `👤 ${acc}`,
+      onRemove: () => ctx.toggleAccount(acc),
+    });
+  }
+  for (const mp of ctx.filters.marketplaces) {
+    chips.push({
+      label: `🌍 ${mp}`,
+      onRemove: () => ctx.toggleMarketplace(mp),
+    });
+  }
+  return chips;
+}

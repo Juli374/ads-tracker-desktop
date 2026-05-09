@@ -9,12 +9,17 @@ import {
   Kpi,
   EmptyState,
   LoadingRow,
+  ActiveFiltersBar,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
-import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
+import {
+  useGlobalFilters,
+  useGlobalFilterChips,
+} from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 interface BookGroup {
   book_id: number;
@@ -39,6 +44,8 @@ export const BooksPage: React.FC = () => {
   const toast = useToast();
   const { navigate } = useNav();
   const { filters: globalFilters, setBookId } = useGlobalFilters();
+  const { list: booksList } = useBooks();
+  const chips = useGlobalFilterChips(booksList);
   const [range, setRange] = useState<RangeId>('30d');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<BookSummary | null>(null);
@@ -179,6 +186,8 @@ export const BooksPage: React.FC = () => {
           />
         }
       />
+
+      <ActiveFiltersBar chips={chips} />
 
       <div className="grid grid-cols-4 gap-3">
         <Kpi label="Книг" value={fmtNumber(filtered.length)} loading={loading} />

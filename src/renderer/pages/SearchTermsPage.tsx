@@ -16,12 +16,18 @@ import {
   EmptyState,
   LoadingRow,
   Pagination,
+  ActiveFiltersBar,
+  ActiveFilterChip,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useInitialFilters } from '../contexts/NavContext';
-import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
+import {
+  useGlobalFilters,
+  useGlobalFilterChips,
+} from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 type SortKey = NonNullable<SearchTermsFilters['sortBy']>;
 
@@ -39,6 +45,8 @@ const PER_PAGE = 50;
 export const SearchTermsPage: React.FC = () => {
   const toast = useToast();
   const { filters: globalFilters } = useGlobalFilters();
+  const { list: booksList } = useBooks();
+  const globalChips = useGlobalFilterChips(booksList);
   const incomingFilters = useInitialFilters();
   const [range, setRange] = useState<RangeId>('30d');
   const [data, setData] = useState<SearchTermsResponse | null>(null);
@@ -155,6 +163,20 @@ export const SearchTermsPage: React.FC = () => {
             refreshing={loading}
           />
         }
+      />
+
+      <ActiveFiltersBar
+        chips={[
+          ...globalChips,
+          ...(campaignFilter
+            ? [
+                {
+                  label: `🎯 кампания #${campaignFilter.localId ?? campaignFilter.amazonId}`,
+                  onRemove: () => setCampaignFilter(null),
+                } as ActiveFilterChip,
+              ]
+            : []),
+        ]}
       />
 
       <div className="grid grid-cols-4 gap-3">
