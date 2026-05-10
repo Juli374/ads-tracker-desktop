@@ -21,6 +21,9 @@ export const IpcChannel = {
   LocalRoyaltyImport: 'local:royalty:import',
   LocalRoyaltyDelete: 'local:royalty:delete',
   LocalRoyaltyFilePath: 'local:royalty:filePath',
+  LocalRoyaltyParseFile: 'local:royalty:parseFile',
+  // Открыть native file picker (для импорта xlsx/csv royalty).
+  DialogOpenFile: 'dialog:openFile',
   // Auto-update placeholder: renderer запрашивает статус, main отдаёт 'idle' до подключения electron-updater.
   UpdateGetStatus: 'update:getStatus',
   UpdateCheck: 'update:check',
@@ -138,6 +141,27 @@ export interface LocalRoyaltyImportPayload {
   }>;
 }
 
+export interface LocalRoyaltyParseResult {
+  records: LocalRoyaltyImportPayload['records'];
+  warnings: string[];
+  format: 'monthly-royalty' | 'sales-dashboard' | 'unknown';
+  /** Absolute path that was parsed; useful as `source_filename` fallback. */
+  source_path: string;
+}
+
+// === Native dialog ===
+export interface DialogOpenFileOptions {
+  /** Window title shown in the picker. */
+  title?: string;
+  /** File-extension filters (without the leading dot). */
+  filters?: Array<{ name: string; extensions: string[] }>;
+}
+
+export interface DialogOpenFileResult {
+  /** Absolute path; null if the user cancelled. */
+  path: string | null;
+}
+
 // === Auto-update ===
 export type UpdateState =
   | 'idle'
@@ -186,6 +210,12 @@ export interface DesktopApi {
     import(payload: LocalRoyaltyImportPayload): Promise<{ upload_id: number; records_added: number }>;
     delete(uploadId: number): Promise<{ deleted: number }>;
     filePath(): Promise<string>;
+    /** Read + parse a KDP report file from disk. Throws on failure. */
+    parseFile(absPath: string): Promise<LocalRoyaltyParseResult>;
+  };
+  dialog: {
+    /** Native open-file picker. Returns `{ path: null }` on cancel. */
+    openFile(options?: DialogOpenFileOptions): Promise<DialogOpenFileResult>;
   };
   update: {
     getStatus(): Promise<UpdateStatus>;

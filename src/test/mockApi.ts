@@ -1,11 +1,25 @@
 import { vi } from 'vitest';
-import type { ApiRequestPayload, ApiResponse, AppInfo } from '../shared/ipc';
+import type {
+  ApiRequestPayload,
+  ApiResponse,
+  AppInfo,
+  DialogOpenFileResult,
+  LocalRoyaltyParseResult,
+  MediaUploadPayload,
+  MediaUploadResponse,
+} from '../shared/ipc';
 
 interface MockApiOptions {
   responses?: Record<string, unknown>;
   appInfo?: Partial<AppInfo>;
   apiBaseUrl?: string;
   token?: string | null;
+  /** Path returned by `dialog.openFile`. `null` simulates a cancelled picker. */
+  dialogPath?: string | null;
+  /** Pre-canned `localRoyalty.parseFile` result. */
+  parseResult?: LocalRoyaltyParseResult;
+  /** Pre-canned `mediaUpload` response (defaults to a 200 success). */
+  mediaUploadResponse?: MediaUploadResponse;
 }
 
 export function installMockApi(options: MockApiOptions = {}): void {
@@ -18,6 +32,30 @@ export function installMockApi(options: MockApiOptions = {}): void {
     }
     return { status: 200, ok: true, data };
   }) as unknown as <T = unknown>(payload: ApiRequestPayload) => Promise<ApiResponse<T>>;
+
+  const dialogPath = options.dialogPath === undefined ? null : options.dialogPath;
+  const defaultParseResult: LocalRoyaltyParseResult = {
+    records: [
+      {
+        asin: 'B01TEST001',
+        book_title: 'Mock Book',
+        units: 5,
+        royalty: 12.5,
+        revenue: 12.5,
+        currency: 'USD',
+      },
+    ],
+    warnings: [],
+    format: 'monthly-royalty',
+    source_path: dialogPath ?? '/mock/path/report.xlsx',
+  };
+  const parseResult = options.parseResult ?? defaultParseResult;
+  const defaultMediaResponse: MediaUploadResponse = {
+    ok: true,
+    status: 200,
+    data: { url: '/static/uploads/mock.png' },
+  };
+  const mediaUploadResponse = options.mediaUploadResponse ?? defaultMediaResponse;
 
   (window as unknown as { api: unknown }).api = {
     app: {
@@ -35,9 +73,27 @@ export function installMockApi(options: MockApiOptions = {}): void {
       clearToken: vi.fn(async () => undefined),
     },
     request,
+    mediaUpload: vi.fn(async (payload: MediaUploadPayload) => {
+      void payload;
+      return mediaUploadResponse;
+    }) as unknown as <T = unknown>(
+      payload: MediaUploadPayload,
+    ) => Promise<MediaUploadResponse<T>>,
     onDeepLink: vi.fn(() => () => undefined),
     shell: {
       openExternal: vi.fn(async () => undefined),
+    },
+    dialog: {
+      openFile: vi.fn(async (): Promise<DialogOpenFileResult> => ({ path: dialogPath })),
+    },
+    localRoyalty: {
+      listUploads: vi.fn(async () => []),
+      listRecords: vi.fn(async () => []),
+      getSummary: vi.fn(async () => null),
+      import: vi.fn(async () => ({ upload_id: 1, records_added: parseResult.records.length })),
+      delete: vi.fn(async () => ({ deleted: 1 })),
+      filePath: vi.fn(async () => '/mock/local-db.json'),
+      parseFile: vi.fn(async () => parseResult),
     },
   };
 }
