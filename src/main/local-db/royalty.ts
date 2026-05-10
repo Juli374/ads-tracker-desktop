@@ -8,6 +8,13 @@ import {
   type RoyaltyUploadRow,
   type RoyaltyRecordRow,
 } from './index';
+import {
+  parseRoyaltyFile,
+  RoyaltyParseError,
+  type RoyaltyRow,
+} from './xlsxParser';
+
+export { RoyaltyParseError };
 
 export interface RoyaltyMonthSummary {
   target_month: string;
@@ -108,8 +115,39 @@ export const localRoyalty = {
     };
   },
 
-  // Импорт парсенного KDP-отчёта. Renderer прокидывает уже распарсенные строки;
-  // парсинг xlsx живёт в src/main/local-db/xlsxParser.ts (parseRoyaltyXlsx).
+  /**
+   * Parse a KDP report buffer (xlsx or csv) into a normalised
+   * `ImportPayload`-shaped preview. Caller still has to supply
+   * `account_id`, `marketplace` and `target_month` (UI form fields)
+   * before calling `importUpload`.
+   *
+   * Throws `RoyaltyParseError` on corrupt input or unrecognised headers.
+   */
+  parseFile(data: Buffer | Uint8Array): {
+    records: ImportPayload['records'];
+    warnings: string[];
+    format: 'monthly-royalty' | 'sales-dashboard' | 'unknown';
+  } {
+    const result = parseRoyaltyFile(data);
+    return {
+      records: result.records.map((r: RoyaltyRow) => ({
+        asin: r.asin,
+        book_title: r.title,
+        units: safeNumber(r.units_sold),
+        royalty: safeNumber(r.royalty),
+        // KDP reports do not include "revenue" — use royalty as the floor.
+        // The cloud importer does the same; renderer can override later.
+        revenue: safeNumber(r.royalty),
+        currency: r.currency,
+      })),
+      warnings: result.warnings,
+      format: result.format,
+    };
+  },
+
+  // Импорт распарсенного KDP-отчёта. Renderer прокидывает уже распарсенные
+  // строки; парсинг xlsx/csv живёт в src/main/local-db/xlsxParser.ts
+  // (parseRoyaltyFile + parseRoyaltyXlsx). Bridged через `parseFile` выше.
   importUpload(rawPayload: ImportPayload): { upload_id: number; records_added: number } {
     const payload = sanitizeImport(rawPayload);
     let createdId = 0;
