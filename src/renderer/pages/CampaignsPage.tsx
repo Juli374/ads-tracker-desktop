@@ -17,9 +17,9 @@ import {
   Card,
   Kpi,
   EmptyState,
-  LoadingRow,
   Pagination,
   ActiveFiltersBar,
+  TableSkeletonBody,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
@@ -262,9 +262,7 @@ export const CampaignsPage: React.FC = () => {
           </div>
         }
       >
-        {loading && !summary ? (
-          <LoadingRow />
-        ) : filtered.length === 0 ? (
+        {!loading && filtered.length === 0 ? (
           <EmptyState
             title={search ? t('list.empty.search') : t('list.empty.noData')}
           />
@@ -285,9 +283,12 @@ export const CampaignsPage: React.FC = () => {
                 <th className="px-3 py-2 w-9"></th>
               </tr>
             </thead>
-            <tbody>
-              {paginated.map((c) => (
-                <CampaignRow
+            {loading && !summary ? (
+              <TableSkeletonBody rows={8} columns={11} />
+            ) : (
+              <tbody>
+                {paginated.map((c) => (
+                  <CampaignRow
                   key={c.campaign_id ?? c.amazon_campaign_id}
                   c={c}
                   onDrillDown={() =>
@@ -309,8 +310,9 @@ export const CampaignsPage: React.FC = () => {
                     );
                   }}
                 />
-              ))}
-            </tbody>
+                ))}
+              </tbody>
+            )}
           </table>
         )}
         <Pagination

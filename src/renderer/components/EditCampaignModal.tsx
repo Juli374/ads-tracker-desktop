@@ -6,6 +6,7 @@ import { campaignsApi, CampaignState, type BiddingStrategy, type CampaignUpdate 
 import { ApiError } from '../api/client';
 import { useToast } from '../contexts/ToastContext';
 import { fmtMoney } from '../lib/format';
+import { useEscapeClose } from '../lib/useEscapeClose';
 
 interface Props {
   campaign: CampaignAnalyticsItem;
@@ -94,17 +95,19 @@ export const EditCampaignModal: React.FC<Props> = ({ campaign, onClose, onSaved 
     }
   };
 
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape' && !submitting) onClose();
-  };
+  useEscapeClose(() => {
+    if (!submitting) onClose();
+  });
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-zinc-900/20 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label={campaign.campaign_name}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !submitting) onClose();
       }}
-      onKeyDown={onKey}
     >
       <form
         onSubmit={handleSubmit}

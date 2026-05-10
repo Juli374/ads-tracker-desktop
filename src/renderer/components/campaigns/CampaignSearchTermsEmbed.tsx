@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExternalLink } from 'lucide-react';
 import { Card, EmptyState, LoadingRow } from '../ui';
 import {
   metricsApi,
-  type CampaignSearchTermItem,
+  type CampaignSearchTermsResponse,
 } from '../../api/metrics';
-import { ApiError } from '../../api/client';
 import { fmtMoney, fmtNumber, fmtPct } from '../../lib/format';
+import { useApiQuery } from '../../lib/useApiQuery';
 
 interface Props {
   campaignId: number;
@@ -23,34 +23,12 @@ export const CampaignSearchTermsEmbed: React.FC<Props> = ({
   onOpenFull,
 }) => {
   const { t } = useTranslation('campaigns');
-  const [items, setItems] = useState<CampaignSearchTermItem[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    metricsApi
-      .campaignSearchTerms(campaignId, { from, to })
-      .then((res) => {
-        if (!cancelled) setItems(Array.isArray(res.items) ? res.items : []);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 404) {
-          setItems([]);
-        } else {
-          setError(err instanceof ApiError ? err.message : t('details.searchTerms.loadFailed'));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [campaignId, from, to]);
+  const { data, loading, error } = useApiQuery<CampaignSearchTermsResponse>(
+    () => metricsApi.campaignSearchTerms(campaignId, { from, to }),
+    [campaignId, from, to],
+    { silentStatuses: [404] },
+  );
+  const items = data?.items ?? null;
 
   return (
     <Card

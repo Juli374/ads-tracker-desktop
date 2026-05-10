@@ -25,9 +25,9 @@ import {
   Card,
   EmptyState,
   KpiDelta,
-  LoadingRow,
   PageHeader,
   RangePicker,
+  TableSkeletonBody,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
@@ -315,9 +315,7 @@ export const DashboardPage: React.FC = () => {
           </div>
         }
       >
-        {loading && !bookSummary ? (
-          <LoadingRow />
-        ) : !bookSummary || bookSummary.books.length === 0 ? (
+        {!loading && (!bookSummary || bookSummary.books.length === 0) ? (
           <EmptyState />
         ) : (
           <table className="w-full text-sm table-sticky-head">
@@ -332,13 +330,17 @@ export const DashboardPage: React.FC = () => {
                 <th className="text-right px-5 py-2 font-medium">TACoS</th>
               </tr>
             </thead>
-            <tbody>
-              {[...bookSummary.books]
-                .sort((a, b) => b.cost - a.cost)
-                .map((b) => (
-                  <BookRow key={`${b.book_id}-${b.marketplace}`} book={b} />
-                ))}
-            </tbody>
+            {loading && !bookSummary ? (
+              <TableSkeletonBody rows={5} columns={7} />
+            ) : (
+              <tbody>
+                {[...(bookSummary?.books ?? [])]
+                  .sort((a, b) => b.cost - a.cost)
+                  .map((b) => (
+                    <BookRow key={`${b.book_id}-${b.marketplace}`} book={b} />
+                  ))}
+              </tbody>
+            )}
           </table>
         )}
       </Card>

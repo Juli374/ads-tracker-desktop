@@ -5,6 +5,7 @@ export { EditableNumber } from './EditableNumber';
 export { RangePicker } from './RangePicker';
 export { PageHeader } from './PageHeader';
 export { ErrorBanner, LoadingRow, EmptyState } from './States';
+export { Skeleton, TableRowSkeleton, TableSkeletonBody, KpiSkeleton } from './Skeleton';
 export { ChartTooltip } from './ChartTooltip';
 export type { ChartTooltipRow } from './ChartTooltip';
 export { Pagination } from './Pagination';

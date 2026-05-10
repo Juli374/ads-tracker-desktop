@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, EmptyState, LoadingRow } from '../ui';
-import { metricsApi, type CampaignChange } from '../../api/metrics';
-import { ApiError } from '../../api/client';
+import { metricsApi, type CampaignAllChangesResponse, type CampaignChange } from '../../api/metrics';
+import { useApiQuery } from '../../lib/useApiQuery';
 
 interface Props {
   campaignId: number;
@@ -31,35 +31,13 @@ function groupByDay(changes: CampaignChange[]): DayGroup[] {
 
 export const CampaignHistoryTab: React.FC<Props> = ({ campaignId }) => {
   const { t } = useTranslation('campaigns');
-  const [changes, setChanges] = useState<CampaignChange[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = useApiQuery<CampaignAllChangesResponse>(
+    () => metricsApi.campaignAllChanges(campaignId),
+    [campaignId],
+    { silentStatuses: [404] },
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    metricsApi
-      .campaignAllChanges(campaignId)
-      .then((res) => {
-        if (!cancelled) setChanges(Array.isArray(res.changes) ? res.changes : []);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 404) {
-          setChanges([]);
-        } else {
-          setError(err instanceof ApiError ? err.message : t('details.history.loadFailed'));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [campaignId]);
-
+  const changes = data?.changes ?? null;
   const groups = useMemo(() => (changes ? groupByDay(changes) : []), [changes]);
 
   return (

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Sparkles, X } from 'lucide-react';
 import type { CampaignAnalyticsItem } from '../../api/metrics';
 import { fmtMoney, fmtNumber, fmtPct } from '../../lib/format';
+import { useEscapeClose } from '../../lib/useEscapeClose';
 
 interface Props {
   campaign: CampaignAnalyticsItem;
@@ -11,6 +12,7 @@ interface Props {
 
 export const AIAdvisorPanel: React.FC<Props> = ({ campaign, onClose }) => {
   const { t } = useTranslation('campaigns');
+  useEscapeClose(onClose);
 
   return (
     <>
@@ -21,6 +23,7 @@ export const AIAdvisorPanel: React.FC<Props> = ({ campaign, onClose }) => {
       />
       <aside
         role="dialog"
+        aria-modal="true"
         aria-label={t('details.advisor.panelTitle')}
         data-testid="ai-advisor-panel"
         className="fixed right-0 top-0 h-full w-[400px] bg-white border-l border-zinc-200 shadow-xl z-50 flex flex-col"

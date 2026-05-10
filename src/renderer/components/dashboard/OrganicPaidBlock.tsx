@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Leaf, MousePointerClick } from 'lucide-react';
 import { metricsApi, type OrganicTotalSummary } from '../../api/metrics';
-import { ApiError } from '../../api/client';
 import { fmtNumber, fmtPct } from '../../lib/format';
 import { Card, LoadingRow } from '../ui';
+import { useApiQuery } from '../../lib/useApiQuery';
 
 interface Props {
   from: string;
@@ -15,7 +15,7 @@ interface Props {
   accounts?: string[];
 }
 
-const HIDDEN_STATUSES = new Set([401, 403, 404]);
+const HIDDEN_STATUSES = [401, 403, 404];
 
 export const OrganicPaidBlock: React.FC<Props> = ({
   from,
@@ -26,37 +26,19 @@ export const OrganicPaidBlock: React.FC<Props> = ({
   accounts,
 }) => {
   const { t } = useTranslation('dashboard');
-  const [data, setData] = useState<OrganicTotalSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [hidden, setHidden] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    metricsApi
-      .summaryOrganicTotal({ from, to, attribution, marketplaces, bookIds, accounts })
-      .then((res) => {
-        if (!cancelled) {
-          setData(res);
-          setHidden(false);
-        }
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && HIDDEN_STATUSES.has(err.status)) {
-          setHidden(true);
-        }
-        setData(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [from, to, attribution, marketplaces, bookIds, accounts]);
-
-  if (hidden) return null;
+  const { data, loading } = useApiQuery<OrganicTotalSummary>(
+    () =>
+      metricsApi.summaryOrganicTotal({
+        from,
+        to,
+        attribution,
+        marketplaces,
+        bookIds,
+        accounts,
+      }),
+    [from, to, attribution, marketplaces, bookIds, accounts],
+    { silentStatuses: HIDDEN_STATUSES },
+  );
 
   const totalOrganic = data?.total_organic_orders ?? 0;
   const totalPaid = data?.total_paid_orders ?? 0;

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -12,9 +12,9 @@ import {
   YAxis,
 } from 'recharts';
 import { Card, ChartTooltip, type ChartTooltipRow, LoadingRow } from '../ui';
-import { metricsApi, type HourlyMetric } from '../../api/metrics';
-import { ApiError } from '../../api/client';
+import { metricsApi, type HourlyResponse } from '../../api/metrics';
 import { fmtMoney, fmtNumber } from '../../lib/format';
+import { useApiQuery } from '../../lib/useApiQuery';
 
 type HourlyMetricId = 'all' | 'impressions' | 'clicks' | 'spend';
 
@@ -41,47 +41,24 @@ export const HourlyDynamicsChart: React.FC<Props> = ({
   attribution = '7d',
 }) => {
   const { t } = useTranslation('campaigns');
-  const [data, setData] = useState<HourlyMetric[] | null>(null);
   const [metric, setMetric] = useState<HourlyMetricId>('all');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!amazonCampaignId) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    metricsApi
-      .campaignHourly(amazonCampaignId, { from, to, attribution })
-      .then((res) => {
-        if (cancelled) return;
-        setData(Array.isArray(res.hourly) ? res.hourly : []);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 404) {
-          setData([]);
-        } else {
-          setError(err instanceof ApiError ? err.message : t('details.hourly.loadFailed'));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [amazonCampaignId, from, to, attribution]);
+  const { data, loading, error } = useApiQuery<HourlyResponse>(
+    () => metricsApi.campaignHourly(amazonCampaignId, { from, to, attribution }),
+    [amazonCampaignId, from, to, attribution],
+    { silentStatuses: [404], enabled: !!amazonCampaignId },
+  );
 
+  const hourly = data?.hourly ?? [];
   const chartData = useMemo(
     () =>
-      (data ?? []).map((row) => ({
+      hourly.map((row) => ({
         hourLabel: SHORT_HOUR(row.hour),
         impressions: row.impressions,
         clicks: row.clicks,
         spend: row.spend,
       })),
-    [data],
+    [hourly],
   );
 
   const showImpressions = metric === 'all' || metric === 'impressions';
@@ -117,7 +94,7 @@ export const HourlyDynamicsChart: React.FC<Props> = ({
         <LoadingRow />
       ) : error ? (
         <div className="text-sm text-red-600">{error}</div>
-      ) : !data || data.length === 0 ? (
+      ) : hourly.length === 0 ? (
         <div className="text-sm text-zinc-400 py-4">{t('details.hourly.empty')}</div>
       ) : (
         <div className="h-72" data-testid="hourly-dynamics-chart">

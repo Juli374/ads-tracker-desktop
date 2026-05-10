@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Download, BarChart3 } from 'lucide-react';
+import { Download, BarChart3, FileSpreadsheet, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
@@ -36,6 +36,7 @@ import {
 import { dateRangeFor, RangeId, RANGE_IDS } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { toCsv, downloadCsv } from '../lib/csv';
+import { downloadExcel, downloadPdf, type ExportColumn } from '../lib/export';
 import { useToast } from '../contexts/ToastContext';
 import {
   useGlobalFilters,
@@ -225,19 +226,20 @@ export const ReportsPage: React.FC = () => {
     };
   }, [rows]);
 
-  const handleExport = () => {
-    const columns = [
-      'period',
-      'range',
-      'spend',
-      'sales',
-      'orders',
-      'clicks',
-      'acos',
-      'royalty',
-      'profit',
-    ];
-    const data = rows.map((r) => ({
+  const exportColumns: ExportColumn[] = [
+    { key: 'period', label: 'Period', width: 32 },
+    { key: 'range', label: 'Range', width: 38 },
+    { key: 'spend', label: 'Spend', align: 'right', width: 22 },
+    { key: 'sales', label: 'Sales', align: 'right', width: 22 },
+    { key: 'orders', label: 'Orders', align: 'right', width: 18 },
+    { key: 'clicks', label: 'Clicks', align: 'right', width: 18 },
+    { key: 'acos', label: 'ACOS%', align: 'right', width: 18 },
+    { key: 'royalty', label: 'Royalty', align: 'right', width: 22 },
+    { key: 'profit', label: 'Profit', align: 'right', width: 22 },
+  ];
+
+  const buildExportRows = () =>
+    rows.map((r) => ({
       period: r.label,
       range: r.range,
       spend: r.spend.toFixed(2),
@@ -248,15 +250,39 @@ export const ReportsPage: React.FC = () => {
       royalty: (r.royalty ?? 0).toFixed(2),
       profit: (r.profit ?? 0).toFixed(2),
     }));
+
+  const successMessage = () =>
+    granularity === 'daily'
+      ? t('summary.exported', { count: rows.length })
+      : t('summary.exportedWeeks', { count: rows.length });
+
+  const handleExportCsv = () => {
     downloadCsv(
       `ads-tracker-${granularity}-${from}-${to}.csv`,
-      toCsv(data, columns),
+      toCsv(buildExportRows(), exportColumns.map((c) => c.key)),
     );
-    toast.success(
-      granularity === 'daily'
-        ? t('summary.exported', { count: rows.length })
-        : t('summary.exportedWeeks', { count: rows.length }),
+    toast.success(successMessage());
+  };
+
+  const handleExportXlsx = () => {
+    downloadExcel(
+      `ads-tracker-${granularity}-${from}-${to}.xlsx`,
+      buildExportRows(),
+      exportColumns,
+      `Reports ${granularity}`,
     );
+    toast.success(successMessage());
+  };
+
+  const handleExportPdf = () => {
+    downloadPdf(
+      `ads-tracker-${granularity}-${from}-${to}.pdf`,
+      `Ads Tracker · Reports (${granularity})`,
+      buildExportRows(),
+      exportColumns,
+      { subtitle: `${from} → ${to}` },
+    );
+    toast.success(successMessage());
   };
 
   return (
@@ -428,19 +454,24 @@ export const ReportsPage: React.FC = () => {
         rightSlot={
           <div className="flex items-center gap-2">
             <GranularityToggle value={granularity} onChange={setGranularity} />
-            <button
-              onClick={handleExport}
+            <ExportButton
+              icon={<Download size={12} />}
+              label="CSV"
+              onClick={handleExportCsv}
               disabled={rows.length === 0 || loading}
-              className="
-                inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md
-                text-xs text-zinc-700 border border-zinc-200 bg-white
-                hover:bg-zinc-50 transition-colors
-                disabled:opacity-40 disabled:cursor-not-allowed
-              "
-            >
-              <Download size={12} />
-              CSV
-            </button>
+            />
+            <ExportButton
+              icon={<FileSpreadsheet size={12} />}
+              label="XLSX"
+              onClick={handleExportXlsx}
+              disabled={rows.length === 0 || loading}
+            />
+            <ExportButton
+              icon={<FileText size={12} />}
+              label="PDF"
+              onClick={handleExportPdf}
+              disabled={rows.length === 0 || loading}
+            />
           </div>
         }
       >
@@ -644,6 +675,28 @@ const MarketplaceTooltip: React.FC<RechartsTooltipProps> = ({ active, payload })
   ];
   return <ChartTooltip active title={data.code} rows={rows} />;
 };
+
+const ExportButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}> = ({ icon, label, onClick, disabled }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    aria-label={`Export as ${label}`}
+    className="
+      inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md
+      text-xs text-zinc-700 border border-zinc-200 bg-white
+      hover:bg-zinc-50 transition-colors
+      disabled:opacity-40 disabled:cursor-not-allowed
+    "
+  >
+    {icon}
+    {label}
+  </button>
+);
 
 const GranularityToggle: React.FC<{
   value: Granularity;
