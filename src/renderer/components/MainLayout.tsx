@@ -326,15 +326,8 @@ const Layout: React.FC = () => {
             {bottomNav.map(renderNavItem)}
           </div>
 
-          <div className="px-4 py-2.5 border-t border-zinc-100 text-[11px] text-zinc-400 flex items-center justify-between">
-            <span>{t('topbar.connected')}</span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              {t('topbar.online')}
-            </span>
-          </div>
+          <ConnectionIndicator />
         </aside>
-
         <main className="flex-1 overflow-auto bg-zinc-50">
           <div className="max-w-6xl mx-auto px-8 py-8">
             <Suspense fallback={<PageFallback />}>{renderContent()}</Suspense>
@@ -352,3 +345,63 @@ const PageFallback: React.FC = () => (
     <Loader2 size={18} className="animate-spin text-zinc-400" />
   </div>
 );
+
+type ConnState = 'online' | 'offline' | 'checking';
+
+const ConnectionIndicator: React.FC = () => {
+  const { t } = useTranslation('nav');
+  const [state, setState] = useState<ConnState>('checking');
+  const failureCountRef = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const ping = async () => {
+      try {
+        // Lightweight call — first 1 row of tasks works for both API-key and JWT auth.
+        await window.api.request<unknown>({
+          method: 'GET',
+          path: '/api/auth/verify',
+        });
+        if (!cancelled) {
+          failureCountRef.current = 0;
+          setState('online');
+        }
+      } catch {
+        if (cancelled) return;
+        failureCountRef.current += 1;
+        if (failureCountRef.current >= 2) setState('offline');
+      }
+    };
+
+    ping();
+    const id = setInterval(ping, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const dotColor =
+    state === 'online'
+      ? 'bg-emerald-500'
+      : state === 'offline'
+      ? 'bg-red-500'
+      : 'bg-zinc-300';
+  const label =
+    state === 'online'
+      ? t('topbar.online')
+      : state === 'offline'
+      ? t('topbar.offline')
+      : t('topbar.checking');
+
+  return (
+    <div className="px-4 py-2.5 border-t border-zinc-100 text-[11px] text-zinc-400 flex items-center justify-between">
+      <span>{t('topbar.connected')}</span>
+      <span className="flex items-center gap-1.5" data-testid="connection-indicator">
+        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+        {label}
+      </span>
+    </div>
+  );
+};

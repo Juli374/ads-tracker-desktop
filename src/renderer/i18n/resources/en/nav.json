@@ -25,7 +25,9 @@
     "openCommandPalette": "Open command palette",
     "search": "Search",
     "connected": "Connected",
-    "online": "Online"
+    "online": "Online",
+    "offline": "Offline",
+    "checking": "Checking…"
   },
   "palette": {
     "title": "Commands",
