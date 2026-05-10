@@ -1,5 +1,16 @@
 import { vi } from 'vitest';
-import type { ApiRequestPayload, ApiResponse, AppInfo } from '../shared/ipc';
+import type {
+  ApiRequestPayload,
+  ApiResponse,
+  AppInfo,
+  DesktopApi,
+  LocalRoyaltyMonthSummary,
+  LocalRoyaltyRecord,
+  LocalRoyaltyUpload,
+  MediaUploadPayload,
+  MediaUploadResponse,
+  UpdateStatus,
+} from '../shared/ipc';
 
 interface MockApiOptions {
   responses?: Record<string, unknown>;
@@ -19,7 +30,60 @@ export function installMockApi(options: MockApiOptions = {}): void {
     return { status: 200, ok: true, data };
   }) as unknown as <T = unknown>(payload: ApiRequestPayload) => Promise<ApiResponse<T>>;
 
-  (window as unknown as { api: unknown }).api = {
+  // Multipart upload — default success shape; tests that need different behaviour
+  // can override via vi.stubGlobal('api', {...}) (see upload.test.ts).
+  const mediaUpload = vi.fn(
+    async (): Promise<MediaUploadResponse> => ({
+      ok: true,
+      status: 200,
+      data: { url: 'https://test.local/uploaded.png' },
+    }),
+  ) as unknown as <T = unknown>(payload: MediaUploadPayload) => Promise<MediaUploadResponse<T>>;
+
+  // Local royalty store — shapes mirror cloud /api/royalties/* responses (see
+  // src/main/local-db/royalty.ts for the source of truth). Default mocks return
+  // realistic, deterministic values so RoyaltiesPage in local-mode renders.
+  const localRoyaltyUpload: LocalRoyaltyUpload = {
+    id: 1,
+    account_id: 1,
+    account_name: 'Test Account',
+    marketplace: 'USA',
+    target_month: '2026-04',
+    uploaded_at: '2026-05-01T00:00:00Z',
+    source_filename: 'royalty-2026-04.xlsx',
+    total_units: 100,
+    total_royalty: 200,
+    total_revenue: 500,
+    currency: 'USD',
+  };
+
+  const localRoyaltyRecord: LocalRoyaltyRecord = {
+    id: 1,
+    upload_id: 1,
+    asin: 'B0TEST0001',
+    book_title: 'Test Book',
+    marketplace: 'USA',
+    target_month: '2026-04',
+    units: 100,
+    royalty: 200,
+    revenue: 500,
+    currency: 'USD',
+  };
+
+  const localRoyaltySummary: LocalRoyaltyMonthSummary = {
+    target_month: '2026-04',
+    totals: { units: 100, royalty: 200, revenue: 500 },
+    by_marketplace: [
+      { marketplace: 'USA', units: 100, royalty: 200, revenue: 500 },
+    ],
+  };
+
+  const updateIdle: UpdateStatus = {
+    state: 'idle',
+    enabled: false,
+  };
+
+  (window as unknown as { api: DesktopApi }).api = {
     app: {
       getInfo: vi.fn(async (): Promise<AppInfo> => ({
         version: '0.1.0',
@@ -27,17 +91,42 @@ export function installMockApi(options: MockApiOptions = {}): void {
         isPackaged: false,
         ...options.appInfo,
       })),
-      getApiBaseUrl: vi.fn(async () => options.apiBaseUrl ?? 'http://test.local'),
+      getApiBaseUrl: vi.fn(async () => options.apiBaseUrl ?? 'https://test.local'),
     },
     auth: {
       getToken: vi.fn(async () => options.token ?? 'at_live_test_token_xxxxxxxx'),
       setToken: vi.fn(async () => undefined),
       clearToken: vi.fn(async () => undefined),
+      // 401 push-event from main; tests don't need to fire it, just unsubscribe noop.
+      onExpired: vi.fn(() => () => undefined),
     },
     request,
+    mediaUpload,
     onDeepLink: vi.fn(() => () => undefined),
     shell: {
       openExternal: vi.fn(async () => undefined),
+    },
+    oauth: {
+      writeState: vi.fn(async () => undefined),
+      consumeState: vi.fn(async () => null),
+    },
+    localRoyalty: {
+      listUploads: vi.fn(async () => [localRoyaltyUpload]),
+      listRecords: vi.fn(async () => [localRoyaltyRecord]),
+      getSummary: vi.fn(async () => localRoyaltySummary),
+      import: vi.fn(async () => ({
+        upload_id: 1,
+        records_added: 1,
+      })),
+      delete: vi.fn(async () => ({ deleted: 1 })),
+      filePath: vi.fn(async () => '/tmp/test-royalty.json'),
+    },
+    update: {
+      getStatus: vi.fn(async () => updateIdle),
+      check: vi.fn(async () => updateIdle),
+      quitAndInstall: vi.fn(async () => undefined),
+      // Push subscription; default mock is a no-op that returns an unsubscribe.
+      onChange: vi.fn(() => () => undefined),
     },
   };
 }
