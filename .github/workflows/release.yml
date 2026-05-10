@@ -1,0 +1,187 @@
+name: Release
+
+# Triggered by version tags (e.g. `v0.0.1`, `v0.1.0-rc.1`).
+# Produces signed installers for macOS, Windows and Linux, and uploads them
+# to a draft GitHub Release. Manual `workflow_dispatch` is allowed for dry
+# runs — without secrets it falls back to unsigned artefacts.
+#
+# Required secrets (full list + procurement instructions in
+# `docs/electron-migration/release-env.md`):
+#   APPLE_DEVELOPER_ID            — Developer ID Application identity string
+#   APPLE_CERT_BASE64             — base64-encoded .p12 with the cert
+#   APPLE_CERT_PASSWORD           — password for the .p12
+#   APPLE_ID                      — Apple ID email for notarization
+#   APPLE_APP_SPECIFIC_PASSWORD   — app-specific password from appleid.apple.com
+#   APPLE_TEAM_ID                 — Apple Developer Team ID
+#   WIN_CSC_LINK                  — base64-encoded .pfx for Windows signing
+#   WIN_CSC_KEY_PASSWORD          — password for the .pfx
+#   GH_TOKEN                      — PAT with repo scope; used by the publisher
+#
+# Any missing secret degrades gracefully:
+#   - macOS without APPLE_* → unsigned, no notarization
+#   - Windows without WIN_CSC_* → unsigned installer
+#   - Without GH_TOKEN → publish step is skipped, artefacts uploaded only as
+#     workflow artefacts for manual download
+#
+# TODO(coordinator): once Azure Trusted Signing is configured (see
+# release-env.md "Open decisions"), replace WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD
+# with AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET +
+# Trusted Signing endpoint. EV cert via USB token is the fallback if
+# Azure Trusted Signing is unavailable for individual developers.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run: build but do not publish (also implied if GH_TOKEN unset)'
+        required: false
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: write    # needed for the publisher to draft a Release
+  id-token: write    # reserved for future cloud-signing OIDC flows
+
+# Cancel in-flight runs if the same tag/ref is pushed twice in a row
+# (e.g. amended tag). Each unique tag still gets its own job.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & sign (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
+    strategy:
+      # Don't abort the whole matrix if one OS fails — we still want the
+      # other artefacts so the human reviewer has something to ship.
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-2022, ubuntu-22.04]
+
+    # Job-level env so:
+    #   1. step-level `if:` clauses can use `env.X != ''` to detect
+    #      missing secrets (the `secrets` context is restricted in some
+    #      `if:` positions; `env` is always allowed).
+    #   2. `run:` blocks inherit the signing creds without re-listing
+    #      them per step.
+    # `APPLE_CERT_BASE64_PRESENT` / `WIN_CSC_LINK_PRESENT` are non-empty
+    # marker strings that mirror secret presence — we never expose the
+    # raw base64 blob via env (it goes straight to the action's `with:`),
+    # but we still need a way for `if:` to know the secret is set.
+    env:
+      APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      APPLE_CERT_BASE64_PRESENT: ${{ secrets.APPLE_CERT_BASE64 != '' }}
+      WIN_CSC_LINK_PRESENT: ${{ secrets.WIN_CSC_LINK != '' }}
+      GH_TOKEN_PRESENT: ${{ secrets.GH_TOKEN != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      # ----- macOS code-signing keychain bootstrap ------------------------
+      # Only runs on macOS runners with the cert secret present. Skipped
+      # on Linux/Windows runners and on macOS when the secret is empty
+      # (workflow_dispatch dry-run, fork PRs, etc.); the rest of the
+      # pipeline then produces an unsigned build, which is fine for
+      # smoke-testing but not for distribution.
+      # `apple-actions/import-codesign-certs` handles base64 decode,
+      # temp keychain creation, and cleanup automatically.
+      - name: Import Apple Developer ID certificate
+        if: runner.os == 'macOS' && env.APPLE_CERT_BASE64_PRESENT == 'true'
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERT_BASE64 }}
+          p12-password: ${{ secrets.APPLE_CERT_PASSWORD }}
+
+      # ----- Windows code-signing materialization -------------------------
+      # Decode the base64 .pfx into a tmp file and expose its absolute path
+      # via WIN_CSC_LINK. forge.config.ts (once Lane C completes I.3)
+      # consumes WIN_CSC_LINK + WIN_CSC_KEY_PASSWORD via MakerSquirrel.
+      - name: Decode Windows code-signing certificate
+        if: runner.os == 'Windows' && env.WIN_CSC_LINK_PRESENT == 'true'
+        shell: pwsh
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'win-codesign.pfx'
+          [System.Convert]::FromBase64String($env:WIN_CSC_BASE64) `
+            | Set-Content -Path $pfxPath -Encoding Byte
+          "WIN_CSC_LINK=$pfxPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+        env:
+          # Re-aliased to avoid clobbering the path-form WIN_CSC_LINK that
+          # the next steps expect (after this step writes to $GITHUB_ENV,
+          # WIN_CSC_LINK == absolute pfx path, not the base64 blob).
+          WIN_CSC_BASE64: ${{ secrets.WIN_CSC_LINK }}
+
+      # ----- Build -----------------------------------------------------------
+      # `package` produces the unpacked .app/.exe bundle. Used as a smoke
+      # test before the heavier `make` step. Signing env vars are inherited
+      # from the job-level `env:` block above; nothing to declare per step.
+      - name: Package
+        run: npm run package
+
+      # `make` produces the installer artefacts (.dmg/.zip on mac,
+      # Squirrel .exe on win, .deb/.rpm on linux). On Linux we skip signing
+      # since AppImage/deb don't require it for typical distribution.
+      - name: Make installers
+        run: npm run make
+
+      # ----- Upload workflow artefacts (always) ----------------------------
+      # Even when we skip publish, having the installers as a workflow
+      # artefact lets a reviewer download and smoke-test them before the
+      # real release goes out. 14 days is enough for a release cycle.
+      - name: Upload installer artefacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            out/make/**/*
+            out/**/*.dmg
+            out/**/*.zip
+            out/**/*.exe
+            out/**/*.deb
+            out/**/*.rpm
+            out/**/*.AppImage
+            out/**/latest*.yml
+          if-no-files-found: warn
+          retention-days: 14
+
+      # ----- Publish to GitHub Releases (draft) ----------------------------
+      # Only runs when:
+      #   1. The trigger is a tag push, not workflow_dispatch (dry runs)
+      #   2. GH_TOKEN secret is present (skips on forks / before secrets
+      #      are configured)
+      # The publisher (configured in forge.config.ts via Lane C / I.3) creates
+      # a draft Release; a human flips it to "published" after smoke testing.
+      # Signing env is inherited from job-level `env:` so any re-build that
+      # `publish` triggers stays signed/notarised.
+      - name: Publish to GitHub Releases
+        if: |
+          startsWith(github.ref, 'refs/tags/v') &&
+          env.GH_TOKEN_PRESENT == 'true'
+        run: npm run publish
