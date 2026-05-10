@@ -1,18 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Copyright,
   Cpu,
   ExternalLink,
   FileText,
   FolderOpen,
+  GitCommitHorizontal,
+  Hash,
+  Info,
   KeyRound,
   Loader2,
   LogOut,
+  Scale,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../ui';
 import { UpdateChecker } from '../UpdateChecker';
 import { useAuth } from '../../contexts/AuthContext';
 import type { AppInfo } from '../../../shared/ipc';
+
+/**
+ * Repository URL — single source of truth for the About section's GitHub link.
+ * Kept here (not in i18n JSON) so the value can't drift between locales and
+ * so the validation in `shell.openExternal` (https-only) is pinned.
+ */
+const REPO_URL = 'https://github.com/Juli374/ads-tracker-desktop';
 
 export const ApplicationTab: React.FC = () => {
   const { t } = useTranslation('settings');
@@ -22,6 +34,9 @@ export const ApplicationTab: React.FC = () => {
   // Phase I.2 Lane B — log file path for the Diagnostics block.
   const [logPath, setLogPath] = useState<string | null>(null);
   const [revealError, setRevealError] = useState<string | null>(null);
+  // Phase I.7 Lane G — Build-time git short SHA, surfaced via IPC.
+  // `null` = pending; `'unknown'` is a real value returned for shallow clones / CI snapshots.
+  const [gitCommit, setGitCommit] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,6 +50,16 @@ export const ApplicationTab: React.FC = () => {
       })
       .catch(() => {
         if (!cancelled) setLoading(false);
+      });
+    // Best-effort fetch; if the IPC channel is missing (e.g. legacy preload in
+    // a hot-reload session) we silently fall back to 'unknown'.
+    window.api.app
+      .getGitCommit()
+      .then((commit) => {
+        if (!cancelled) setGitCommit(commit || 'unknown');
+      })
+      .catch(() => {
+        if (!cancelled) setGitCommit('unknown');
       });
     return () => {
       cancelled = true;
@@ -66,6 +91,14 @@ export const ApplicationTab: React.FC = () => {
     } catch (err) {
       setRevealError(err instanceof Error ? err.message : String(err));
     }
+  };
+
+  const openRepo = () => {
+    window.api.shell.openExternal(REPO_URL).catch(() => {
+      // shell.openExternal rejects on non-https URLs only; REPO_URL is a
+      // hard-coded https-prefixed constant, so a rejection here is unexpected
+      // and not actionable for the user. Swallow silently.
+    });
   };
 
   return (
@@ -158,7 +191,62 @@ export const ApplicationTab: React.FC = () => {
         />
       </Card>
 
-      {/* Phase I.2 Lane B — About / Diagnostics */}
+      {/* Phase I.7 Lane G — Branding / About */}
+      <Card title={t('about.cardTitle')} data-testid="settings-about-card">
+        <Row
+          label={t('about.appName')}
+          icon={<Info size={13} className="text-zinc-400" />}
+          value={
+            <span className="text-sm text-zinc-900">{t('about.appNameValue')}</span>
+          }
+        />
+        <Row
+          label={t('about.version')}
+          icon={<Hash size={13} className="text-zinc-400" />}
+          value={
+            <span className="font-mono tabular-nums text-xs text-zinc-700">
+              {appInfo?.version ?? '—'}
+            </span>
+          }
+        />
+        <Row
+          label={t('about.commit')}
+          icon={<GitCommitHorizontal size={13} className="text-zinc-400" />}
+          value={
+            <span
+              className="font-mono tabular-nums text-xs text-zinc-700"
+              data-testid="settings-about-commit"
+            >
+              {gitCommit ?? '—'}
+            </span>
+          }
+        />
+        <Row
+          label={t('about.license')}
+          icon={<Scale size={13} className="text-zinc-400" />}
+          value={
+            <span className="text-xs text-zinc-700">{t('about.licenseValue')}</span>
+          }
+        />
+        <Row
+          label={t('about.repo')}
+          icon={<Copyright size={13} className="text-zinc-400" />}
+          value={
+            <button
+              type="button"
+              onClick={openRepo}
+              aria-label={t('about.openRepoAria')}
+              data-testid="settings-about-repo-link"
+              className="inline-flex items-center gap-1 text-xs text-zinc-700 hover:text-zinc-900 transition-colors"
+            >
+              {t('about.repoLink')}
+              <ExternalLink size={11} />
+            </button>
+          }
+        />
+      </Card>
+
+      {/* Phase I.2 Lane B — Diagnostics */}
       <Card title={t('diagnostics.cardTitle')}>
         <Row
           label={t('diagnostics.logFile')}

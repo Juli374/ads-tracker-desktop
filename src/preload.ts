@@ -18,6 +18,7 @@ const api: DesktopApi = {
     getInfo: () => ipcRenderer.invoke(IpcChannel.AppGetVersion),
     getApiBaseUrl: () => ipcRenderer.invoke(IpcChannel.AppGetApiBaseUrl),
     getLogPath: () => ipcRenderer.invoke(IpcChannel.AppGetLogPath) as Promise<string>,
+    getGitCommit: () => ipcRenderer.invoke(IpcChannel.AppGetGitCommit) as Promise<string>,
   },
   auth: {
     getToken: () => ipcRenderer.invoke(IpcChannel.AuthGetToken),

@@ -56,6 +56,24 @@ if (process.platform === 'win32') {
   app.setAppUserModelId('com.juli374.ads-tracker');
 }
 
+// Branding — set the user-facing app name early so it shows up in the macOS
+// menu bar, Dock tooltip, native About panel, and any default window titles.
+// Must run before BrowserWindow creation; package.json's `productName` is the
+// build-time source of truth, this duplicates it for runtime read.
+app.setName('Ads Tracker');
+
+// macOS native About panel (Cmd+, > Ads Tracker > About Ads Tracker, or the
+// Apple menu's auto-generated About item). Other platforms ignore this call.
+// The version field is read from `app.getVersion()` (package.json `version`)
+// so it stays in sync with whatever Forge built.
+app.setAboutPanelOptions({
+  applicationName: 'Ads Tracker',
+  applicationVersion: app.getVersion(),
+  copyright: '© 2026 Juli374',
+  authors: ['Juli374'],
+  website: 'https://github.com/Juli374/ads-tracker-desktop',
+});
+
 const PROTOCOL = 'ads-tracker-desktop';
 
 // === Content Security Policy ===

@@ -68,6 +68,13 @@ export function registerIpcHandlers(): void {
     return process.env.ADS_TRACKER_API_URL?.trim() || DEFAULT_API_BASE_URL;
   });
 
+  // Build-time git short SHA, injected by webpack DefinePlugin in
+  // webpack.main.config.ts. On shallow clones or non-git checkouts the
+  // DefinePlugin substitutes `'unknown'`, so this always resolves to a string.
+  ipcMain.handle(IpcChannel.AppGetGitCommit, async (): Promise<string> => {
+    return process.env.GIT_COMMIT || 'unknown';
+  });
+
   ipcMain.handle(IpcChannel.AuthGetToken, async (): Promise<string | null> => {
     return readToken();
   });
