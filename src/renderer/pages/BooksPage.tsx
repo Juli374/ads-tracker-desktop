@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { ApiError } from '../api/client';
-import { metricsApi, BookMetric, BookSummary } from '../api/metrics';
+import { metricsApi, BookMetric, BookSummary, CampaignAnalyticsItem } from '../api/metrics';
+import { ratingsApi, BookRating, Book } from '../api/books';
 import {
   PageHeader,
   RangePicker,
@@ -21,6 +22,14 @@ import {
   useGlobalFilterChips,
 } from '../contexts/GlobalFiltersContext';
 import { useBooks } from '../contexts/BooksContext';
+import { BookBreadcrumb } from '../components/books/BookBreadcrumb';
+import { BooksMarketplacesPanel } from '../components/books/BooksMarketplacesPanel';
+import { BooksCampaignsPanel } from '../components/books/BooksCampaignsPanel';
+import { EditBookModal } from '../components/books/EditBookModal';
+import { DeleteBookModal } from '../components/books/DeleteBookModal';
+import { AddAsinModal } from '../components/books/AddAsinModal';
+import { UploadCoverModal } from '../components/books/UploadCoverModal';
+import { AddChangeModal } from '../components/books/AddChangeModal';
 
 interface BookGroup {
   book_id: number;
@@ -41,12 +50,14 @@ interface BookGroup {
 
 type SortKey = 'spend' | 'sales' | 'orders' | 'acos';
 
+type ModalType = 'edit' | 'delete' | 'addAsin' | 'uploadCover' | 'addChange' | null;
+
 export const BooksPage: React.FC = () => {
   const { t } = useTranslation('books');
   const toast = useToast();
-  const { navigate } = useNav();
-  const { filters: globalFilters, setBookId } = useGlobalFilters();
-  const { list: booksList } = useBooks();
+  const { booksDrill, setBooksDrill } = useNav();
+  const { filters: globalFilters } = useGlobalFilters();
+  const { list: booksList, refetch: refetchBooks } = useBooks();
   const chips = useGlobalFilterChips(booksList);
   const [range, setRange] = useState<RangeId>('30d');
   const [loading, setLoading] = useState(true);
@@ -54,6 +65,15 @@ export const BooksPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('spend');
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [ratings, setRatings] = useState<BookRating[]>([]);
+
+  // Drill state
+  const [drillCampaigns, setDrillCampaigns] = useState<CampaignAnalyticsItem[]>([]);
+  const [drillLoading, setDrillLoading] = useState(false);
+
+  // Modal state
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
 
@@ -61,21 +81,30 @@ export const BooksPage: React.FC = () => {
     () => async () => {
       setLoading(true);
       try {
-        const data = await metricsApi.summaryByBook({
-          from,
-          to,
-          attribution: '7d',
-          marketplaces: globalFilters.marketplaces.length
-            ? globalFilters.marketplaces
-            : undefined,
-          bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
-          accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,
-        });
+        const [data] = await Promise.all([
+          metricsApi.summaryByBook({
+            from,
+            to,
+            attribution: '7d',
+            marketplaces: globalFilters.marketplaces.length
+              ? globalFilters.marketplaces
+              : undefined,
+            bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
+            accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,
+          }),
+        ]);
         setSummary(data);
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : t('loadFailed'));
       } finally {
         setLoading(false);
+      }
+      // Load ratings silently
+      try {
+        const rData = await ratingsApi.allBooks();
+        setRatings(rData.ratings);
+      } catch {
+        // ratings are optional, don't show error
       }
     },
     [from, to, toast, t, globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
@@ -85,7 +114,6 @@ export const BooksPage: React.FC = () => {
     load();
   }, [load]);
 
-  // Книги приходят разбиты по book_id × marketplace. Группируем.
   const groups = useMemo<BookGroup[]>(() => {
     if (!summary) return [];
     const byBook = new Map<number, BookGroup>();
@@ -167,6 +195,70 @@ export const BooksPage: React.FC = () => {
     });
   };
 
+  const handleDrillToMarketplaces = (group: BookGroup) => {
+    setBooksDrill({
+      level: 'marketplaces',
+      selectedBookId: group.book_id,
+      selectedBookTitle: group.title,
+    });
+  };
+
+  const handleDrillToCampaigns = async (marketplace: string) => {
+    setBooksDrill({
+      level: 'campaigns',
+      selectedBookId: booksDrill.selectedBookId,
+      selectedBookTitle: booksDrill.selectedBookTitle,
+      selectedMarketplace: marketplace,
+    });
+    setDrillLoading(true);
+    try {
+      const data = await metricsApi.summaryByCampaign({
+        from,
+        to,
+        attribution: '7d',
+        bookIds: booksDrill.selectedBookId != null ? [booksDrill.selectedBookId] : undefined,
+        marketplaces: [marketplace],
+      });
+      setDrillCampaigns(data.campaigns);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('loadFailed'));
+      setDrillCampaigns([]);
+    } finally {
+      setDrillLoading(false);
+    }
+  };
+
+  const handleBreadcrumbNav = (level: 'list' | 'marketplaces' | 'campaigns') => {
+    if (level === 'list') {
+      setBooksDrill({ level: 'list' });
+    } else if (level === 'marketplaces') {
+      setBooksDrill({
+        level: 'marketplaces',
+        selectedBookId: booksDrill.selectedBookId,
+        selectedBookTitle: booksDrill.selectedBookTitle,
+      });
+    }
+  };
+
+  const openModal = (type: ModalType, book?: Book) => {
+    setActiveModal(type);
+    if (book) setSelectedBook(book);
+  };
+
+  const closeModal = () => {
+    setActiveModal(null);
+    setSelectedBook(null);
+  };
+
+  const getRatingsForBook = (bookId: number) => ratings.filter((r) => r.bookId === bookId);
+
+  // Get the rows for the selected book (marketplaces panel)
+  const selectedBookRows = useMemo(() => {
+    if (!booksDrill.selectedBookId) return [];
+    const g = groups.find((g) => g.book_id === booksDrill.selectedBookId);
+    return g?.rows ?? [];
+  }, [groups, booksDrill.selectedBookId]);
+
   return (
     <div className="space-y-6" data-testid="books-page">
       <PageHeader
@@ -193,66 +285,136 @@ export const BooksPage: React.FC = () => {
 
       <ActiveFiltersBar chips={chips} />
 
-      <div className="grid grid-cols-4 gap-3">
-        <Kpi label={t('kpi.books')} value={fmtNumber(filtered.length)} loading={loading} />
-        <Kpi label="Spend" value={fmtMoney(totals.cost)} loading={loading} />
-        <Kpi label="Orders" value={fmtNumber(totals.orders)} loading={loading} />
-        <Kpi
-          label="ACOS"
-          value={fmtPct(totals.acos)}
-          loading={loading}
-          tone={totals.acos > 100 ? 'negative' : 'default'}
-        />
-      </div>
+      {booksDrill.level !== 'list' && (
+        <BookBreadcrumb drill={booksDrill} onNavigate={handleBreadcrumbNav} />
+      )}
 
-      <Card
-        title={t('card.title')}
-        rightSlot={
-          <div className="flex items-center gap-2">
-            <SortControl value={sortKey} onChange={setSortKey} />
-            <SearchInput value={search} onChange={setSearch} />
+      {booksDrill.level === 'list' && (
+        <>
+          <div className="grid grid-cols-4 gap-3">
+            <Kpi label={t('kpi.books')} value={fmtNumber(filtered.length)} loading={loading} />
+            <Kpi label="Spend" value={fmtMoney(totals.cost)} loading={loading} />
+            <Kpi label="Orders" value={fmtNumber(totals.orders)} loading={loading} />
+            <Kpi
+              label="ACOS"
+              value={fmtPct(totals.acos)}
+              loading={loading}
+              tone={totals.acos > 100 ? 'negative' : 'default'}
+            />
           </div>
-        }
-      >
-        {loading && !summary ? (
-          <LoadingRow />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title={search ? t('empty.search') : t('empty.noData')}
-          />
-        ) : (
-          <table className="w-full text-sm table-sticky-head">
-            <thead>
-              <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-2 font-medium">{t('th.book')}</th>
-                <th className="text-left px-3 py-2 font-medium">MPs</th>
-                <th className="text-right px-3 py-2 font-medium">Spend</th>
-                <th className="text-right px-3 py-2 font-medium">Sales</th>
-                <th className="text-right px-3 py-2 font-medium">Orders</th>
-                <th className="text-right px-3 py-2 font-medium">ACOS</th>
-                <th className="text-right px-5 py-2 font-medium">TACoS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((g) => (
-                <BookGroupRows
-                  key={g.book_id}
-                  group={g}
-                  expanded={expanded.has(g.book_id)}
-                  onToggle={() => toggle(g.book_id)}
-                  onDrillDown={(marketplace) => {
-                    // Drill-down: устанавливаем глобальный bookId, чтобы фильтр был
-                    // виден на всех страницах. Marketplace по-прежнему уходит как
-                    // local через NavContext (multi-MP применяется глобально).
-                    setBookId(g.book_id);
-                    navigate('campaigns', marketplace ? { marketplace } : {});
-                  }}
-                />
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
+
+          <Card
+            title={t('card.title')}
+            rightSlot={
+              <div className="flex items-center gap-2">
+                <SortControl value={sortKey} onChange={setSortKey} />
+                <SearchInput value={search} onChange={setSearch} />
+              </div>
+            }
+          >
+            {loading && !summary ? (
+              <LoadingRow />
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                title={search ? t('empty.search') : t('empty.noData')}
+              />
+            ) : (
+              <table className="w-full text-sm table-sticky-head">
+                <thead>
+                  <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
+                    <th className="text-left px-5 py-2 font-medium">{t('th.book')}</th>
+                    <th className="text-left px-3 py-2 font-medium">MPs</th>
+                    <th className="text-right px-3 py-2 font-medium">Spend</th>
+                    <th className="text-right px-3 py-2 font-medium">Sales</th>
+                    <th className="text-right px-3 py-2 font-medium">Orders</th>
+                    <th className="text-right px-3 py-2 font-medium">ACOS</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('th.ratings')}</th>
+                    <th className="text-right px-5 py-2 font-medium">TACoS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((g) => (
+                    <BookGroupRows
+                      key={g.book_id}
+                      group={g}
+                      expanded={expanded.has(g.book_id)}
+                      onToggle={() => toggle(g.book_id)}
+                      onDrillDown={() => handleDrillToMarketplaces(g)}
+                      ratings={getRatingsForBook(g.book_id)}
+                      onOpenModal={(type) => {
+                        const book = booksList.find((b) => b.id === g.book_id);
+                        if (book) openModal(type, book);
+                      }}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Card>
+        </>
+      )}
+
+      {booksDrill.level === 'marketplaces' && (
+        <Card title={t('drill.marketplaces')}>
+          <div className="p-4">
+            <BooksMarketplacesPanel
+              bookId={booksDrill.selectedBookId ?? 0}
+              rows={selectedBookRows}
+              loading={loading}
+              onSelectMarketplace={handleDrillToCampaigns}
+            />
+          </div>
+        </Card>
+      )}
+
+      {booksDrill.level === 'campaigns' && (
+        <Card title={t('drill.campaigns')}>
+          <BooksCampaignsPanel campaigns={drillCampaigns} loading={drillLoading} />
+        </Card>
+      )}
+
+      {/* Modals */}
+      {activeModal === 'edit' && selectedBook && (
+        <EditBookModal
+          book={selectedBook}
+          onClose={closeModal}
+          onSaved={() => {
+            refetchBooks();
+            load();
+          }}
+        />
+      )}
+      {activeModal === 'delete' && selectedBook && (
+        <DeleteBookModal
+          book={selectedBook}
+          onClose={closeModal}
+          onDone={() => {
+            refetchBooks();
+            load();
+          }}
+        />
+      )}
+      {activeModal === 'addAsin' && selectedBook && (
+        <AddAsinModal
+          bookId={selectedBook.id}
+          onClose={closeModal}
+          onSaved={() => refetchBooks()}
+        />
+      )}
+      {activeModal === 'uploadCover' && selectedBook && (
+        <UploadCoverModal
+          bookId={selectedBook.id}
+          onClose={closeModal}
+          onUploaded={() => refetchBooks()}
+        />
+      )}
+      {activeModal === 'addChange' && selectedBook && (
+        <AddChangeModal
+          bookId={selectedBook.id}
+          onClose={closeModal}
+          onSaved={() => { /* no-op: AddChangeModal saves immediately */ }}
+        />
+      )}
     </div>
   );
 };
@@ -261,15 +423,19 @@ const BookGroupRows: React.FC<{
   group: BookGroup;
   expanded: boolean;
   onToggle: () => void;
-  onDrillDown: (marketplace?: string) => void;
-}> = ({ group, expanded, onToggle, onDrillDown }) => {
+  onDrillDown: () => void;
+  ratings: BookRating[];
+  onOpenModal: (type: ModalType) => void;
+}> = ({ group, expanded, onToggle, onDrillDown, ratings }) => {
   const { t } = useTranslation('books');
   const Chevron = expanded ? ChevronDown : ChevronRight;
+  const topRating = ratings[0];
   return (
     <>
       <tr
         className="border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
-        onClick={() => onDrillDown()}
+        data-testid={`book-row-${group.book_id}`}
+        onClick={onDrillDown}
         title={t('row.openCampaigns')}
       >
         <td className="px-5 py-2.5">
@@ -321,6 +487,11 @@ const BookGroupRows: React.FC<{
             {group.acos > 0 ? fmtPct(group.acos) : '—'}
           </span>
         </td>
+        <td className="px-3 py-2.5 text-xs text-right tabular-nums text-zinc-500">
+          {topRating
+            ? `${topRating.stars.toFixed(1)}★ (${topRating.count})`
+            : '—'}
+        </td>
         <td className="px-5 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
           {group.tacos > 0 ? fmtPct(group.tacos) : '—'}
         </td>
@@ -330,7 +501,10 @@ const BookGroupRows: React.FC<{
           <tr
             key={`${row.book_id}-${row.marketplace}`}
             className="border-t border-zinc-100 bg-zinc-50/40 hover:bg-zinc-100/60 cursor-pointer transition-colors"
-            onClick={() => onDrillDown(row.marketplace ?? undefined)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDrillDown();
+            }}
             title={t('row.openCampaignsForMp')}
           >
             <td className="pl-14 pr-5 py-2 text-[11px] text-zinc-600">
@@ -354,6 +528,7 @@ const BookGroupRows: React.FC<{
                 {row.acos > 0 ? fmtPct(row.acos) : '—'}
               </span>
             </td>
+            <td className="px-3 py-2 text-[11px] text-zinc-400 text-right">—</td>
             <td className="px-5 py-2 text-[11px] text-zinc-600 text-right tabular-nums">
               {row.tacos != null && row.tacos > 0 ? fmtPct(row.tacos) : '—'}
             </td>
@@ -369,24 +544,24 @@ const SearchInput: React.FC<{ value: string; onChange: (v: string) => void }> = 
 }) => {
   const { t } = useTranslation('books');
   return (
-  <div className="relative">
-    <Search
-      size={12}
-      className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400"
-    />
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={t('search')}
-      className="
-        w-44 h-7 pl-7 pr-2 text-xs rounded-md
-        border border-zinc-200 bg-white
-        text-zinc-900 placeholder:text-zinc-400
-        focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
-      "
-    />
-  </div>
+    <div className="relative">
+      <Search
+        size={12}
+        className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400"
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t('search')}
+        className="
+          w-44 h-7 pl-7 pr-2 text-xs rounded-md
+          border border-zinc-200 bg-white
+          text-zinc-900 placeholder:text-zinc-400
+          focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+        "
+      />
+    </div>
   );
 };
 

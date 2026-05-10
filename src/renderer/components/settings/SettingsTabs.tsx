@@ -1,9 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Cpu, KeyRound, Server, Sparkles, Users } from 'lucide-react';
+import { BookOpen, Cpu, KeyRound, Server, Sparkles, Users } from 'lucide-react';
 
 export type SettingsTabId =
   | 'application'
+  | 'books'
   | 'credentials'
   | 'profiles'
   | 'token'
@@ -16,6 +17,7 @@ interface TabSpec {
 
 const TABS: TabSpec[] = [
   { id: 'application', icon: Cpu },
+  { id: 'books', icon: BookOpen },
   { id: 'credentials', icon: Server },
   { id: 'profiles', icon: Users },
   { id: 'token', icon: KeyRound },

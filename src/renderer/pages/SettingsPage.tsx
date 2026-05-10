@@ -6,6 +6,7 @@ import {
   type SettingsTabId,
 } from '../components/settings/SettingsTabs';
 import { ApplicationTab } from '../components/settings/ApplicationTab';
+import { BooksSettingsTab } from '../components/settings/books';
 import { CredentialsTab } from '../components/settings/CredentialsTab';
 import { ProfilesTab } from '../components/settings/ProfilesTab';
 import { TokenTab } from '../components/settings/TokenTab';
@@ -14,6 +15,7 @@ import { useSessionState } from '../lib/useSessionState';
 
 const VALID_TABS: SettingsTabId[] = [
   'application',
+  'books',
   'credentials',
   'profiles',
   'token',
@@ -71,6 +73,7 @@ export const SettingsPage: React.FC = () => {
       />
 
       {activeTab === 'application' && <ApplicationTab />}
+      {activeTab === 'books' && <BooksSettingsTab />}
       {activeTab === 'credentials' && <CredentialsTab />}
       {activeTab === 'profiles' && <ProfilesTab onCount={setProfilesCount} />}
       {activeTab === 'token' && <TokenTab />}
