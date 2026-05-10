@@ -101,13 +101,19 @@
     "cardTitle": "Updates",
     "currentVersion": "Current version: {version}",
     "stateLine": "State: {state}{version, select, none {} other { ({version})}}",
-    "scaffoldHint": "Auto-update — scaffold (electron-updater not connected). Architecture is ready: main/updater.ts, IPC update:getStatus / update:check, contract in shared/ipc.ts.",
+    "scaffoldHint": "Auto-update disabled (dev build). Will activate in packaged release.",
+    "idle": "Idle.",
+    "checking": "Checking for updates…",
+    "availableLine": "Update {version} available — downloading…",
+    "downloading": "Downloading update… {percent}%",
+    "downloaded": "Update {version} ready — restart to apply.",
     "checkButton": "Check for updates",
+    "restartButton": "Restart to update",
     "errors": {
       "ipcUnavailable": "Update IPC unavailable",
       "checkFailed": "Failed to check"
     },
-    "scaffoldDisabled": "Auto-update is currently disabled (scaffold).",
+    "scaffoldDisabled": "Auto-update is currently disabled (dev build).",
     "available": "Update available {version}",
     "upToDate": "Latest version is installed"
   },
