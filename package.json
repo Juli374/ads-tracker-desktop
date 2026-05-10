@@ -57,6 +57,7 @@
     "vitest": "^1.6.1"
   },
   "dependencies": {
+    "electron-log": "^5.4.3",
     "electron-squirrel-startup": "^1.0.1",
     "i18next": "^26.0.10",
     "i18next-icu": "^2.4.3",

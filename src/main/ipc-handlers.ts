@@ -1,4 +1,5 @@
 import { app, ipcMain, net, shell } from 'electron';
+import nodePath from 'path';
 import {
   IpcChannel,
   AppInfo,
@@ -8,12 +9,14 @@ import {
   MediaUploadResponse,
   LocalRoyaltyImportPayload,
   UpdateStatus,
+  AppLogPayload,
 } from '../shared/ipc';
 import { readToken, writeToken, clearToken } from './auth-store';
 import { performApiRequest } from './api-client';
 import { localStore } from './local-db';
 import { localRoyalty } from './local-db/royalty';
 import { getUpdateStatus, checkForUpdates } from './updater';
+import { logger, getLogFilePath, scrubSecrets, scrubValue } from './logger';
 
 const DEFAULT_API_BASE_URL = 'https://ads-tracker-production.up.railway.app';
 
@@ -232,4 +235,70 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.UpdateCheck, async (): Promise<UpdateStatus> => {
     return checkForUpdates();
   });
+
+  // ====== Phase I.2 Lane B: log + log path + reveal-in-folder ======
+
+  /**
+   * Forward renderer log lines into the main file transport. Strict
+   * shape validation; PII scrubbed before write (defense in depth on top
+   * of the renderer-side scrubbing in ErrorBoundary).
+   */
+  ipcMain.handle(
+    IpcChannel.AppLog,
+    async (_evt, payload: unknown): Promise<void> => {
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('app:log expects { level, message, ctx? }');
+      }
+      const p = payload as Partial<AppLogPayload>;
+      const validLevels = new Set(['error', 'warn', 'info', 'debug']);
+      if (typeof p.level !== 'string' || !validLevels.has(p.level)) {
+        throw new Error('app:log: level must be one of error|warn|info|debug');
+      }
+      if (typeof p.message !== 'string') {
+        throw new Error('app:log: message must be a string');
+      }
+      if (p.ctx !== undefined && (p.ctx === null || typeof p.ctx !== 'object' || Array.isArray(p.ctx))) {
+        throw new Error('app:log: ctx must be a plain object');
+      }
+      // Defence in depth: scrub even if renderer already did.
+      const message = `[renderer] ${scrubSecrets(p.message)}`;
+      const ctx = p.ctx ? scrubValue(p.ctx) : undefined;
+      logger[p.level as AppLogPayload['level']](message, ctx);
+    },
+  );
+
+  ipcMain.handle(IpcChannel.AppGetLogPath, async (): Promise<string> => {
+    return getLogFilePath();
+  });
+
+  /**
+   * Reveal a file in the OS file manager. Allowed paths are constrained to
+   * the logs and userData subtrees — renderer cannot point this at anywhere
+   * else on the filesystem (would otherwise be an information disclosure
+   * primitive in case of XSS in renderer).
+   */
+  ipcMain.handle(
+    IpcChannel.ShellShowItemInFolder,
+    async (_evt, target: unknown): Promise<void> => {
+      if (typeof target !== 'string' || target.length === 0) {
+        throw new Error('shell:showItemInFolder expects a non-empty string path');
+      }
+      // Reject obvious traversal attempts before resolving — keep error message
+      // identical to the post-resolve check so we don't leak path info.
+      if (target.includes('\0')) {
+        throw new Error('shell:showItemInFolder: path outside allowed directories');
+      }
+      const resolved = nodePath.resolve(target);
+      const logsDir = nodePath.resolve(app.getPath('logs'));
+      const userDataDir = nodePath.resolve(app.getPath('userData'));
+      const isInside = (parent: string, child: string) => {
+        const rel = nodePath.relative(parent, child);
+        return !rel.startsWith('..') && !nodePath.isAbsolute(rel);
+      };
+      if (!isInside(logsDir, resolved) && !isInside(userDataDir, resolved) && resolved !== logsDir && resolved !== userDataDir) {
+        throw new Error('shell:showItemInFolder: path outside allowed directories');
+      }
+      shell.showItemInFolder(resolved);
+    },
+  );
 }

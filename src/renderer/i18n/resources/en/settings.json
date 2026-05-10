@@ -130,6 +130,12 @@
     "languageEn": "English",
     "languageRu": "Русский (coming soon)"
   },
+  "diagnostics": {
+    "cardTitle": "About / Diagnostics",
+    "logFile": "Log file",
+    "revealLog": "Reveal log file",
+    "revealLogHint": "Opens the log file location in Finder/Explorer."
+  },
   "fullSync": {
     "title": "Full Sync",
     "queueTitle": "Job Queue",

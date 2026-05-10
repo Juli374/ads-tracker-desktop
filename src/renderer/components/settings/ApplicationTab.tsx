@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   Cpu,
   ExternalLink,
+  FileText,
+  FolderOpen,
   KeyRound,
   Loader2,
   LogOut,
@@ -17,6 +19,9 @@ export const ApplicationTab: React.FC = () => {
   const { user, signOut } = useAuth();
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  // Phase I.2 Lane B — log file path for the Diagnostics block.
+  const [logPath, setLogPath] = useState<string | null>(null);
+  const [revealError, setRevealError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,6 +40,33 @@ export const ApplicationTab: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    // getLogPath landed in Phase I.2 Lane B; older preloads may lack it.
+    const getter = window.api?.app?.getLogPath;
+    if (typeof getter !== 'function') return;
+    getter()
+      .then((p) => {
+        if (!cancelled) setLogPath(p);
+      })
+      .catch(() => {
+        // Silent — diagnostics row simply shows '—' if path lookup fails.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleRevealLog = async () => {
+    setRevealError(null);
+    try {
+      if (!logPath) return;
+      await window.api.shell.showItemInFolder(logPath);
+    } catch (err) {
+      setRevealError(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   return (
     <div className="space-y-6" data-testid="settings-application-tab">
@@ -124,6 +156,52 @@ export const ApplicationTab: React.FC = () => {
             </a>
           }
         />
+      </Card>
+
+      {/* Phase I.2 Lane B — About / Diagnostics */}
+      <Card title={t('diagnostics.cardTitle')}>
+        <Row
+          label={t('diagnostics.logFile')}
+          icon={<FileText size={14} className="text-zinc-400" />}
+          value={
+            <span
+              data-testid="settings-diagnostics-log-path"
+              className="text-[11px] font-mono text-zinc-700 break-all"
+            >
+              {logPath ?? '—'}
+            </span>
+          }
+        />
+        <div className="px-5 py-3 border-t border-zinc-100">
+          <button
+            type="button"
+            onClick={handleRevealLog}
+            disabled={!logPath}
+            data-testid="settings-diagnostics-reveal-log"
+            className="
+              inline-flex items-center gap-2 h-8 px-3 rounded-md
+              text-xs font-medium text-zinc-700
+              border border-zinc-200 bg-white
+              hover:bg-zinc-50 transition-colors
+              disabled:opacity-50 disabled:cursor-not-allowed
+            "
+          >
+            <FolderOpen size={13} />
+            {t('diagnostics.revealLog')}
+          </button>
+          <p className="text-[11px] text-zinc-400 mt-2">
+            {t('diagnostics.revealLogHint')}
+          </p>
+          {revealError && (
+            <p
+              role="alert"
+              data-testid="settings-diagnostics-reveal-error"
+              className="text-[11px] text-red-600 mt-2"
+            >
+              {revealError}
+            </p>
+          )}
+        </div>
       </Card>
     </div>
   );

@@ -24,6 +24,15 @@ export const IpcChannel = {
   // Auto-update placeholder: renderer запрашивает статус, main отдаёт 'idle' до подключения electron-updater.
   UpdateGetStatus: 'update:getStatus',
   UpdateCheck: 'update:check',
+  // Phase I.2 Lane B: renderer logs flow into main's electron-log file transport.
+  // Payload is scrubbed in main before write (defense in depth).
+  AppLog: 'app:log',
+  // Phase I.2 Lane B: reveal a file in OS file manager. Path is whitelisted
+  // to logs/userData in the handler — no arbitrary fs access.
+  ShellShowItemInFolder: 'shell:showItemInFolder',
+  // Phase I.2 Lane B: renderer fetches the absolute log file path so the
+  // Settings → Application tab can render it + reveal it.
+  AppGetLogPath: 'app:getLogPath',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -158,12 +167,24 @@ export interface UpdateStatus {
   enabled: boolean;
 }
 
+// === Logging (Phase I.2 Lane B) ===
+export type AppLogLevel = 'error' | 'warn' | 'info' | 'debug';
+
+/** Payload for renderer → main log forwarding. */
+export interface AppLogPayload {
+  level: AppLogLevel;
+  message: string;
+  ctx?: Record<string, unknown>;
+}
+
 
 // API, который выставляется в renderer через contextBridge как window.api
 export interface DesktopApi {
   app: {
     getInfo(): Promise<AppInfo>;
     getApiBaseUrl(): Promise<string>;
+    /** Phase I.2 Lane B: absolute path to ads-tracker.log. */
+    getLogPath(): Promise<string>;
   };
   auth: {
     getToken(): Promise<string | null>;
@@ -177,6 +198,11 @@ export interface DesktopApi {
   shell: {
     // Открыть https-URL в системном браузере (для OAuth-флоу).
     openExternal(url: string): Promise<void>;
+    /**
+     * Phase I.2 Lane B: reveal a file in OS file manager.
+     * Whitelisted to <logs>/ and <userData>/ subtrees in the main handler.
+     */
+    showItemInFolder(filePath: string): Promise<void>;
   };
   // Public-release scaffold: локальное хранилище royalty.
   localRoyalty: {
@@ -190,5 +216,15 @@ export interface DesktopApi {
   update: {
     getStatus(): Promise<UpdateStatus>;
     check(): Promise<UpdateStatus>;
+  };
+  /**
+   * Phase I.2 Lane B: forward renderer log lines into the main file transport.
+   * Payload is scrubbed of well-known token shapes in the main handler.
+   */
+  log: {
+    error(message: string, ctx?: Record<string, unknown>): Promise<void>;
+    warn(message: string, ctx?: Record<string, unknown>): Promise<void>;
+    info(message: string, ctx?: Record<string, unknown>): Promise<void>;
+    debug(message: string, ctx?: Record<string, unknown>): Promise<void>;
   };
 }
