@@ -21,9 +21,16 @@ export const IpcChannel = {
   LocalRoyaltyImport: 'local:royalty:import',
   LocalRoyaltyDelete: 'local:royalty:delete',
   LocalRoyaltyFilePath: 'local:royalty:filePath',
-  // Auto-update placeholder: renderer запрашивает статус, main отдаёт 'idle' до подключения electron-updater.
+  // Auto-update (electron-updater + GitHub Releases). В dev / unpackaged build
+  // апдейтер выключен и возвращает state='idle', enabled=false. В packaged build
+  // main подписан на события electron-updater и эмитит UpdateChanged каждый раз,
+  // когда state меняется — renderer слушает и перерисовывается без polling'а.
   UpdateGetStatus: 'update:getStatus',
   UpdateCheck: 'update:check',
+  UpdateQuitAndInstall: 'update:quitAndInstall',
+  // Pub/sub: main → renderer при каждом изменении state (checking → available →
+  // downloading → downloaded → error). Полезная нагрузка — UpdateStatus.
+  UpdateChanged: 'update:changed',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -148,13 +155,31 @@ export type UpdateState =
   | 'downloaded'
   | 'error';
 
+/**
+ * Состояние авто-апдейтера. Один shape для всех событий electron-updater:
+ *   checking-for-update    → state='checking'
+ *   update-available       → state='available', version
+ *   update-not-available   → state='not-available'
+ *   download-progress      → state='downloading', progress_percent
+ *   update-downloaded      → state='downloaded', version
+ *   error                  → state='error', error
+ *
+ * `enabled` отражает доступность системы апдейтера. В dev / non-packaged
+ * билде апдейтер не инициализируется → `enabled: false`, `state: 'idle'`.
+ */
 export interface UpdateStatus {
   state: UpdateState;
-  version?: string;       // версия доступного обновления, если есть
+  // Версия доступного / скачанного обновления.
+  version?: string;
+  // Версия текущего инсталла (`app.getVersion()`).
   current_version?: string;
+  // Процент скачивания, 0–100, только при state='downloading'.
   progress_percent?: number;
+  // Человекочитаемое сообщение для UI (state-specific hint, e.g. scaffold notice).
   message?: string;
-  // Включится ли реальная проверка. Сейчас всегда false до подключения electron-updater.
+  // Текст ошибки electron-updater при state='error'. Не путать с `message`.
+  error?: string;
+  // Включён ли апдейтер. false в dev (`!app.isPackaged`) → UI рисует disabled-state.
   enabled: boolean;
 }
 
@@ -190,5 +215,16 @@ export interface DesktopApi {
   update: {
     getStatus(): Promise<UpdateStatus>;
     check(): Promise<UpdateStatus>;
+    /**
+     * Перезапустить app + установить скачанное обновление. Вызывать только
+     * когда state='downloaded'. В dev / non-packaged билде — no-op.
+     */
+    quitAndInstall(): Promise<void>;
+    /**
+     * Подписка на push-обновления state. Возвращает unsubscribe.
+     * Эмитится из main каждый раз, когда меняется state (через события
+     * electron-updater). Renderer перерисовывает UI без polling'а.
+     */
+    onChange(handler: (status: UpdateStatus) => void): () => void;
   };
 }
