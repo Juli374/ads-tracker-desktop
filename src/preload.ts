@@ -9,12 +9,14 @@ import {
   DeepLinkEvent,
   LocalRoyaltyImportPayload,
   UpdateStatus,
+  AppLogPayload,
 } from './shared/ipc';
 
 const api: DesktopApi = {
   app: {
     getInfo: () => ipcRenderer.invoke(IpcChannel.AppGetVersion),
     getApiBaseUrl: () => ipcRenderer.invoke(IpcChannel.AppGetApiBaseUrl),
+    getLogPath: () => ipcRenderer.invoke(IpcChannel.AppGetLogPath) as Promise<string>,
   },
   auth: {
     getToken: () => ipcRenderer.invoke(IpcChannel.AuthGetToken),
@@ -32,6 +34,8 @@ const api: DesktopApi = {
   },
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke(IpcChannel.ShellOpenExternal, url),
+    showItemInFolder: (filePath: string) =>
+      ipcRenderer.invoke(IpcChannel.ShellShowItemInFolder, filePath) as Promise<void>,
   },
   localRoyalty: {
     listUploads: () => ipcRenderer.invoke(IpcChannel.LocalRoyaltyListUploads),
@@ -48,6 +52,24 @@ const api: DesktopApi = {
   update: {
     getStatus: () => ipcRenderer.invoke(IpcChannel.UpdateGetStatus) as Promise<UpdateStatus>,
     check: () => ipcRenderer.invoke(IpcChannel.UpdateCheck) as Promise<UpdateStatus>,
+  },
+  log: {
+    error: (message: string, ctx?: Record<string, unknown>) => {
+      const payload: AppLogPayload = { level: 'error', message, ctx };
+      return ipcRenderer.invoke(IpcChannel.AppLog, payload) as Promise<void>;
+    },
+    warn: (message: string, ctx?: Record<string, unknown>) => {
+      const payload: AppLogPayload = { level: 'warn', message, ctx };
+      return ipcRenderer.invoke(IpcChannel.AppLog, payload) as Promise<void>;
+    },
+    info: (message: string, ctx?: Record<string, unknown>) => {
+      const payload: AppLogPayload = { level: 'info', message, ctx };
+      return ipcRenderer.invoke(IpcChannel.AppLog, payload) as Promise<void>;
+    },
+    debug: (message: string, ctx?: Record<string, unknown>) => {
+      const payload: AppLogPayload = { level: 'debug', message, ctx };
+      return ipcRenderer.invoke(IpcChannel.AppLog, payload) as Promise<void>;
+    },
   },
 };
 

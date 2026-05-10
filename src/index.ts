@@ -1,7 +1,12 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
+import { initLogger } from './main/logger';
 import { registerIpcHandlers } from './main/ipc-handlers';
 import { IpcChannel, DeepLinkEvent } from './shared/ipc';
+
+// Initialise the file logger before any other module that might want to log.
+// app.getPath('logs') is safe to call pre-ready.
+initLogger();
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
