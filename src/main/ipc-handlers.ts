@@ -13,7 +13,7 @@ import { readToken, writeToken, clearToken } from './auth-store';
 import { performApiRequest } from './api-client';
 import { localStore } from './local-db';
 import { localRoyalty } from './local-db/royalty';
-import { getUpdateStatus, checkForUpdates } from './updater';
+import { getStatus as getUpdateStatus, checkForUpdates, quitAndInstall as updaterQuitAndInstall } from './updater';
 
 const DEFAULT_API_BASE_URL = 'https://ads-tracker-production.up.railway.app';
 
@@ -223,7 +223,7 @@ export function registerIpcHandlers(): void {
     return localStore.filePath();
   });
 
-  // ====== Auto-update (scaffold) ======
+  // ====== Auto-update (electron-updater) ======
 
   ipcMain.handle(IpcChannel.UpdateGetStatus, async (): Promise<UpdateStatus> => {
     return getUpdateStatus();
@@ -231,5 +231,9 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannel.UpdateCheck, async (): Promise<UpdateStatus> => {
     return checkForUpdates();
+  });
+
+  ipcMain.handle(IpcChannel.UpdateQuitAndInstall, async (): Promise<void> => {
+    updaterQuitAndInstall();
   });
 }

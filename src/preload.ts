@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
-import {
-  IpcChannel,
+import { IpcChannel } from './shared/ipc';
+import type {
   DesktopApi,
   ApiRequestPayload,
   ApiResponse,
@@ -48,6 +48,13 @@ const api: DesktopApi = {
   update: {
     getStatus: () => ipcRenderer.invoke(IpcChannel.UpdateGetStatus) as Promise<UpdateStatus>,
     check: () => ipcRenderer.invoke(IpcChannel.UpdateCheck) as Promise<UpdateStatus>,
+    quitAndInstall: () =>
+      ipcRenderer.invoke(IpcChannel.UpdateQuitAndInstall) as Promise<void>,
+    onChange: (handler) => {
+      const wrapped = (_e: IpcRendererEvent, status: UpdateStatus) => handler(status);
+      ipcRenderer.on(IpcChannel.UpdateChanged, wrapped);
+      return () => ipcRenderer.off(IpcChannel.UpdateChanged, wrapped);
+    },
   },
 };
 

@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { registerIpcHandlers } from './main/ipc-handlers';
+import { initAutoUpdater } from './main/updater';
 import { IpcChannel, DeepLinkEvent } from './shared/ipc';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
@@ -128,6 +129,16 @@ const createWindow = (): void => {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // Auto-update: подключаем только в packaged build. initAutoUpdater сам
+  // делает no-op если !app.isPackaged — но дублируем guard для ясности.
+  // Initial check выполняется внутри updater.ts через setTimeout(..., 5s).
+  if (app.isPackaged) {
+    initAutoUpdater(mainWindow);
+  } else {
+    // Dev — обновим state, чтобы UpdateChecker мог нарисовать "disabled" badge.
+    initAutoUpdater(null);
+  }
 };
 
 app.on('ready', () => {
