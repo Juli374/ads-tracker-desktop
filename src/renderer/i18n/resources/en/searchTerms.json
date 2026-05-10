@@ -60,5 +60,9 @@
     "trigger": "Add as negative",
     "menuTitle": "Match type",
     "added": "Added as negative ({matchType})"
+  },
+  "export": {
+    "label": "Export",
+    "success": "Exported: {count, plural, one {# term} other {# terms}}"
   }
 }

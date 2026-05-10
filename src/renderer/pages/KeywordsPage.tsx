@@ -13,6 +13,7 @@ import {
   Card,
   EditableNumber,
   EmptyState,
+  ExportMenu,
   Kpi,
   LoadingRow,
   PageHeader,
@@ -21,6 +22,7 @@ import {
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { downloadExcel, type ExportColumn } from '../lib/export';
 import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
 import {
@@ -181,13 +183,59 @@ export const KeywordsPage: React.FC = () => {
             : t('loading')
         }
         rightSlot={
-          <RangePicker
-            value={range}
-            onChange={setRange}
-            onRefresh={() => load()}
-            refreshing={loading}
-            autoRefresh={{ storageKey: 'auto-refresh-keywords' }}
-          />
+          <div className="flex items-center gap-2">
+            <ExportMenu
+              testId="keywords-export"
+              buttonLabel={t('export.label')}
+              items={[
+                {
+                  id: 'xlsx',
+                  label: 'XLSX',
+                  disabled: filtered.length === 0 || loading,
+                  onClick: () => {
+                    const columns: ExportColumn[] = [
+                      { key: 'keyword', label: 'Keyword', width: 36 },
+                      { key: 'match', label: 'Match', width: 18 },
+                      { key: 'campaign', label: 'Campaign', width: 36 },
+                      { key: 'marketplace', label: 'MP', width: 14 },
+                      { key: 'bid', label: 'Bid', align: 'right', width: 16 },
+                      { key: 'spend', label: 'Spend', align: 'right', width: 18 },
+                      { key: 'sales', label: 'Sales', align: 'right', width: 18 },
+                      { key: 'orders', label: 'Orders', align: 'right', width: 14 },
+                      { key: 'clicks', label: 'Clicks', align: 'right', width: 14 },
+                      { key: 'acos', label: 'ACOS%', align: 'right', width: 14 },
+                    ];
+                    const exportRows = filtered.map((k) => ({
+                      keyword: k.keyword_text || '',
+                      match: k.match_type || '',
+                      campaign: k.campaign_name || '',
+                      marketplace: k.marketplace || '',
+                      bid: k.bid != null ? Number(k.bid).toFixed(2) : '',
+                      spend: Number(k.cost ?? 0).toFixed(2),
+                      sales: Number(k.sales ?? 0).toFixed(2),
+                      orders: k.orders ?? 0,
+                      clicks: k.clicks ?? 0,
+                      acos: Number(k.acos ?? 0).toFixed(2),
+                    }));
+                    downloadExcel(
+                      `ads-tracker-keywords-${from}-${to}.xlsx`,
+                      exportRows,
+                      columns,
+                      'Keywords',
+                    );
+                    toast.success(t('export.success', { count: exportRows.length }));
+                  },
+                },
+              ]}
+            />
+            <RangePicker
+              value={range}
+              onChange={setRange}
+              onRefresh={() => load()}
+              refreshing={loading}
+              autoRefresh={{ storageKey: 'auto-refresh-keywords' }}
+            />
+          </div>
         }
       />
 

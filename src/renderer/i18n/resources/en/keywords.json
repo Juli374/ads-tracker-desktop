@@ -52,5 +52,9 @@
   "empty": {
     "noResults": "Nothing found.",
     "noPeriod": "No keywords in the selected period."
+  },
+  "export": {
+    "label": "Export",
+    "success": "Exported: {count, plural, one {# keyword} other {# keywords}}"
   }
 }

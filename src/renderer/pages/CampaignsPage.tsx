@@ -17,12 +17,14 @@ import {
   Card,
   Kpi,
   EmptyState,
+  ExportMenu,
   Pagination,
   ActiveFiltersBar,
   TableSkeletonBody,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { downloadExcel, type ExportColumn } from '../lib/export';
 import { useToast } from '../contexts/ToastContext';
 import { useNav, useInitialFilters } from '../contexts/NavContext';
 import { useMarketplaces } from '../contexts/MarketplacesContext';
@@ -195,6 +197,50 @@ export const CampaignsPage: React.FC = () => {
         }
         rightSlot={
           <div className="flex items-center gap-2">
+            <ExportMenu
+              testId="campaigns-export"
+              buttonLabel={t('list.export.label')}
+              items={[
+                {
+                  id: 'xlsx',
+                  label: 'XLSX',
+                  disabled: filtered.length === 0 || loading,
+                  onClick: () => {
+                    const columns: ExportColumn[] = [
+                      { key: 'name', label: 'Campaign', width: 40 },
+                      { key: 'book', label: 'Book', width: 30 },
+                      { key: 'marketplace', label: 'MP', width: 14 },
+                      { key: 'type', label: 'Type', width: 14 },
+                      { key: 'status', label: 'Status', width: 16 },
+                      { key: 'spend', label: 'Spend', align: 'right', width: 18 },
+                      { key: 'sales', label: 'Sales', align: 'right', width: 18 },
+                      { key: 'orders', label: 'Orders', align: 'right', width: 14 },
+                      { key: 'clicks', label: 'Clicks', align: 'right', width: 14 },
+                      { key: 'acos', label: 'ACOS%', align: 'right', width: 14 },
+                    ];
+                    const exportRows = filtered.map((c) => ({
+                      name: c.campaign_name || '',
+                      book: c.book_title || '',
+                      marketplace: c.marketplace || '',
+                      type: c.campaign_type || '',
+                      status: c.status || '',
+                      spend: Number(c.cost ?? 0).toFixed(2),
+                      sales: Number(c.sales ?? 0).toFixed(2),
+                      orders: c.orders ?? 0,
+                      clicks: c.clicks ?? 0,
+                      acos: Number(c.acos ?? 0).toFixed(2),
+                    }));
+                    downloadExcel(
+                      `ads-tracker-campaigns-${from}-${to}.xlsx`,
+                      exportRows,
+                      columns,
+                      'Campaigns',
+                    );
+                    toast.success(t('list.export.success', { count: exportRows.length }));
+                  },
+                },
+              ]}
+            />
             <button
               type="button"
               onClick={() => setCreating(true)}

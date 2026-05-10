@@ -52,5 +52,11 @@
     "deleteConfirm": "Delete local import? Records inside will be removed too.",
     "deleted": "Deleted"
   },
-  "localDbPrefix": "local-db: {path}"
+  "localDbPrefix": "local-db: {path}",
+  "export": {
+    "label": "Export",
+    "success": "Exported: {count, plural, one {# upload} other {# uploads}}",
+    "empty": "Nothing to export",
+    "failed": "Export failed"
+  }
 }
