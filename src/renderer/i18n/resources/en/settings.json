@@ -11,7 +11,8 @@
     "profiles": "Profiles",
     "profilesWithCount": "Profiles ({count})",
     "token": "Token",
-    "ai": "AI"
+    "ai": "AI",
+    "royalties": "Royalties"
   },
   "ai": {
     "cardTitle": "AI Assistant (Anthropic)",
