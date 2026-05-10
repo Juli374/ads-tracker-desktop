@@ -34,7 +34,17 @@ async function readPlain(): Promise<string | null> {
   try {
     const txt = await fs.readFile(plainPath(), 'utf8');
     const trimmed = txt.trim();
-    return trimmed.length > 0 ? trimmed : null;
+    if (trimmed.length > 0) {
+      // Migration warn: plain-file всё ещё лежит на диске. writeToken теперь
+      // его не создаёт (кроме explicit opt-in через ENV), но старые установки
+      // могли его оставить. Видим в логах → знаем, что юзера надо мигрировать.
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[auth-store] reading token from plain-file fallback; safeStorage will be used on next writeToken()',
+      );
+      return trimmed;
+    }
+    return null;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
     return null;
@@ -73,8 +83,22 @@ export async function writeToken(token: string): Promise<void> {
     await fs.writeFile(encPath(), encrypted, { mode: 0o600 });
     return;
   }
-  // Fallback: пишем без шифрования. Mode 0o600 — только владельцу.
-  await fs.writeFile(plainPath(), token, { encoding: 'utf8', mode: 0o600 });
+  // Fallback: запись без шифрования НЕ разрешена по умолчанию. Это убирает
+  // незаметную ловушку, в которой токен оказывался на диске в plaintext, если
+  // safeStorage внезапно недоступен (например первый запуск signed-DMG до
+  // unlock'а keychain'а). Опт-ин — только через ENV, чтобы dev мог
+  // воспроизвести сценарий локально, но release-юзер никогда не наткнётся.
+  if (process.env.ADS_TRACKER_ALLOW_PLAIN_TOKEN === '1') {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[auth-store] safeStorage unavailable — writing token in plaintext per ADS_TRACKER_ALLOW_PLAIN_TOKEN=1',
+    );
+    await fs.writeFile(plainPath(), token, { encoding: 'utf8', mode: 0o600 });
+    return;
+  }
+  throw new Error(
+    'safeStorage encryption unavailable. Set ADS_TRACKER_ALLOW_PLAIN_TOKEN=1 to opt into plaintext fallback (dev only).',
+  );
 }
 
 export async function clearToken(): Promise<void> {
