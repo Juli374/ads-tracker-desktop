@@ -4,6 +4,9 @@
 export const IpcChannel = {
   AppGetVersion: 'app:getVersion',
   AppGetApiBaseUrl: 'app:getApiBaseUrl',
+  // Build-time git short SHA, injected by webpack DefinePlugin (`process.env.GIT_COMMIT`).
+  // Falls back to 'unknown' on shallow clones or non-git checkouts.
+  AppGetGitCommit: 'app:getGitCommit',
   AuthGetToken: 'auth:getToken',
   AuthSetToken: 'auth:setToken',
   AuthClearToken: 'auth:clearToken',
@@ -164,6 +167,12 @@ export interface DesktopApi {
   app: {
     getInfo(): Promise<AppInfo>;
     getApiBaseUrl(): Promise<string>;
+    /**
+     * Build-time git short SHA. Injected by webpack DefinePlugin via
+     * `process.env.GIT_COMMIT`. Returns `'unknown'` on shallow clones or
+     * checkouts where `git rev-parse` fails at build time.
+     */
+    getGitCommit(): Promise<string>;
   };
   auth: {
     getToken(): Promise<string | null>;
