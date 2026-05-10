@@ -1,8 +1,19 @@
-import { net } from 'electron';
-import { ApiRequestPayload, ApiResponse } from '../shared/ipc';
-import { readToken } from './auth-store';
+import { BrowserWindow, net } from 'electron';
+import {
+  ApiErrorCode,
+  ApiRequestPayload,
+  ApiResponse,
+  AuthExpiredEvent,
+  IpcChannel,
+} from '../shared/ipc';
+import { clearToken, readToken } from './auth-store';
 
 const DEFAULT_API_BASE_URL = 'https://ads-tracker-production.up.railway.app';
+
+// Все backend-запросы из main делаются через AbortSignal.timeout(REQUEST_TIMEOUT_MS).
+// 10 секунд — компромисс между «реально медленный сервер на Railway free-tier
+// просыпается ~5–7s» и «юзер не должен видеть бесконечный спиннер на офлайне».
+const REQUEST_TIMEOUT_MS = 10_000;
 
 function apiBaseUrl(): string {
   return (process.env.ADS_TRACKER_API_URL?.trim() || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
@@ -50,6 +61,52 @@ function buildUrl(path: string, query?: ApiRequestPayload['query']): string {
   return url.toString();
 }
 
+/**
+ * Эмитит push-event `auth:expired` во все открытые окна.
+ * Renderer (AuthContext) подписан и делает signOut + redirect.
+ *
+ * Защита от спама: эмитим только если есть активные окна. Внутри renderer'а
+ * AuthContext дополнительно дебаунсит — но первый эмит всегда срабатывает,
+ * иначе юзер останется на authenticated-странице с протухшим токеном.
+ */
+function emitAuthExpired(payload: AuthExpiredEvent): void {
+  const windows = BrowserWindow.getAllWindows();
+  for (const w of windows) {
+    if (!w.isDestroyed()) {
+      try {
+        w.webContents.send(IpcChannel.AuthExpired, payload);
+      } catch {
+        // ignore: окно могло быть закрыто между isDestroyed() и send()
+      }
+    }
+  }
+}
+
+/**
+ * Маппит HTTP-статус в машинно-читаемый код ошибки.
+ * 0 → NETWORK (net.fetch упал до получения статуса).
+ * AbortError ловится отдельно в performApiRequest и возвращает TIMEOUT.
+ */
+function statusToErrorCode(status: number): ApiErrorCode {
+  if (status === 0) return 'NETWORK';
+  if (status === 401) return 'UNAUTHORIZED';
+  return 'SERVER';
+}
+
+/**
+ * Распознаём AbortError по DOMException (Electron / web fetch) и по Node-style
+ * `err.name === 'AbortError'`. AbortSignal.timeout() в Node 20+ кидает
+ * `DOMException: signal timed out` с name='TimeoutError'.
+ */
+function isTimeoutError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  if (err.name === 'AbortError') return true;
+  if (err.name === 'TimeoutError') return true;
+  // Fallback: некоторые runtime'ы не выставляют name корректно.
+  const msg = err.message?.toLowerCase() ?? '';
+  return msg.includes('timed out') || msg.includes('aborted');
+}
+
 export async function performApiRequest<T = unknown>(
   payload: ApiRequestPayload,
 ): Promise<ApiResponse<T>> {
@@ -70,6 +127,10 @@ export async function performApiRequest<T = unknown>(
       method: payload.method,
       headers,
       body,
+      // Пользователь не должен ждать дольше REQUEST_TIMEOUT_MS на любом
+      // запросе. Если backend на Railway просыпается дольше — увидит TIMEOUT
+      // и сможет повторить вручную.
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     const text = await response.text();
     let parsed: unknown = null;
@@ -83,15 +144,48 @@ export async function performApiRequest<T = unknown>(
     if (response.ok) {
       return { status: response.status, ok: true, data: parsed as T };
     }
+
+    // === 401 interceptor ===
+    // Сервер сказал "токен невалиден" — чистим локальный токен в auth-store
+    // и пушим event'ом в renderer, чтобы AuthContext редиректнул на Login.
+    // Делаем это ДО возврата error-envelope: renderer всё равно увидит
+    // ошибку запроса, но дополнительно получит push-event и переключит UI.
+    if (response.status === 401) {
+      try {
+        await clearToken();
+      } catch {
+        // ignore: даже если файл не удалился, всё равно эмитим — UI
+        // отправит юзера на LoginScreen, а следующий setToken перезапишет.
+      }
+      emitAuthExpired({ reason: 'token_invalid', path: payload.path });
+    }
+
     const errMessage =
       typeof parsed === 'object' && parsed !== null && 'error' in parsed
         ? String((parsed as { error: unknown }).error)
         : typeof parsed === 'string'
         ? parsed
         : `HTTP ${response.status}`;
-    return { status: response.status, ok: false, data: null, error: errMessage };
+    return {
+      status: response.status,
+      ok: false,
+      data: null,
+      error: errMessage,
+      code: statusToErrorCode(response.status),
+    };
   } catch (err) {
+    // Таймаут от AbortSignal.timeout — отдельная категория для UX
+    // (LoginScreen рисует retry-screen, обычные страницы — error toast).
+    if (isTimeoutError(err)) {
+      return {
+        status: 0,
+        ok: false,
+        data: null,
+        error: `Request timed out after ${REQUEST_TIMEOUT_MS}ms`,
+        code: 'TIMEOUT',
+      };
+    }
     const message = err instanceof Error ? err.message : String(err);
-    return { status: 0, ok: false, data: null, error: message };
+    return { status: 0, ok: false, data: null, error: message, code: 'NETWORK' };
   }
 }
