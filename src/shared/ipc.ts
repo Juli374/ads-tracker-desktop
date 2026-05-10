@@ -8,6 +8,7 @@ export const IpcChannel = {
   AuthSetToken: 'auth:setToken',
   AuthClearToken: 'auth:clearToken',
   ApiRequest: 'api:request',
+  MediaUpload: 'media:upload',
   // Pub/sub event: main → renderer когда пришёл deeplink ads-tracker-desktop://...
   DeepLink: 'app:deepLink',
   // Открыть URL во внешнем браузере (для OAuth-флоу).
@@ -50,6 +51,37 @@ export interface ApiResponse<T = unknown> {
   // Когда ok=false: текст ошибки от сервера или сетевое сообщение.
   error?: string;
 }
+
+// === Multipart upload ===
+
+/** A single file to send as multipart/form-data. */
+export interface MediaUploadFile {
+  /** FormData field name (e.g. "file", "cover"). */
+  field: string;
+  /** Original filename exposed to the server (e.g. "cover.jpg"). */
+  name: string;
+  /** Base64-encoded file content (no data-URL prefix). */
+  base64: string;
+  /** MIME type, e.g. "image/jpeg". */
+  contentType: string;
+}
+
+export interface MediaUploadPayload {
+  /** API path, must start with /api/. */
+  path: string;
+  files: MediaUploadFile[];
+  /** Extra text fields appended to FormData. */
+  formFields?: Record<string, string>;
+}
+
+export interface MediaUploadResponse<T = unknown> {
+  ok: boolean;
+  status: number;
+  data: T | null;
+  error?: string;
+}
+
+// === Deeplink ===
 
 // Полезная нагрузка событий deeplink. Renderer декодирует строкой URL.
 export interface DeepLinkEvent {
@@ -138,6 +170,7 @@ export interface DesktopApi {
     clearToken(): Promise<void>;
   };
   request<T = unknown>(payload: ApiRequestPayload): Promise<ApiResponse<T>>;
+  mediaUpload<T = unknown>(payload: MediaUploadPayload): Promise<MediaUploadResponse<T>>;
   // Подписка на deeplink-события. Возвращает unsubscribe.
   onDeepLink(handler: (event: DeepLinkEvent) => void): () => void;
   shell: {

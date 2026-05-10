@@ -1,9 +1,11 @@
-import { app, ipcMain, shell } from 'electron';
+import { app, ipcMain, net, shell } from 'electron';
 import {
   IpcChannel,
   AppInfo,
   ApiRequestPayload,
   ApiResponse,
+  MediaUploadPayload,
+  MediaUploadResponse,
   LocalRoyaltyImportPayload,
   UpdateStatus,
 } from '../shared/ipc';
@@ -14,6 +16,25 @@ import { localRoyalty } from './local-db/royalty';
 import { getUpdateStatus, checkForUpdates } from './updater';
 
 const DEFAULT_API_BASE_URL = 'https://ads-tracker-production.up.railway.app';
+
+function apiBaseUrl(): string {
+  return (process.env.ADS_TRACKER_API_URL?.trim() || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
+}
+
+/** Shared path guard — mirrors api-client.ts validatePath. */
+function validateUploadPath(path: unknown): string {
+  if (typeof path !== 'string' || path.length === 0) {
+    throw Object.assign(new Error('media:upload: path must be a non-empty string'), { status: 400 });
+  }
+  if (path.includes('://') || path.includes('..') || path.includes('\\') || path.includes('@')) {
+    throw Object.assign(new Error('media:upload: path contains invalid characters'), { status: 400 });
+  }
+  const normalised = path.startsWith('/') ? path : `/${path}`;
+  if (!normalised.startsWith('/api/')) {
+    throw Object.assign(new Error('media:upload: path must start with /api/'), { status: 400 });
+  }
+  return normalised;
+}
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.AppGetVersion, async (): Promise<AppInfo> => ({
@@ -48,6 +69,93 @@ export function registerIpcHandlers(): void {
     IpcChannel.ApiRequest,
     async (_evt, payload: ApiRequestPayload): Promise<ApiResponse> => {
       return performApiRequest(payload);
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.MediaUpload,
+    async (_evt, payload: MediaUploadPayload): Promise<MediaUploadResponse> => {
+      // --- validate path ---
+      let normalisedPath: string;
+      try {
+        normalisedPath = validateUploadPath(payload?.path);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { ok: false, status: 400, data: null, error: message };
+      }
+
+      // --- validate files array ---
+      if (!Array.isArray(payload?.files) || payload.files.length === 0) {
+        return { ok: false, status: 400, data: null, error: 'media:upload: files must be a non-empty array' };
+      }
+
+      const token = await readToken();
+
+      // --- build FormData ---
+      const formData = new FormData();
+
+      for (const file of payload.files) {
+        if (
+          typeof file.field !== 'string' ||
+          typeof file.name !== 'string' ||
+          typeof file.base64 !== 'string' ||
+          typeof file.contentType !== 'string'
+        ) {
+          return { ok: false, status: 400, data: null, error: 'media:upload: each file must have field, name, base64, contentType' };
+        }
+        const buf = Buffer.from(file.base64, 'base64');
+        const blob = new Blob([buf], { type: file.contentType });
+        formData.append(file.field, blob, file.name);
+      }
+
+      if (payload.formFields) {
+        for (const [key, value] of Object.entries(payload.formFields)) {
+          formData.append(key, value);
+        }
+      }
+
+      // --- send request ---
+      const url = apiBaseUrl() + normalisedPath;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      try {
+        const response = await net.fetch(url, {
+          method: 'POST',
+          body: formData,
+          headers,
+        });
+
+        const contentType = response.headers.get('content-type') ?? '';
+        const text = await response.text();
+        let parsed: unknown = null;
+        if (text) {
+          if (contentType.includes('json')) {
+            try {
+              parsed = JSON.parse(text);
+            } catch {
+              parsed = text;
+            }
+          } else {
+            parsed = text;
+          }
+        }
+
+        if (response.ok) {
+          return { ok: true, status: response.status, data: parsed };
+        }
+
+        const errMessage =
+          typeof parsed === 'object' && parsed !== null && 'error' in parsed
+            ? String((parsed as { error: unknown }).error)
+            : typeof parsed === 'string'
+            ? parsed
+            : `HTTP ${response.status}`;
+        return { ok: false, status: response.status, data: null, error: errMessage };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { ok: false, status: 0, data: null, error: message };
+      }
     },
   );
 

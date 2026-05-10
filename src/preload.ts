@@ -4,6 +4,8 @@ import {
   DesktopApi,
   ApiRequestPayload,
   ApiResponse,
+  MediaUploadPayload,
+  MediaUploadResponse,
   DeepLinkEvent,
   LocalRoyaltyImportPayload,
   UpdateStatus,
@@ -21,6 +23,8 @@ const api: DesktopApi = {
   },
   request: <T = unknown>(payload: ApiRequestPayload): Promise<ApiResponse<T>> =>
     ipcRenderer.invoke(IpcChannel.ApiRequest, payload),
+  mediaUpload: <T = unknown>(payload: MediaUploadPayload): Promise<MediaUploadResponse<T>> =>
+    ipcRenderer.invoke(IpcChannel.MediaUpload, payload),
   onDeepLink: (handler) => {
     const wrapped = (_e: IpcRendererEvent, payload: DeepLinkEvent) => handler(payload);
     ipcRenderer.on(IpcChannel.DeepLink, wrapped);
