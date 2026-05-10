@@ -12,3 +12,5 @@ export { Pagination } from './Pagination';
 export { ActiveFiltersBar } from './ActiveFiltersBar';
 export type { ActiveFilterChip } from './ActiveFiltersBar';
 export { WeeksSegment } from './WeeksSegment';
+export { ExportMenu } from './ExportMenu';
+export type { ExportMenuItem } from './ExportMenu';
