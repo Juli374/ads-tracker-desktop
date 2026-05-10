@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { ApiError, apiClient } from './client';
 
 export type CampaignState = 'enabled' | 'paused';
 
@@ -32,6 +32,26 @@ export interface CampaignUpdate {
   rest_of_search?: number;
 }
 
+// Phase J.2 Lane B — per-week placement breakdown.
+// Backend (если выкатан endpoint) возвращает массив недель с разбивкой
+// по top_of_search / product_pages / rest_of_search. Если endpoint ещё не
+// существует, getPlacementHistory вернёт null — caller рендерит только
+// текущие модификаторы без chart.
+export interface PlacementWeekRow {
+  week_start: string;
+  week_end: string;
+  week_label?: string;
+  is_current?: boolean;
+  top_of_search?: { impressions: number; clicks: number; cost: number; sales: number; orders: number; acos: number; ctr?: number; percent?: number };
+  product_pages?: { impressions: number; clicks: number; cost: number; sales: number; orders: number; acos: number; ctr?: number; percent?: number };
+  rest_of_search?: { impressions: number; clicks: number; cost: number; sales: number; orders: number; acos: number; ctr?: number; percent?: number };
+}
+
+export interface PlacementHistoryResponse {
+  campaign_id: number;
+  weeks: PlacementWeekRow[];
+}
+
 export const campaignsApi = {
   // POST /api/asins/:asinId/campaigns — создать кампанию для ASIN.
   // asinId, не bookId — backend требует именно ASIN-id (книга → ASIN per MP).
@@ -45,5 +65,20 @@ export const campaignsApi = {
   // PUT /api/campaigns/:id — обычное обновление без истории.
   update(campaignId: number, data: CampaignUpdate): Promise<{ message: string }> {
     return apiClient.put<{ message: string }>(`/api/campaigns/${campaignId}`, data);
+  },
+
+  // GET /api/campaigns/:id/placement-history — per-week placement breakdown.
+  // Graceful 404: если backend не выкатан, возвращаем null — UI рендерит
+  // только текущие модификаторы без chart. Все остальные ошибки (5xx,
+  // network) пробрасываются как ApiError, чтобы caller мог toast'нуть.
+  async getPlacementHistory(campaignId: number): Promise<PlacementHistoryResponse | null> {
+    try {
+      return await apiClient.get<PlacementHistoryResponse>(
+        `/api/campaigns/${campaignId}/placement-history`,
+      );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    }
   },
 };

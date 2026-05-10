@@ -1,5 +1,7 @@
 import { vi } from 'vitest';
 import type {
+  AiSettings,
+  AiTestKeyResult,
   ApiRequestPayload,
   ApiResponse,
   AppInfo,
@@ -17,6 +19,8 @@ interface MockApiOptions {
   appInfo?: Partial<AppInfo>;
   apiBaseUrl?: string;
   token?: string | null;
+  aiSettings?: Partial<AiSettings>;
+  aiTestKey?: AiTestKeyResult;
 }
 
 export function installMockApi(options: MockApiOptions = {}): void {
@@ -141,6 +145,25 @@ export function installMockApi(options: MockApiOptions = {}): void {
       quitAndInstall: vi.fn(async () => undefined),
       // Push subscription; default mock is a no-op that returns an unsubscribe.
       onChange: vi.fn(() => () => undefined),
+    },
+    // Phase J.3 Lane C: AI settings + test-key channel.
+    ai: {
+      getSettings: vi.fn(async (): Promise<AiSettings> => ({
+        claudeKey: '',
+        models: {
+          completion: 'claude-opus-4-7',
+          vision: 'claude-opus-4-7',
+          fast: 'claude-haiku-4-5',
+          advisor: 'claude-opus-4-7',
+        },
+        brandVoice: { pov: '', toneWords: [], bannedWords: [] },
+        ...options.aiSettings,
+      })),
+      setSettings: vi.fn(async () => undefined),
+      testKey: vi.fn(
+        async (): Promise<AiTestKeyResult> =>
+          options.aiTestKey ?? { ok: true, status: 200 },
+      ),
     },
   };
 }

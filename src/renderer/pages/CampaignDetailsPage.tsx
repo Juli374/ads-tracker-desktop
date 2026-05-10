@@ -28,6 +28,8 @@ import { ApiError } from '../api/client';
 import { adGroupsApi, type AdGroup } from '../api/adGroups';
 import { targetsApi, type Target } from '../api/targets';
 import { negativesApi, type Negative } from '../api/negatives';
+import { KeywordsTable } from '../components/campaigns/KeywordsTable';
+import { CampaignPlacements } from '../components/campaigns/CampaignPlacements';
 import {
   metricsApi,
   type CampaignAnalyticsItem,
@@ -372,7 +374,13 @@ export const CampaignDetailsPage: React.FC = () => {
       </div>
 
       {tab === 'ad_groups' && <AdGroupsTab campaignId={campaignId} />}
-      {tab === 'targets' && <TargetsTab campaignId={campaignId} />}
+      {tab === 'targets' && (
+        <TargetsTab
+          campaignId={campaignId}
+          campaign={campaign}
+          onCampaignReload={loadCampaignMeta}
+        />
+      )}
       {tab === 'negatives' && <NegativesTab campaignId={campaignId} />}
       {tab === 'search_terms' && (
         <CampaignSearchTermsEmbed
@@ -512,16 +520,19 @@ const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
 
 // ============ Targets tab ============
 
-const TargetsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
+interface TargetsTabProps {
+  campaignId: number;
+  campaign: CampaignAnalyticsItem | null;
+  onCampaignReload(): void;
+}
+
+const TargetsTab: React.FC<TargetsTabProps> = ({ campaignId, campaign, onCampaignReload }) => {
   const { t } = useTranslation('campaigns');
   const toast = useToast();
   const [adGroups, setAdGroups] = useState<AdGroup[]>([]);
   const [targets, setTargets] = useState<Target[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [bidMultiplier, setBidMultiplier] = useState('1.10');
-  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = useMemo(
     () => async () => {
@@ -533,7 +544,6 @@ const TargetsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
         ]);
         setAdGroups(Array.isArray(ags) ? ags : []);
         setTargets(Array.isArray(ts) ? ts : []);
-        setSelected(new Set());
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : t('details.errors.loadTargetsFailed'));
         setTargets([]);
@@ -548,250 +558,62 @@ const TargetsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
     load();
   }, [load]);
 
-  const onSaveBid = async (id: number, next: number) => {
-    try {
-      await targetsApi.update(id, { bid: next });
-      setTargets((prev) =>
-        prev ? prev.map((tg) => (tg.id === id ? { ...tg, bid: next } : tg)) : prev,
-      );
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : t('details.errors.updateBidFailed'));
-      throw err;
-    }
-  };
-
-  const onToggleState = async (tg: Target) => {
-    const nextState: 'enabled' | 'paused' =
-      tg.state === 'paused' ? 'enabled' : 'paused';
-    const prev = tg.state;
-    setTargets((list) =>
-      list ? list.map((x) => (x.id === tg.id ? { ...x, state: nextState } : x)) : list,
-    );
-    try {
-      await amazonAdsApi.setTargetState(tg.id, nextState);
-      toast.success(t('details.targets.stateUpdated'));
-    } catch (err) {
-      setTargets((list) =>
-        list ? list.map((x) => (x.id === tg.id ? { ...x, state: prev } : x)) : list,
-      );
-      toast.error(err instanceof ApiError ? err.message : t('details.targets.stateFailed'));
-    }
-  };
-
-  const allSelected =
-    !!targets && targets.length > 0 && selected.size === targets.length;
-  const someSelected = selected.size > 0 && !allSelected;
-
-  const toggleSelectAll = () => {
-    if (!targets) return;
-    if (allSelected) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(targets.map((tg) => tg.id)));
-    }
-  };
-
-  const toggleSelectOne = (id: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const bulkApply = async (
-    payload: Parameters<typeof amazonAdsApi.bulkUpdateTargets>[0],
-  ) => {
-    setBulkBusy(true);
-    try {
-      const res = await amazonAdsApi.bulkUpdateTargets(payload);
-      toast.success(t('details.targets.bulk.applied', { count: res.updated }));
-      await load();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : t('details.targets.bulk.failed'));
-    } finally {
-      setBulkBusy(false);
-    }
-  };
-
-  const bulkPause = () =>
-    bulkApply({ target_ids: Array.from(selected), state: 'paused' });
-  const bulkEnable = () =>
-    bulkApply({ target_ids: Array.from(selected), state: 'enabled' });
-  const bulkBidMultiplier = () => {
-    const mult = parseFloat(bidMultiplier);
-    if (!Number.isFinite(mult) || mult <= 0) {
-      toast.error(t('details.targets.bulk.multiplierPositive'));
-      return;
-    }
-    bulkApply({ target_ids: Array.from(selected), bid_multiplier: mult });
-  };
+  // CampaignAnalyticsItem не типизированно содержит placement modifiers,
+  // backend кладёт их в тот же объект. Считаем дефолты 0 если отсутствуют.
+  const placementInitial = useMemo(() => {
+    const c = campaign as unknown as
+      | { top_of_search?: number; product_pages?: number; rest_of_search?: number }
+      | null;
+    return {
+      top_of_search: c?.top_of_search ?? 0,
+      product_pages: c?.product_pages ?? 0,
+      rest_of_search: c?.rest_of_search ?? 0,
+    };
+  }, [campaign]);
 
   return (
-    <Card
-      title="Targets"
-      rightSlot={
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          disabled={adGroups.length === 0}
-          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Plus size={12} />
-          Targets
-        </button>
-      }
-    >
-      {loading && !targets ? (
-        <LoadingRow />
-      ) : !targets || targets.length === 0 ? (
-        <EmptyState title={t('details.targets.empty')} />
-      ) : (
-        <>
-          {selected.size > 0 && (
-            <div
-              className="flex items-center gap-2 px-5 py-2 border-b border-zinc-200 bg-zinc-50 sticky top-0 z-10"
-              data-testid="targets-bulk-bar"
-            >
-              <span className="text-xs font-medium text-zinc-700">
-                {t('details.targets.bulk.selected', { count: selected.size })}
-              </span>
-              <div className="flex-1" />
-              <div className="inline-flex items-center gap-1">
-                <span className="text-[11px] text-zinc-500">
-                  {t('details.targets.bulk.bidMultiplier')}
-                </span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={bidMultiplier}
-                  onChange={(e) => setBidMultiplier(e.target.value)}
-                  data-testid="targets-bulk-bid-multiplier"
-                  title={t('details.targets.bulk.bidMultiplierTitle')}
-                  className="w-16 h-6 px-1 text-xs border border-zinc-200 rounded text-right tabular-nums"
-                />
-                <button
-                  type="button"
-                  onClick={bulkBidMultiplier}
-                  disabled={bulkBusy}
-                  className="h-6 px-2 text-[11px] rounded bg-white border border-zinc-200 hover:bg-zinc-100 disabled:opacity-50"
-                >
-                  {t('details.targets.bulk.applyBid')}
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={bulkPause}
-                disabled={bulkBusy}
-                className="h-6 px-2 text-[11px] rounded bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-50"
-              >
-                {t('details.targets.bulk.pause')}
-              </button>
-              <button
-                type="button"
-                onClick={bulkEnable}
-                disabled={bulkBusy}
-                className="h-6 px-2 text-[11px] rounded bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-50"
-              >
-                {t('details.targets.bulk.enable')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelected(new Set())}
-                className="h-6 px-2 text-[11px] rounded text-zinc-500 hover:text-zinc-900"
-              >
-                {t('details.targets.bulk.clear')}
-              </button>
-            </div>
-          )}
-          <table className="w-full text-sm table-sticky-head">
-            <thead>
-              <tr className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-2 w-8">
-                  <input
-                    type="checkbox"
-                    aria-label={t('details.targets.selectAllAria')}
-                    data-testid="targets-select-all"
-                    checked={allSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = someSelected;
-                    }}
-                    onChange={toggleSelectAll}
-                  />
-                </th>
-                <th className="text-left px-3 py-2 font-medium">Target</th>
-                <th className="text-left px-3 py-2 font-medium">{t('details.targets.th.type')}</th>
-                <th className="text-left px-3 py-2 font-medium">Match</th>
-                <th className="text-left px-3 py-2 font-medium">Status</th>
-                <th className="text-right px-5 py-2 font-medium">Bid</th>
-              </tr>
-            </thead>
-            <tbody>
-              {targets.map((tg) => {
-                const targetText = tg.keyword_text ?? tg.asin ?? tg.category ?? '—';
-                const isPausedTarget = tg.state === 'paused';
-                return (
-                  <tr key={tg.id} className="border-t border-zinc-100 hover:bg-zinc-50/60">
-                    <td className="px-5 py-2.5">
-                      <input
-                        type="checkbox"
-                        aria-label={t('details.targets.selectAria', { target: targetText })}
-                        data-testid={`targets-row-checkbox-${tg.id}`}
-                        checked={selected.has(tg.id)}
-                        onChange={() => toggleSelectOne(tg.id)}
-                      />
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-zinc-900 font-mono truncate max-w-md">
-                      {targetText}
-                    </td>
-                    <td className="px-3 py-2.5 text-[11px] text-zinc-600 uppercase">
-                      {tg.keyword_text ? 'keyword' : tg.asin ? 'asin' : tg.category ? 'category' : '—'}
-                    </td>
-                    <td className="px-3 py-2.5 text-[11px] text-zinc-600">{tg.match_type ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={() => onToggleState(tg)}
-                        aria-label={t('details.targets.ariaStateToggle', { target: targetText })}
-                        data-testid={`targets-state-toggle-${tg.id}`}
-                        className={`
-                          inline-flex items-center px-1.5 h-5 rounded text-[10px] font-medium border transition-colors
-                          ${isPausedTarget
-                            ? 'text-amber-700 border-amber-200 bg-amber-50 hover:bg-amber-100'
-                            : 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100'}
-                        `}
-                      >
-                        {tg.state ?? '—'}
-                      </button>
-                    </td>
-                    <td className="px-5 py-2.5 text-xs text-right">
-                      <EditableNumber
-                        value={tg.bid}
-                        onSave={(v) => onSaveBid(tg.id, v)}
-                        format={(n) => fmtMoney(n)}
-                        min={0.02}
-                        step={0.01}
-                        ariaLabel="Bid"
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </>
-      )}
-
-      {adding && (
-        <AddTargetModal
+    <div className="space-y-4">
+      <CampaignPlacements
+        campaignId={campaignId}
+        initial={placementInitial}
+        currency={campaign?.currency}
+      />
+      <Card
+        title="Targets"
+        rightSlot={
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            disabled={adGroups.length === 0}
+            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus size={12} />
+            Targets
+          </button>
+        }
+      >
+        <KeywordsTable
+          campaignId={campaignId}
+          targets={targets}
           adGroups={adGroups}
-          onClose={() => setAdding(false)}
-          onAdded={() => load()}
+          loading={loading}
+          onReload={() => {
+            void load();
+            // Re-pull campaign meta when bulk operation might have changed
+            // placement-affecting state (e.g. after add-negative we want
+            // updated breakdown). Cheap; happens after explicit user action.
+            onCampaignReload();
+          }}
         />
-      )}
-    </Card>
+        {adding && (
+          <AddTargetModal
+            adGroups={adGroups}
+            onClose={() => setAdding(false)}
+            onAdded={() => load()}
+          />
+        )}
+      </Card>
+    </div>
   );
 };
 

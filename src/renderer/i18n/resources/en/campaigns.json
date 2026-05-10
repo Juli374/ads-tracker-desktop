@@ -125,7 +125,26 @@
         "clear": "Clear",
         "applied": "Updated {count} targets",
         "failed": "Bulk update failed",
-        "multiplierPositive": "Multiplier must be > 0"
+        "multiplierPositive": "Multiplier must be > 0",
+        "deltaTitle": "Adjust bid by amount",
+        "delta": "Bid +",
+        "deltaPositive": "Delta must be a number",
+        "applyDelta": "Apply",
+        "moveLabel": "Move to ad group",
+        "moveButton": "Move",
+        "moveTitle": "Move selected targets to another ad group",
+        "moveSelectGroup": "Select ad group",
+        "moved": "Moved {count} targets",
+        "addNegativeLabel": "Add to negatives",
+        "addNegativeButton": "Negative",
+        "addNegativeTitle": "Add selected keywords to negative list",
+        "addNegativeMatch": "Match",
+        "addNegativeTargetCampaign": "This campaign",
+        "addNegativeTargetList": "Negative list",
+        "addNegativeAdded": "Added {count} negatives",
+        "addNegativeFailed": "Failed to add negatives",
+        "moveFailed": "Failed to move targets",
+        "modalCancel": "Cancel"
       }
     },
     "searchTerms": {
@@ -187,6 +206,35 @@
       },
       "removeAria": "Remove {keyword}",
       "removeTitle": "Remove"
+    },
+    "placements": {
+      "title": "Placements",
+      "subtitle": "TOS · PP · ROS modifiers",
+      "tosLabel": "Top of Search",
+      "tosShort": "TOS",
+      "ppLabel": "Product Pages",
+      "ppShort": "PP",
+      "rosLabel": "Rest of Search",
+      "rosShort": "ROS",
+      "modAria": "{label} bid modifier",
+      "saveAll": "Save",
+      "savedToast": "Placement modifiers saved",
+      "saveFailed": "Failed to save modifiers",
+      "historyTitle": "Per-week breakdown",
+      "historyEmpty": "No placement history yet",
+      "historyLoading": "Loading…",
+      "th": {
+        "week": "Week",
+        "metric": "Metric",
+        "tos": "TOS",
+        "pp": "PP",
+        "ros": "ROS",
+        "imps": "Imps",
+        "clicks": "Clicks",
+        "spend": "Spend",
+        "sales": "Sales",
+        "acos": "ACOS"
+      }
     }
   },
   "edit": {
