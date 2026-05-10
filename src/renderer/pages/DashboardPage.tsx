@@ -31,6 +31,7 @@ import {
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { flagFor } from '../lib/marketplaceFlags';
 import { useSessionState } from '../lib/useSessionState';
 import { useToast } from '../contexts/ToastContext';
 import {
@@ -361,7 +362,18 @@ const BookRow: React.FC<{ book: BookMetric }> = ({ book }) => (
         <div className="text-xs text-zinc-900 truncate max-w-md">{book.title}</div>
       </div>
     </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase">{book.marketplace || '—'}</td>
+    <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase whitespace-nowrap">
+      {book.marketplace ? (
+        <>
+          {flagFor(book.marketplace) ? (
+            <span className="mr-1">{flagFor(book.marketplace)}</span>
+          ) : null}
+          {book.marketplace}
+        </>
+      ) : (
+        '—'
+      )}
+    </td>
     <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
       {fmtMoney(book.cost, book.currency)}
     </td>

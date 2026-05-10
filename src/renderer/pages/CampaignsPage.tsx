@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, ArrowDownUp, Pencil, Plus } from 'lucide-react';
+import { Search, ArrowDownUp, Pause, Pencil, Play, Plus } from 'lucide-react';
 import { ApiError } from '../api/client';
 import {
   metricsApi,
   CampaignSummary,
   CampaignAnalyticsItem,
 } from '../api/metrics';
+import { amazonAdsApi } from '../api/amazonAds';
 import { EditCampaignModal } from '../components/EditCampaignModal';
 import { AddCampaignModal } from '../components/AddCampaignModal';
+import { flagFor } from '../lib/marketplaceFlags';
 import {
   PageHeader,
   RangePicker,
@@ -279,6 +281,7 @@ export const CampaignsPage: React.FC = () => {
                 <th className="text-right px-3 py-2 font-medium">Orders</th>
                 <th className="text-right px-3 py-2 font-medium">CTR</th>
                 <th className="text-right px-3 py-2 font-medium">ACOS</th>
+                <th className="px-2 py-2 w-9"></th>
                 <th className="px-3 py-2 w-9"></th>
               </tr>
             </thead>
@@ -293,6 +296,18 @@ export const CampaignsPage: React.FC = () => {
                     })
                   }
                   onEdit={() => setEditing(c)}
+                  onStateChange={(updated) => {
+                    setSummary((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            campaigns: prev.campaigns.map((x) =>
+                              x.campaign_id === updated.campaign_id ? updated : x,
+                            ),
+                          }
+                        : prev,
+                    );
+                  }}
                 />
               ))}
             </tbody>
@@ -330,70 +345,120 @@ const CampaignRow: React.FC<{
   c: CampaignAnalyticsItem;
   onDrillDown: () => void;
   onEdit: () => void;
-}> = ({ c, onDrillDown, onEdit }) => {
+  onStateChange: (next: CampaignAnalyticsItem) => void;
+}> = ({ c, onDrillDown, onEdit, onStateChange }) => {
   const { t } = useTranslation('campaigns');
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const isPaused = (c.status ?? '').toLowerCase() === 'paused';
+  const flag = flagFor(c.marketplace);
+
+  const onTogglePause = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next: 'enabled' | 'paused' = isPaused ? 'enabled' : 'paused';
+    onStateChange({ ...c, status: next });
+    setBusy(true);
+    try {
+      await amazonAdsApi.setCampaignState(c.campaign_id, next);
+      toast.success(t('details.header.stateUpdated'));
+    } catch (err) {
+      onStateChange({ ...c, status: c.status });
+      toast.error(
+        err instanceof ApiError ? err.message : t('details.header.stateUpdateFailed'),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-  <tr
-    className="group border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
-    onClick={onDrillDown}
-    title={t('list.row.openSearchTerms')}
-  >
-    <td className="px-5 py-2.5 max-w-[280px]">
-      <div className="text-xs text-zinc-900 truncate" title={c.campaign_name}>
-        {c.campaign_name}
-      </div>
-      {c.status && (
-        <div className="text-[10px] text-zinc-400 mt-0.5">
-          {c.targeting_type} · {c.status}
+    <tr
+      className="group border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
+      onClick={onDrillDown}
+      title={t('list.row.openSearchTerms')}
+    >
+      <td className="px-5 py-2.5 max-w-[280px]">
+        <div className="text-xs text-zinc-900 truncate" title={c.campaign_name}>
+          {c.campaign_name}
         </div>
-      )}
-    </td>
-    <td className="px-3 py-2.5 max-w-[160px]">
-      <div className="text-xs text-zinc-700 truncate" title={c.book_title}>
-        {c.book_title || '—'}
-      </div>
-    </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase">
-      {c.marketplace || '—'}
-    </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase">
-      {c.campaign_type}
-    </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
-      {fmtMoney(c.cost, c.currency)}
-    </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
-      {fmtMoney(c.sales, c.currency)}
-    </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
-      {c.orders}
-    </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-600 text-right tabular-nums">
-      {c.ctr > 0 ? fmtPct(c.ctr, 2) : '—'}
-    </td>
-    <td className="px-3 py-2.5 text-xs text-right tabular-nums">
-      <span className={c.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
-        {c.acos > 0 ? fmtPct(c.acos) : '—'}
-      </span>
-    </td>
-    <td className="px-3 py-2.5 text-right">
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onEdit();
-        }}
-        className="
-          h-6 w-6 flex items-center justify-center rounded
-          text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200
-          opacity-0 group-hover:opacity-100 transition-opacity
-        "
-        title={t('list.row.edit')}
-        aria-label={t('list.row.editAria')}
-      >
-        <Pencil size={11} />
-      </button>
-    </td>
-  </tr>
+        {c.status && (
+          <div className="text-[10px] text-zinc-400 mt-0.5">
+            {c.targeting_type} · {c.status}
+          </div>
+        )}
+      </td>
+      <td className="px-3 py-2.5 max-w-[160px]">
+        <div className="text-xs text-zinc-700 truncate" title={c.book_title}>
+          {c.book_title || '—'}
+        </div>
+      </td>
+      <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase whitespace-nowrap">
+        {flag ? <span className="mr-1">{flag}</span> : null}
+        {c.marketplace || '—'}
+      </td>
+      <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase">
+        {c.campaign_type}
+      </td>
+      <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+        {fmtMoney(c.cost, c.currency)}
+      </td>
+      <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+        {fmtMoney(c.sales, c.currency)}
+      </td>
+      <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+        {c.orders}
+      </td>
+      <td className="px-3 py-2.5 text-xs text-zinc-600 text-right tabular-nums">
+        {c.ctr > 0 ? fmtPct(c.ctr, 2) : '—'}
+      </td>
+      <td className="px-3 py-2.5 text-xs text-right tabular-nums">
+        <span className={c.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
+          {c.acos > 0 ? fmtPct(c.acos) : '—'}
+        </span>
+      </td>
+      <td className="px-2 py-2.5 text-right">
+        <button
+          onClick={onTogglePause}
+          disabled={busy}
+          data-testid={`campaign-pause-${c.campaign_id}`}
+          className={`
+            h-6 w-6 flex items-center justify-center rounded transition-colors disabled:opacity-50
+            ${isPaused
+              ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
+              : 'text-amber-600 hover:text-amber-700 hover:bg-amber-50'}
+          `}
+          title={
+            isPaused
+              ? t('details.header.resumeTitle')
+              : t('details.header.pauseTitle')
+          }
+          aria-label={
+            isPaused
+              ? t('details.header.resumeTitle')
+              : t('details.header.pauseTitle')
+          }
+        >
+          {isPaused ? <Play size={11} /> : <Pause size={11} />}
+        </button>
+      </td>
+      <td className="px-3 py-2.5 text-right">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          className="
+            h-6 w-6 flex items-center justify-center rounded
+            text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200
+            opacity-0 group-hover:opacity-100 transition-opacity
+          "
+          title={t('list.row.edit')}
+          aria-label={t('list.row.editAria')}
+        >
+          <Pencil size={11} />
+        </button>
+      </td>
+    </tr>
   );
 };
 
