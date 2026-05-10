@@ -9,7 +9,13 @@ import {
   LocalRoyaltyImportPayload,
   UpdateStatus,
 } from '../shared/ipc';
-import { readToken, writeToken, clearToken } from './auth-store';
+import {
+  clearToken,
+  consumePendingOAuthState,
+  readToken,
+  writePendingOAuthState,
+  writeToken,
+} from './auth-store';
 import { performApiRequest } from './api-client';
 import { localStore } from './local-db';
 import { localRoyalty } from './local-db/royalty';
@@ -17,8 +23,20 @@ import { getUpdateStatus, checkForUpdates } from './updater';
 
 const DEFAULT_API_BASE_URL = 'https://ads-tracker-production.up.railway.app';
 
+// Multipart upload — те же 10s, что и обычные API-запросы.
+// Если апдейт обложки тянется дольше — юзер увидит timeout и сможет повторить.
+const UPLOAD_TIMEOUT_MS = 10_000;
+
 function apiBaseUrl(): string {
   return (process.env.ADS_TRACKER_API_URL?.trim() || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
+}
+
+/** Распознаём AbortError / TimeoutError для multipart-fetch'а. */
+function isTimeoutError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  if (err.name === 'AbortError' || err.name === 'TimeoutError') return true;
+  const msg = err.message?.toLowerCase() ?? '';
+  return msg.includes('timed out') || msg.includes('aborted');
 }
 
 /** Shared path guard — mirrors api-client.ts validatePath. */
@@ -124,6 +142,11 @@ export function registerIpcHandlers(): void {
           method: 'POST',
           body: formData,
           headers,
+          // Тот же 10s timeout, что и в api-client.ts. Большой файл (>5MB)
+          // вероятно не пройдёт за 10s, но мы и не хотим — Royalty/Cover
+          // upload должен быть быстрый, иначе backend перегружен и юзеру
+          // лучше сразу увидеть error, чем висеть.
+          signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
         });
 
         const contentType = response.headers.get('content-type') ?? '';
@@ -153,6 +176,14 @@ export function registerIpcHandlers(): void {
             : `HTTP ${response.status}`;
         return { ok: false, status: response.status, data: null, error: errMessage };
       } catch (err) {
+        if (isTimeoutError(err)) {
+          return {
+            ok: false,
+            status: 0,
+            data: null,
+            error: `Upload timed out after ${UPLOAD_TIMEOUT_MS}ms`,
+          };
+        }
         const message = err instanceof Error ? err.message : String(err);
         return { ok: false, status: 0, data: null, error: message };
       }
@@ -174,6 +205,34 @@ export function registerIpcHandlers(): void {
         throw new Error('shell:openExternal: only https:// allowed');
       }
       await shell.openExternal(url);
+    },
+  );
+
+  // ====== OAuth CSRF state (Amazon Ads OAuth-флоу) ======
+  // Renderer: window.api.oauth.writeState(state) → main пишет в safeStorage.
+  //          window.api.oauth.consumeState() → main отдаёт state и СРАЗУ его
+  //          очищает (one-shot). Renderer сравнивает с url.searchParams.state
+  //          и только при совпадении завершает OAuth.
+
+  ipcMain.handle(
+    IpcChannel.OAuthStateWrite,
+    async (_evt, state: unknown): Promise<void> => {
+      if (typeof state !== 'string' || state.length === 0) {
+        throw new Error('oauth:state:write expects a non-empty string');
+      }
+      // Защита от слишком длинных state (на случай compromised renderer):
+      // crypto.randomUUID() — 36 символов, дадим запас.
+      if (state.length > 256) {
+        throw new Error('oauth:state:write: state too long (max 256 chars)');
+      }
+      await writePendingOAuthState(state);
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.OAuthStateConsume,
+    async (): Promise<string | null> => {
+      return consumePendingOAuthState();
     },
   );
 
