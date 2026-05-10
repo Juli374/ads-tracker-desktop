@@ -109,7 +109,7 @@ export const localRoyalty = {
   },
 
   // Импорт парсенного KDP-отчёта. Renderer прокидывает уже распарсенные строки;
-  // парсинг xlsx живёт отдельно (TODO для public-release: порт royalty_import_service.py).
+  // парсинг xlsx живёт в src/main/local-db/xlsxParser.ts (parseRoyaltyXlsx).
   importUpload(rawPayload: ImportPayload): { upload_id: number; records_added: number } {
     const payload = sanitizeImport(rawPayload);
     let createdId = 0;

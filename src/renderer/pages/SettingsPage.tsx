@@ -13,6 +13,7 @@ import { AITab } from '../components/settings/AITab';
 import { StreamTab } from '../components/settings/StreamTab';
 import { FullSyncTab } from '../components/settings/fullSync';
 import { SearchTermTab } from '../components/settings/searchTerm';
+import { RoyaltiesTab } from '../components/settings/RoyaltiesTab';
 import { useSessionState } from '../lib/useSessionState';
 
 const VALID_TABS: SettingsTabId[] = [
@@ -23,6 +24,7 @@ const VALID_TABS: SettingsTabId[] = [
   'ai',
   'fullSync',
   'searchTerm',
+  'royalties',
   'stream',
 ];
 
@@ -83,6 +85,7 @@ export const SettingsPage: React.FC = () => {
       {activeTab === 'ai' && <AITab />}
       {activeTab === 'fullSync' && <FullSyncTab />}
       {activeTab === 'searchTerm' && <SearchTermTab />}
+      {activeTab === 'royalties' && <RoyaltiesTab />}
       {activeTab === 'stream' && <StreamTab />}
     </div>
   );
