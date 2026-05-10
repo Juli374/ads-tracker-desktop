@@ -169,7 +169,7 @@ export function registerIpcHandlers(): void {
       // Только https — НИЧЕГО иного. Если разрешить ads-tracker-desktop://,
       // компрометированный renderer мог бы инициировать self-deeplink loop:
       // openExternal('ads-tracker-desktop://callback?code=ATTACKER&state=')
-      // → ОС зовёт нас же → AmazonAdsSection.completeOAuth с кодом атакующего.
+      // → ОС зовёт нас же → CredentialsTab.completeOAuth с кодом атакующего.
       if (!url.startsWith('https://')) {
         throw new Error('shell:openExternal: only https:// allowed');
       }

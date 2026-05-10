@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, crashReporter, dialog, session } from 'electron';
 import path from 'path';
 import { registerIpcHandlers } from './main/ipc-handlers';
 import { IpcChannel, DeepLinkEvent } from './shared/ipc';
@@ -6,11 +6,67 @@ import { IpcChannel, DeepLinkEvent } from './shared/ipc';
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 
+// === Crash reporter ===
+// Запускаем ДО app.whenReady() — иначе ранние крэши main-процесса не попадут в minidump.
+// uploadToServer:false → minidumps пишутся локально (в `app.getPath('crashDumps')`),
+// никуда не отправляются. Когда появится backend для приёма — добавить submitURL.
+crashReporter.start({
+  productName: 'Ads Tracker',
+  companyName: 'Juli374',
+  submitURL: '',
+  uploadToServer: false,
+});
+
+// === Last-resort error handlers ===
+// Без них Node по умолчанию убивает процесс на uncaughtException — пользователь
+// видит просто исчезнувшее окно. Логируем в stderr (Lane B заменит на electron-log)
+// + показываем диалог при критических крэшах в main.
+process.on('uncaughtException', (err) => {
+  // eslint-disable-next-line no-console
+  console.error('[main] uncaughtException:', err);
+  try {
+    dialog.showErrorBox(
+      'Ads Tracker — внутренняя ошибка',
+      `Произошла непредвиденная ошибка в основном процессе.\n\n${err?.stack ?? String(err)}`,
+    );
+  } catch {
+    // dialog может быть недоступен до app.whenReady() — ничего не делаем.
+  }
+});
+process.on('unhandledRejection', (reason) => {
+  // eslint-disable-next-line no-console
+  console.error('[main] unhandledRejection:', reason);
+});
+
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
+// === Windows AppUserModelID ===
+// Без этого Windows отображает приложение под именем 'electron.exe' в taskbar /
+// notification center, и toast'ы группируются неправильно. ID должен совпадать
+// с appBundleId в forge.config.ts и идентификатором в Squirrel installer.
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.juli374.ads-tracker');
+}
+
 const PROTOCOL = 'ads-tracker-desktop';
+
+// === Content Security Policy ===
+// Та же policy, что и в src/index.html (meta tag) — заголовок добавляем для всех
+// ответов defaultSession. Дублирование осознанное: meta срабатывает в самом
+// renderer'е (catch-all для file:// fallback), header — для http(s)://localhost
+// в dev-режиме, где meta может игнорироваться. connect-src ограничен только
+// нашим Railway backend'ом, чтобы скомпрометированный renderer не мог
+// эксфильтровать токен на сторонний хост.
+const CSP_POLICY = [
+  "default-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "connect-src 'self' https://ads-tracker-production.up.railway.app",
+  "img-src 'self' data: https:",
+  "script-src 'self'",
+].join('; ');
 
 // Регистрируем кастомный протокол как default-handler.
 // Windows / Linux требуют единственный инстанс, чтобы deeplink ловился через
@@ -94,6 +150,11 @@ const createWindow = (): void => {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
       contextIsolation: true,
       sandbox: true,
+      // Явно фиксируем оборонительный baseline (defaults в Electron 41 уже такие,
+      // но дублируем — чтобы любой будущий апгрейд не «случайно» включил их).
+      nodeIntegration: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
     },
   });
 
@@ -104,9 +165,35 @@ const createWindow = (): void => {
   // запрещаем оба пути.
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    // Разрешаем только перезагрузку самого renderer-а (webpack HMR / dev refresh).
-    if (url !== MAIN_WINDOW_WEBPACK_ENTRY && !url.startsWith('http://localhost:')) {
+    // Разрешаем перезагрузку самого renderer-а (webpack HMR / dev refresh).
+    // localhost разрешён ТОЛЬКО в dev-сборке: в packaged build webpack-dev-server
+    // не запущен, и попытка перейти на localhost — почти всегда XSS / phishing.
+    const isDevLocalhost = !app.isPackaged && url.startsWith('http://localhost:');
+    if (url !== MAIN_WINDOW_WEBPACK_ENTRY && !isDevLocalhost) {
       event.preventDefault();
+    }
+  });
+
+  // === render-process-gone ===
+  // Renderer упал (OOM / segfault / killed). Без обработчика приложение
+  // зависает с белым окном. Спрашиваем пользователя — перезагрузить или закрыть.
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    // eslint-disable-next-line no-console
+    console.error('[main] render-process-gone:', details);
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'error',
+      title: 'Ads Tracker — окно перестало отвечать',
+      message: 'Renderer-процесс завершился неожиданно.',
+      detail: `Причина: ${details.reason}.\n\nПерезагрузить окно?`,
+      buttons: ['Перезагрузить', 'Закрыть'],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    if (choice === 0) {
+      mainWindow.webContents.reload();
+    } else {
+      mainWindow.close();
     }
   });
 
@@ -131,6 +218,30 @@ const createWindow = (): void => {
 };
 
 app.on('ready', () => {
+  // === Permissions: deny-by-default ===
+  // Personal-use клиент не использует ни камеру, ни микрофон, ни геолокацию,
+  // ни notifications. Любой запрос на permission от renderer'а — подозрительный
+  // (XSS / scam-page injected). Allow-list оставляем пустым.
+  session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => {
+    callback(false);
+  });
+
+  // === CSP via response headers ===
+  // Дублируем policy из <meta> — на случай, если renderer грузится по
+  // http(s):// (dev), где meta может игнорироваться браузером.
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const headers = { ...(details.responseHeaders ?? {}) };
+    // Удаляем существующие CSP-заголовки (если webpack-dev-server их добавил),
+    // чтобы наш policy не был ослаблен мерджем.
+    for (const key of Object.keys(headers)) {
+      if (key.toLowerCase() === 'content-security-policy') {
+        delete headers[key];
+      }
+    }
+    headers['Content-Security-Policy'] = [CSP_POLICY];
+    callback({ responseHeaders: headers });
+  });
+
   registerIpcHandlers();
 
   // Если запустились через deeplink на Windows — argv содержит URL.
