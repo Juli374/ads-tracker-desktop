@@ -1,4 +1,5 @@
-import type { Configuration } from 'webpack';
+import { execSync } from 'child_process';
+import webpack, { type Configuration } from 'webpack';
 
 import { rules } from './webpack.rules';
 import { plugins } from './webpack.plugins';
@@ -12,6 +13,24 @@ rules.push({
   ],
 });
 
+/**
+ * Mirror of `gitCommitHash` from webpack.main.config.ts. Duplicated (not
+ * imported) so each webpack config stays self-contained — Forge resolves the
+ * configs independently and a shared module would couple their evaluation.
+ *
+ * Returns the short SHA when `git rev-parse` succeeds; otherwise `'unknown'`
+ * (shallow clones, source-only checkouts, missing git binary).
+ */
+function gitCommitHash(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
 // Explicit mode prevents future regressions. NODE_ENV выставляется Forge,
 // но если кто-то соберёт без env (raw webpack-cli) — дефолт mode='production'
 // гарантирует минификацию вместо eval-source-map (perf-finding #5).
@@ -23,7 +42,12 @@ export const rendererConfig: Configuration = {
   module: {
     rules,
   },
-  plugins,
+  plugins: [
+    ...plugins,
+    new webpack.DefinePlugin({
+      'process.env.GIT_COMMIT': JSON.stringify(gitCommitHash()),
+    }),
+  ],
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css'],
   },
