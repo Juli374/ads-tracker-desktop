@@ -11,7 +11,8 @@
     "profiles": "Profiles",
     "profilesWithCount": "Profiles ({count})",
     "token": "Token",
-    "ai": "AI"
+    "ai": "AI",
+    "fullSync": "Full Sync"
   },
   "ai": {
     "cardTitle": "AI Assistant (Anthropic)",
@@ -97,6 +98,41 @@
     "language": "Language",
     "languageEn": "English",
     "languageRu": "Русский (coming soon)"
+  },
+  "fullSync": {
+    "title": "Full Sync",
+    "queueTitle": "Job Queue",
+    "account": "Accounts",
+    "country": "Countries",
+    "optionsLabel": "Sync options",
+    "start": "Start sync",
+    "started": "Sync started",
+    "options": {
+      "campaigns": "Campaigns",
+      "ad_groups": "Ad Groups",
+      "keywords": "Keywords",
+      "product_targets": "Product Targets",
+      "negatives": "Negatives",
+      "sb": "Sponsored Brands"
+    },
+    "queue": {
+      "empty": "No sync jobs yet.",
+      "queued": "Queued",
+      "running": "Running",
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "cancel": "Cancel job",
+      "progress": "{value}% complete"
+    },
+    "errors": {
+      "startFailed": "Failed to start sync",
+      "statusFailed": "Failed to get job status",
+      "cancelFailed": "Failed to cancel job",
+      "noAccounts": "Select at least one account",
+      "noCountries": "Select at least one country",
+      "noOptions": "Select at least one sync option"
+    }
   },
   "userMenu": {
     "userAria": "User menu",
