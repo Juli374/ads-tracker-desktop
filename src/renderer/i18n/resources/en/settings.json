@@ -11,7 +11,8 @@
     "profiles": "Profiles",
     "profilesWithCount": "Profiles ({count})",
     "token": "Token",
-    "ai": "AI"
+    "ai": "AI",
+    "searchTerm": "Search Term"
   },
   "ai": {
     "cardTitle": "AI Assistant (Anthropic)",
@@ -97,6 +98,46 @@
     "language": "Language",
     "languageEn": "English",
     "languageRu": "Русский (coming soon)"
+  },
+  "searchTerm": {
+    "title": "Search Term Reports",
+    "runNow": "Run now",
+    "queue": {
+      "title": "Report Queue",
+      "empty": "No active report jobs.",
+      "queued": "Queued",
+      "running": "Running",
+      "done": "Done",
+      "failed": "Failed",
+      "cancel": "Cancel job"
+    },
+    "coverage": {
+      "title": "Data Coverage (last 14 days)",
+      "empty": "No coverage data available.",
+      "noProfiles": "No profiles found."
+    },
+    "schedule": {
+      "title": "Scheduled Profiles",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "toggleAria": "Toggle schedule for {name}",
+      "noProfiles": "No profiles available."
+    },
+    "analysis": {
+      "title": "AI Analysis",
+      "total": "Total terms",
+      "unanalyzed": "Unanalyzed",
+      "runNow": "Analyze now",
+      "neverRun": "Analysis has never run.",
+      "lastRun": "Last run: {date}",
+      "started": "Analysis started."
+    },
+    "errors": {
+      "startFailed": "Failed to start report queue",
+      "statusFailed": "Failed to update job status",
+      "scheduleFailed": "Failed to update schedule",
+      "noAccounts": "No accounts available to run reports for"
+    }
   },
   "userMenu": {
     "userAria": "User menu",

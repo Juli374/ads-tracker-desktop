@@ -10,6 +10,7 @@ import { CredentialsTab } from '../components/settings/CredentialsTab';
 import { ProfilesTab } from '../components/settings/ProfilesTab';
 import { TokenTab } from '../components/settings/TokenTab';
 import { AITab } from '../components/settings/AITab';
+import { SearchTermTab } from '../components/settings/searchTerm';
 import { useSessionState } from '../lib/useSessionState';
 
 const VALID_TABS: SettingsTabId[] = [
@@ -18,6 +19,7 @@ const VALID_TABS: SettingsTabId[] = [
   'profiles',
   'token',
   'ai',
+  'searchTerm',
 ];
 
 function readHashTab(): SettingsTabId | null {
@@ -75,6 +77,7 @@ export const SettingsPage: React.FC = () => {
       {activeTab === 'profiles' && <ProfilesTab onCount={setProfilesCount} />}
       {activeTab === 'token' && <TokenTab />}
       {activeTab === 'ai' && <AITab />}
+      {activeTab === 'searchTerm' && <SearchTermTab />}
     </div>
   );
 };
