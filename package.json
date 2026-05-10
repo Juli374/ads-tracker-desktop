@@ -30,6 +30,7 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
     "@electron-forge/plugin-fuses": "^7.11.1",
     "@electron-forge/plugin-webpack": "^7.11.1",
+    "@electron-forge/publisher-github": "^7.11.1",
     "@electron/fuses": "^1.8.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^14.3.1",
@@ -58,6 +59,7 @@
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.1",
+    "electron-updater": "^6.8.3",
     "i18next": "^26.0.10",
     "i18next-icu": "^2.4.3",
     "jspdf": "^4.2.1",
