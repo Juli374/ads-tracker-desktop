@@ -11,6 +11,8 @@ interface Props {
   onUploaded(): void;
 }
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // mirror src/main/ipc-handlers.ts
+
 export const UploadCoverModal: React.FC<Props> = ({ bookId, onClose, onUploaded }) => {
   const { t } = useTranslation('books');
   const toast = useToast();
@@ -22,6 +24,21 @@ export const UploadCoverModal: React.FC<Props> = ({ bookId, onClose, onUploaded 
     if (!submitting) onClose();
   });
 
+  const handlePick = (picked: File | null) => {
+    if (!picked) {
+      setFile(null);
+      return;
+    }
+    if (picked.size > MAX_UPLOAD_BYTES) {
+      toast.error(t('modals.uploadCover.tooLarge'));
+      // Reset the <input> so picking the same file again still re-triggers onChange.
+      if (inputRef.current) inputRef.current.value = '';
+      setFile(null);
+      return;
+    }
+    setFile(picked);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
@@ -31,8 +48,10 @@ export const UploadCoverModal: React.FC<Props> = ({ bookId, onClose, onUploaded 
       toast.success(t('modals.uploadCover.save'));
       onUploaded();
       onClose();
-    } catch {
-      toast.error(t('modals.uploadCover.error'));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      // Surface the main-process size error verbatim so QA sees it.
+      toast.error(message || t('modals.uploadCover.error'));
     } finally {
       setSubmitting(false);
     }
@@ -77,7 +96,7 @@ export const UploadCoverModal: React.FC<Props> = ({ bookId, onClose, onUploaded 
             type="file"
             accept="image/jpeg,image/png,image/webp"
             className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => handlePick(e.target.files?.[0] ?? null)}
           />
           {file && (
             <img

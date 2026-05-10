@@ -105,7 +105,8 @@
       "save": "Upload",
       "uploading": "Uploading…",
       "cancel": "Cancel",
-      "error": "Failed to upload cover"
+      "error": "Failed to upload cover",
+      "tooLarge": "File is too large (limit is 10 MB)"
     },
     "addChange": {
       "title": "Log Content Change",
