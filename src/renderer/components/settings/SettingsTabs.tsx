@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Activity,
   Cpu,
+  FileSearch,
   KeyRound,
   RefreshCw,
   Server,
@@ -17,6 +18,7 @@ export type SettingsTabId =
   | 'token'
   | 'ai'
   | 'fullSync'
+  | 'searchTerm'
   | 'stream';
 
 interface TabSpec {
@@ -30,6 +32,7 @@ const TABS: TabSpec[] = [
   { id: 'profiles', icon: Users },
   { id: 'token', icon: KeyRound },
   { id: 'fullSync', icon: RefreshCw },
+  { id: 'searchTerm', icon: FileSearch },
   { id: 'ai', icon: Sparkles },
   { id: 'stream', icon: Activity },
 ];
