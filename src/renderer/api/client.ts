@@ -1,10 +1,17 @@
-import type { ApiRequestPayload, ApiResponse } from '../../shared/ipc';
+import type { ApiErrorCode, ApiRequestPayload, ApiResponse } from '../../shared/ipc';
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /**
+   * Машинно-читаемый код ошибки, проброшенный из main:
+   * 'TIMEOUT' | 'NETWORK' | 'UNAUTHORIZED' | 'TIER_REQUIRED' | 'SERVER'.
+   * undefined для legacy-ответов (если main не выставил код, значит просто SERVER).
+   */
+  code?: ApiErrorCode;
+  constructor(message: string, status: number, code?: ApiErrorCode) {
     super(message);
     this.status = status;
+    this.code = code;
     this.name = 'ApiError';
   }
 }
@@ -12,7 +19,11 @@ export class ApiError extends Error {
 async function call<T>(payload: ApiRequestPayload): Promise<T> {
   const res: ApiResponse<T> = await window.api.request<T>(payload);
   if (!res.ok) {
-    throw new ApiError(res.error || `Request failed (HTTP ${res.status})`, res.status);
+    throw new ApiError(
+      res.error || `Request failed (HTTP ${res.status})`,
+      res.status,
+      res.code,
+    );
   }
   return res.data as T;
 }

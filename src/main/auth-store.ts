@@ -10,9 +10,13 @@ import path from 'path';
 
 const TOKEN_FILE_ENC = 'auth-token.bin';
 const TOKEN_FILE_PLAIN = 'auth-token.txt';
+// OAuth CSRF state — храним отдельным файлом, чтобы не смешивать lifecycle
+// с auth-token (юзер мог быть уже залогинен, когда стартует OAuth Amazon Ads).
+const OAUTH_STATE_FILE = 'oauth-state.bin';
 
 const encPath = (): string => path.join(app.getPath('userData'), TOKEN_FILE_ENC);
 const plainPath = (): string => path.join(app.getPath('userData'), TOKEN_FILE_PLAIN);
+const oauthStatePath = (): string => path.join(app.getPath('userData'), OAUTH_STATE_FILE);
 
 function envToken(): string | null {
   const raw = process.env.ADS_TRACKER_API_TOKEN?.trim();
@@ -111,4 +115,106 @@ export async function clearToken(): Promise<void> {
       }
     }
   }
+}
+
+// =============================================================================
+// OAuth CSRF state (Amazon Ads OAuth-флоу)
+// =============================================================================
+//
+// Renderer:
+//   1. Перед startOAuth — генерирует random state (crypto.randomUUID()).
+//   2. Вызывает window.api.oauth.writeState(state) → main пишет в safeStorage.
+//   3. Юзер уходит в браузер, авторизует.
+//   4. Браузер шлёт deeplink ads-tracker-desktop://callback?code=…&state=…
+//   5. main → renderer (DeepLink event).
+//   6. Renderer вызывает window.api.oauth.consumeState() → получает saved + clears.
+//   7. Сравнивает saved === url.searchParams.state. Только при совпадении —
+//      завершает OAuth (POST /oauth/callback).
+//
+// Хранение в safeStorage (а не in-memory) — чтобы пережить рестарт app:
+// если юзер запустил OAuth, app крэшнул, юзер открыл Amazon, ОС приоткрыла
+// нашу app через deeplink — мы должны помнить state, иначе вечный «mismatch».
+//
+// Fallback: если safeStorage недоступен — пишем plain (mode 0o600). State
+// не настолько чувствителен, как auth token (он одноразовый и истекает с
+// OAuth-сессией Amazon ~10 мин), но всё же шифруем когда можем.
+
+const OAUTH_STATE_FALLBACK_FILE = 'oauth-state.txt';
+const oauthStateFallbackPath = (): string =>
+  path.join(app.getPath('userData'), OAUTH_STATE_FALLBACK_FILE);
+
+// In-memory mirror: oauth state живёт коротко (минуты). Если процесс не
+// перезапускался между write и consume — берём из памяти, не трогаем диск.
+let pendingOAuthStateMemory: string | null = null;
+
+export async function writePendingOAuthState(state: string): Promise<void> {
+  if (typeof state !== 'string' || state.length === 0) {
+    throw new Error('writePendingOAuthState: state must be a non-empty string');
+  }
+  pendingOAuthStateMemory = state;
+  // Чистим оба файла перед записью — чтобы не было stale state с прошлой
+  // попытки (юзер начал OAuth → закрыл браузер → начал заново с новым state).
+  for (const p of [oauthStatePath(), oauthStateFallbackPath()]) {
+    try {
+      await fs.unlink(p);
+    } catch {
+      // ignore: ENOENT в норме
+    }
+  }
+  if (safeStorage.isEncryptionAvailable()) {
+    const encrypted = safeStorage.encryptString(state);
+    await fs.writeFile(oauthStatePath(), encrypted, { mode: 0o600 });
+    return;
+  }
+  // Fallback: plain. Mode 0o600 — только владельцу.
+  await fs.writeFile(oauthStateFallbackPath(), state, {
+    encoding: 'utf8',
+    mode: 0o600,
+  });
+}
+
+async function readEncryptedOAuthState(): Promise<string | null> {
+  if (!safeStorage.isEncryptionAvailable()) return null;
+  try {
+    const buf = await fs.readFile(oauthStatePath());
+    return safeStorage.decryptString(buf);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    return null;
+  }
+}
+
+async function readPlainOAuthState(): Promise<string | null> {
+  try {
+    const txt = await fs.readFile(oauthStateFallbackPath(), 'utf8');
+    const trimmed = txt.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    return null;
+  }
+}
+
+/**
+ * One-shot read: вернуть сохранённый state и **сразу** очистить его.
+ * Это критично — если callback приходит дважды (юзер ткнул кнопку 2 раза),
+ * второй раз должен фейлиться, а не реюзать старый state.
+ */
+export async function consumePendingOAuthState(): Promise<string | null> {
+  // Приоритет: in-memory (если пишущий процесс — тот же).
+  let state: string | null = pendingOAuthStateMemory;
+  if (!state) state = await readEncryptedOAuthState();
+  if (!state) state = await readPlainOAuthState();
+
+  // Очищаем всё — даже если ничего не нашли (на случай stale plain-файла).
+  pendingOAuthStateMemory = null;
+  for (const p of [oauthStatePath(), oauthStateFallbackPath()]) {
+    try {
+      await fs.unlink(p);
+    } catch {
+      // ignore: ENOENT в норме
+    }
+  }
+
+  return state;
 }

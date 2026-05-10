@@ -97,7 +97,7 @@ export function installMockApi(options: MockApiOptions = {}): void {
       getToken: vi.fn(async () => options.token ?? 'at_live_test_token_xxxxxxxx'),
       setToken: vi.fn(async () => undefined),
       clearToken: vi.fn(async () => undefined),
-      // 401 push-event from main; tests don't need to fire it, just unsubscribe noop.
+      // Phase I.4 Lane D: 401 push-event from main. Default noop subscribe.
       onExpired: vi.fn(() => () => undefined),
     },
     request,
@@ -106,6 +106,7 @@ export function installMockApi(options: MockApiOptions = {}): void {
     shell: {
       openExternal: vi.fn(async () => undefined),
     },
+    // Phase I.4 Lane D: OAuth CSRF state. Default mocks return empty state.
     oauth: {
       writeState: vi.fn(async () => undefined),
       consumeState: vi.fn(async () => null),

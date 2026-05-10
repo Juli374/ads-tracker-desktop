@@ -7,12 +7,20 @@ export const IpcChannel = {
   AuthGetToken: 'auth:getToken',
   AuthSetToken: 'auth:setToken',
   AuthClearToken: 'auth:clearToken',
+  // Pub/sub event: main → renderer когда сервер вернул 401 (токен протух).
+  // Renderer слушает и автоматически делает signOut + редирект на LoginScreen.
+  AuthExpired: 'auth:expired',
   ApiRequest: 'api:request',
   MediaUpload: 'media:upload',
   // Pub/sub event: main → renderer когда пришёл deeplink ads-tracker-desktop://...
   DeepLink: 'app:deepLink',
   // Открыть URL во внешнем браузере (для OAuth-флоу).
   ShellOpenExternal: 'shell:openExternal',
+  // OAuth state CSRF-protection: renderer генерирует state, шлёт в main, main
+  // хранит в safeStorage. После deeplink-callback'а — renderer consume'ит и
+  // сверяет с тем, что пришло в URL. Не совпало — отказ.
+  OAuthStateWrite: 'oauth:state:write',
+  OAuthStateConsume: 'oauth:state:consume',
   // Локальный royalty store (public-release scaffold). Все каналы синхронные
   // через ipcMain.handle (read из JSON быстрый, не блокирует event-loop в renderer).
   LocalRoyaltyListUploads: 'local:royalty:listUploads',
@@ -60,12 +68,28 @@ export interface ApiRequestPayload {
   body?: unknown;
 }
 
+/**
+ * Машинно-читаемые коды ошибок API. Используются renderer'ом для UX-веток
+ * (timeout → retry-screen, tier_required → upgrade modal, etc).
+ *
+ * Не путать со статусом HTTP — `code` отражает категорию ошибки,
+ * `status` — то, что сказал сервер (или 0 при сетевых проблемах).
+ */
+export type ApiErrorCode =
+  | 'TIMEOUT'           // AbortSignal.timeout сработал (10s)
+  | 'NETWORK'           // net.fetch упал до получения ответа
+  | 'UNAUTHORIZED'      // 401 — токен протух / неверен
+  | 'TIER_REQUIRED'     // 403 с reason:'tier_required' (Phase K)
+  | 'SERVER';           // прочие 4xx/5xx
+
 export interface ApiResponse<T = unknown> {
   status: number;
   ok: boolean;
   data: T | null;
   // Когда ok=false: текст ошибки от сервера или сетевое сообщение.
   error?: string;
+  // Когда ok=false: машинно-читаемый код. Renderer ветвится по нему.
+  code?: ApiErrorCode;
 }
 
 // === Multipart upload ===
@@ -103,6 +127,25 @@ export interface MediaUploadResponse<T = unknown> {
 export interface DeepLinkEvent {
   url: string;
 }
+
+// === Auth lifecycle (push events main → renderer) ===
+
+/**
+ * Событие "сессия истекла" — main эмитит при получении 401 от backend.
+ * Renderer слушает в AuthContext, делает signOut + редирект на LoginScreen.
+ * `reason` отражает что именно случилось (для логов/UX-варианта тоста).
+ */
+export interface AuthExpiredEvent {
+  reason: 'token_invalid' | 'token_revoked' | 'unknown';
+  // Путь, на котором сервер ответил 401 — для дебага.
+  path?: string;
+}
+
+// === OAuth CSRF state ===
+// Renderer генерирует random state, шлёт write → main хранит в safeStorage.
+// После deeplink-callback'а — renderer вызывает consume → main возвращает
+// сохранённый state и **сразу** очищает (one-shot). Renderer сравнивает с
+// тем, что пришло в URL, и только при совпадении завершает OAuth.
 
 // === Local royalty (зеркалит shape main/local-db/royalty.ts) ===
 export interface LocalRoyaltyUpload {
@@ -215,6 +258,12 @@ export interface DesktopApi {
     getToken(): Promise<string | null>;
     setToken(token: string): Promise<void>;
     clearToken(): Promise<void>;
+    /**
+     * Подписка на push-event "сессия истекла" (main эмитит при получении 401
+     * от backend). Возвращает unsubscribe. AuthContext делает signOut +
+     * редирект на LoginScreen + показывает тост "Сессия истекла".
+     */
+    onExpired(handler: (event: AuthExpiredEvent) => void): () => void;
   };
   request<T = unknown>(payload: ApiRequestPayload): Promise<ApiResponse<T>>;
   mediaUpload<T = unknown>(payload: MediaUploadPayload): Promise<MediaUploadResponse<T>>;
@@ -228,6 +277,16 @@ export interface DesktopApi {
      * Whitelisted to <logs>/ and <userData>/ subtrees in the main handler.
      */
     showItemInFolder(filePath: string): Promise<void>;
+  };
+  /**
+   * OAuth CSRF state: write/consume через safeStorage в main.
+   * One-shot: consume возвращает saved state и сразу его очищает.
+   */
+  oauth: {
+    /** Сохранить random state перед запуском OAuth-флоу. */
+    writeState(state: string): Promise<void>;
+    /** Прочитать и очистить сохранённый state. Возвращает null, если ничего не было. */
+    consumeState(): Promise<string | null>;
   };
   // Public-release scaffold: локальное хранилище royalty.
   localRoyalty: {
