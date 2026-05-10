@@ -1,0 +1,55 @@
+name: CI
+
+# Pull-request gate — must stay green before merge into main.
+# No secrets are used here so forks can run it identically.
+# Stops at `npm run package` (no `make`, no signing) — see `release.yml`
+# for tagged release builds.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Lock down GITHUB_TOKEN: read-only is plenty for CI.
+permissions:
+  contents: read
+
+# If the same PR pushes a new commit, cancel the previous run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Lint, type-check, test, package (Linux)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test
+
+      # `package` produces an unsigned binary — proves forge.config.ts is sane
+      # and webpack/main/preload all build. We do NOT run `make` here because
+      # it pulls in maker-deb / maker-rpm and adds 2-3 minutes for no extra
+      # signal on a PR. Tag builds (release.yml) handle full make.
+      - name: Verify packaging config
+        run: npm run package
