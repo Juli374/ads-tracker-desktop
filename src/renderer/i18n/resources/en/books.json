@@ -16,7 +16,12 @@
     "noData": "No data for the selected period."
   },
   "th": {
-    "book": "Book"
+    "book": "Book",
+    "bsr": "BSR",
+    "ratings": "Rating",
+    "royalty": "Royalty/pg",
+    "beAcos": "BE-ACOS",
+    "maxCpc": "Max CPC"
   },
   "row": {
     "openCampaigns": "Open campaigns for this book",
@@ -24,5 +29,96 @@
     "expandAria": "Expand marketplaces",
     "collapseAria": "Collapse"
   },
-  "search": "Search…"
+  "search": "Search…",
+  "drill": {
+    "breadcrumbAll": "Books",
+    "marketplaces": "Marketplaces",
+    "campaigns": "Campaigns",
+    "empty": "No data for this marketplace."
+  },
+  "bsr": {
+    "title": "BSR",
+    "modalTitle": "BSR History (last 168h)",
+    "hour": "Time",
+    "value": "Rank",
+    "empty": "No BSR data available.",
+    "loadFailed": "Failed to load BSR history"
+  },
+  "ratings": {
+    "stars": "{stars} stars",
+    "count": "{count} ratings",
+    "empty": "—"
+  },
+  "kdp": {
+    "royalty": "Royalty/pg",
+    "beAcos": "BE-ACOS",
+    "maxCpc": "Max CPC",
+    "errors": {
+      "loadFailed": "Failed to load KDP metrics"
+    }
+  },
+  "modals": {
+    "edit": {
+      "title": "Edit Book",
+      "save": "Save",
+      "cancel": "Cancel",
+      "fields": {
+        "title": "Title",
+        "subtitle": "Subtitle",
+        "author": "Author",
+        "account": "Account",
+        "beAcos": "Break-Even ACOS (%)",
+        "maxCpc": "Max CPC ($)",
+        "royaltyPct": "Royalty %",
+        "organicBaseline": "Organic baseline (orders/day)"
+      },
+      "errors": {
+        "saveFailed": "Failed to save changes",
+        "titleRequired": "Title is required"
+      }
+    },
+    "delete": {
+      "title": "Remove Book",
+      "confirm": "Are you sure you want to remove this book?",
+      "archive": "Archive",
+      "archiveHint": "Archiving hides the book from active lists but preserves all data.",
+      "delete": "Delete permanently",
+      "cancel": "Cancel",
+      "errors": {
+        "failed": "Failed to archive/delete book"
+      }
+    },
+    "addAsin": {
+      "title": "Add ASIN",
+      "marketplace": "Marketplace",
+      "asin": "ASIN",
+      "save": "Add",
+      "cancel": "Cancel",
+      "errors": {
+        "required": "Marketplace and ASIN are required",
+        "saveFailed": "Failed to add ASIN"
+      }
+    },
+    "uploadCover": {
+      "title": "Upload Cover",
+      "picker": "Choose image file (JPG, PNG)",
+      "save": "Upload",
+      "uploading": "Uploading…",
+      "cancel": "Cancel",
+      "error": "Failed to upload cover"
+    },
+    "addChange": {
+      "title": "Log Content Change",
+      "save": "Save",
+      "cancel": "Cancel",
+      "fields": {
+        "type": "Change type",
+        "note": "Note",
+        "date": "Date"
+      },
+      "errors": {
+        "saveFailed": "Failed to save change"
+      }
+    }
+  }
 }

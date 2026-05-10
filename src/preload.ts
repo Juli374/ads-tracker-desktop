@@ -8,6 +8,7 @@ import {
   MediaUploadResponse,
   DeepLinkEvent,
   LocalRoyaltyImportPayload,
+  MediaUploadPayload,
   UpdateStatus,
 } from './shared/ipc';
 
@@ -49,6 +50,8 @@ const api: DesktopApi = {
     getStatus: () => ipcRenderer.invoke(IpcChannel.UpdateGetStatus) as Promise<UpdateStatus>,
     check: () => ipcRenderer.invoke(IpcChannel.UpdateCheck) as Promise<UpdateStatus>,
   },
+  mediaUpload: <T = unknown>(payload: MediaUploadPayload) =>
+    ipcRenderer.invoke(IpcChannel.MediaUpload, payload) as Promise<import('./shared/ipc').MediaUploadResponse<T>>,
 };
 
 contextBridge.exposeInMainWorld('api', api);

@@ -24,6 +24,8 @@ export const IpcChannel = {
   // Auto-update placeholder: renderer запрашивает статус, main отдаёт 'idle' до подключения electron-updater.
   UpdateGetStatus: 'update:getStatus',
   UpdateCheck: 'update:check',
+  // Media upload: renderer sends base64 file data, main builds multipart and calls net.fetch.
+  MediaUpload: 'media:upload',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -158,6 +160,28 @@ export interface UpdateStatus {
   enabled: boolean;
 }
 
+
+// === Media upload (covers, xlsx, etc.) ===
+export interface MediaUploadFile {
+  field: string;        // FormData field name
+  name: string;         // Original filename
+  base64: string;       // Base64-encoded file data (without data-URL prefix)
+  contentType: string;
+}
+
+export interface MediaUploadPayload {
+  path: string;         // API path, e.g. /api/books/42/cover
+  files: MediaUploadFile[];
+  formFields?: Record<string, string>;
+}
+
+export interface MediaUploadResponse<T = unknown> {
+  status: number;
+  ok: boolean;
+  data: T | null;
+  error?: string;
+}
+
 // API, который выставляется в renderer через contextBridge как window.api
 export interface DesktopApi {
   app: {
@@ -190,4 +214,5 @@ export interface DesktopApi {
     getStatus(): Promise<UpdateStatus>;
     check(): Promise<UpdateStatus>;
   };
+  mediaUpload<T = unknown>(payload: MediaUploadPayload): Promise<MediaUploadResponse<T>>;
 }

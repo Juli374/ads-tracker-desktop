@@ -1,5 +1,5 @@
 import { describe, it, beforeEach, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 
@@ -13,7 +13,13 @@ import { GlobalFiltersProvider } from '../../contexts/GlobalFiltersContext';
 import { installMockApi, mockApiResponses } from '../../../test/mockApi';
 
 beforeEach(() => {
-  installMockApi({ responses: mockApiResponses() });
+  installMockApi({
+    responses: {
+      ...mockApiResponses(),
+      '/api/ratings/all-books': { ratings: [] },
+      // Keep the mockApiResponses campaign list so CampaignDetails test can find 'Test Campaign'
+    },
+  });
 });
 
 const renderApp = () =>
@@ -32,7 +38,7 @@ const renderApp = () =>
   );
 
 describe('drill-down navigation', () => {
-  it('Books → Campaigns: клик по строке книги ставит global bookId и переключает на Campaigns', async () => {
+  it('Books: clicking book row drills to marketplaces panel', async () => {
     const user = userEvent.setup();
     renderApp();
 
@@ -40,18 +46,13 @@ describe('drill-down navigation', () => {
     await user.click(screen.getByTestId('nav-books'));
 
     await screen.findByTestId('books-page');
-    const bookCell = await screen.findByText('Test Book');
-    await user.click(bookCell);
+    const bookRow = await screen.findByTestId('book-row-1');
+    fireEvent.click(bookRow);
 
-    expect(
-      await screen.findByTestId('campaigns-page'),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByLabelText('globalFilters.books.resetAria'),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('books-marketplaces-panel')).toBeInTheDocument();
   });
 
-  it('Campaigns → CampaignDetails: клик по строке кампании ведёт на детали', async () => {
+  it('Campaigns → CampaignDetails: click on campaign row opens details', async () => {
     const user = userEvent.setup();
     renderApp();
 
@@ -62,10 +63,10 @@ describe('drill-down navigation', () => {
     const campaignRow = await screen.findByText('Test Campaign');
     await user.click(campaignRow);
 
-    // На детали попадаем — заголовок страницы = имя кампании.
+    // Details page renders - heading = campaign name.
     const headings = await screen.findAllByRole('heading', { name: 'Test Campaign' });
     expect(headings.length).toBeGreaterThan(0);
-    // Табы рендерятся
+    // Tabs render
     expect(await screen.findByTestId('details-tab-ad_groups')).toBeInTheDocument();
     expect(await screen.findByTestId('details-tab-targets')).toBeInTheDocument();
   });

@@ -7,6 +7,7 @@
   "tabs": {
     "ariaLabel": "Settings tab: {label}",
     "application": "Application",
+    "books": "Books",
     "credentials": "Credentials",
     "profiles": "Profiles",
     "profilesWithCount": "Profiles ({count})",
@@ -16,6 +17,33 @@
     "searchTerm": "Search Term",
     "royalties": "Royalties",
     "stream": "Stream"
+  },
+  "booksTab": {
+    "search": "Search books…",
+    "showArchived": "Show archived",
+    "noBooks": "No books found.",
+    "archived": "Archived",
+    "active": "Active",
+    "detailsPlaceholder": "Select a book to view details.",
+    "asins": "ASINs",
+    "noAsins": "No ASINs configured.",
+    "addAsin": "Add ASIN",
+    "openAmazon": "Open on Amazon",
+    "editAsin": "Edit ASIN",
+    "deleteAsin": "Remove ASIN",
+    "editBook": "Edit Book",
+    "deleteBook": "Remove Book",
+    "uploadCover": "Upload Cover",
+    "coverPreview": "Cover preview",
+    "fields": {
+      "title": "Title",
+      "author": "Author",
+      "account": "Account",
+      "beAcos": "BE-ACOS (%)",
+      "maxCpc": "Max CPC ($)",
+      "royaltyPct": "Royalty %",
+      "organicBaseline": "Organic baseline"
+    }
   },
   "ai": {
     "cardTitle": "AI Assistant (Anthropic)",

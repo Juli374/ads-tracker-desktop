@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Activity,
+  BookOpen,
   Coins,
   Cpu,
   FileSearch,
@@ -14,6 +15,7 @@ import {
 
 export type SettingsTabId =
   | 'application'
+  | 'books'
   | 'credentials'
   | 'profiles'
   | 'token'
@@ -30,6 +32,7 @@ interface TabSpec {
 
 const TABS: TabSpec[] = [
   { id: 'application', icon: Cpu },
+  { id: 'books', icon: BookOpen },
   { id: 'credentials', icon: Server },
   { id: 'profiles', icon: Users },
   { id: 'token', icon: KeyRound },
