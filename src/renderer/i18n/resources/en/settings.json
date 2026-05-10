@@ -11,7 +11,8 @@
     "profiles": "Profiles",
     "profilesWithCount": "Profiles ({count})",
     "token": "Token",
-    "ai": "AI"
+    "ai": "AI",
+    "stream": "Stream"
   },
   "ai": {
     "cardTitle": "AI Assistant (Anthropic)",
@@ -97,6 +98,40 @@
     "language": "Language",
     "languageEn": "English",
     "languageRu": "Русский (coming soon)"
+  },
+  "stream": {
+    "title": "Marketing Stream",
+    "kpi": {
+      "totalEvents": "Total Events",
+      "last24h": "Last 24h",
+      "last7d": "Last 7d",
+      "status": "Status"
+    },
+    "status": {
+      "idle": "Idle",
+      "running": "Running",
+      "error": "Error"
+    },
+    "history": {
+      "title": "Sync History",
+      "empty": "No sync runs yet.",
+      "loadFailed": "Failed to load sync history.",
+      "th": {
+        "startedAt": "Started",
+        "status": "Status",
+        "events": "Events",
+        "duration": "Duration"
+      }
+    },
+    "audit": {
+      "title": "Audit Log",
+      "empty": "No audit entries.",
+      "loadFailed": "Failed to load audit log."
+    },
+    "countdown": {
+      "nextRun": "Next run in {duration}",
+      "never": "No scheduled run."
+    }
   },
   "userMenu": {
     "userAria": "User menu",
