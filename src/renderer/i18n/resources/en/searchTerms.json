@@ -4,13 +4,28 @@
   "subtitle": "{from} → {to} · {count, plural, one {# term} other {# terms}}",
   "errors": {
     "load": "Failed to load search terms",
-    "addNegative": "Failed to add negative"
+    "addNegative": "Failed to add negative",
+    "snooze": "Failed to snooze",
+    "pause": "Failed to pause",
+    "move": "Failed to move",
+    "bulkStatus": "Failed to update status",
+    "rankHistory": "Failed to load rank history",
+    "trend": "Failed to load trend"
   },
   "kpi": {
     "terms": "Terms",
     "spend": "Spend",
     "orders": "Orders",
     "acos": "ACOS"
+  },
+  "tabs": {
+    "inbox": "Inbox",
+    "snoozed": "Snoozed",
+    "done": "Done",
+    "archived_pause": "Paused",
+    "archived_final": "Archive",
+    "all": "All",
+    "ariaLabel": "Inbox status filter"
   },
   "card": {
     "title": "Terms",
@@ -49,16 +64,139 @@
     "spend": "Spend",
     "sales": "Sales",
     "orders": "Orders",
-    "acos": "ACOS"
+    "acos": "ACOS",
+    "select": "Select"
   },
   "empty": {
     "noResults": "Nothing found.",
     "noResultsHint": "Try a different query or widen the range.",
-    "noPeriod": "No terms in the selected period."
+    "noPeriod": "No terms in the selected period.",
+    "tabInbox": "Inbox is empty.",
+    "tabSnoozed": "No snoozed terms.",
+    "tabDone": "Nothing marked done yet.",
+    "tabArchivedPause": "No paused terms.",
+    "tabArchivedFinal": "Archive is empty.",
+    "tabAll": "No terms in the selected period."
   },
   "negative": {
     "trigger": "Add as negative",
     "menuTitle": "Match type",
     "added": "Added as negative ({matchType})"
+  },
+  "rightPane": {
+    "title": "Negative lists",
+    "hint": "Manage shared negatives across books and campaigns.",
+    "toggleShow": "Show lists",
+    "toggleHide": "Hide lists"
+  },
+  "bulk": {
+    "selected": "{count, plural, one {# term selected} other {# terms selected}}",
+    "clear": "Clear",
+    "actions": {
+      "done": "Mark done",
+      "snooze": "Snooze…",
+      "pause": "Pause…",
+      "move": "Move…",
+      "negative": "Add negatives",
+      "track": "Track rank",
+      "returnInbox": "Return to inbox",
+      "archiveFinal": "Archive"
+    },
+    "results": {
+      "snoozed": "Snoozed {count}",
+      "paused": "Paused {count}",
+      "moved": "Moved {count}",
+      "marked": "Updated {count}"
+    }
+  },
+  "snooze": {
+    "title": "Snooze",
+    "subtitle": "{count, plural, one {# term} other {# terms}}",
+    "presetLabel": "Snooze for",
+    "preset": {
+      "1d": "1 day",
+      "3d": "3 days",
+      "7d": "7 days",
+      "custom": "Custom date"
+    },
+    "customDateLabel": "Until",
+    "customDateHint": "Pick a future date — terms return to inbox the day after.",
+    "reasonLabel": "Reason",
+    "reasonOptional": "(optional)",
+    "reasonPlaceholder": "e.g. waiting for new ad creative",
+    "submit": "Snooze",
+    "cancel": "Cancel",
+    "closeAria": "Close snooze modal",
+    "errors": {
+      "futureDateRequired": "Pick a date in the future"
+    }
+  },
+  "pause": {
+    "title": "Pause",
+    "subtitle": "{count, plural, one {# term} other {# terms}}",
+    "info": "Pause is for keywords that aren't working now but might be useful later. After the period they will return to inbox automatically.",
+    "presetLabel": "Return after",
+    "preset": {
+      "30d": "30 days",
+      "60d": "60 days (recommended)",
+      "90d": "90 days",
+      "120d": "120 days"
+    },
+    "reasonLabel": "Reason",
+    "reasonOptional": "(optional)",
+    "reasonPlaceholder": "e.g. seasonal — revisit in Q4",
+    "submit": "Pause",
+    "cancel": "Cancel",
+    "closeAria": "Close pause modal"
+  },
+  "move": {
+    "title": "Move to ad-group",
+    "subtitle": "{count, plural, one {# term} other {# terms}}",
+    "adGroupLabel": "Target ad-group",
+    "adGroupPlaceholder": "Select ad-group",
+    "matchTypeLabel": "Match type",
+    "bidLabel": "Bid",
+    "bidPlaceholder": "0.75",
+    "addNegativeLabel": "Add negative in source ad-group (avoids cannibalization)",
+    "submit": "Move",
+    "cancel": "Cancel",
+    "closeAria": "Close move modal",
+    "errors": {
+      "adGroupRequired": "Pick a target ad-group",
+      "noCampaigns": "No campaigns found for this book"
+    }
+  },
+  "rankHistory": {
+    "title": "Organic rank: {keyword}",
+    "periodLabel": "Period",
+    "period": {
+      "30d": "30 days",
+      "60d": "60 days",
+      "90d": "90 days"
+    },
+    "yLabel": "Position",
+    "empty": "No rank data yet.",
+    "unsupported": "Endpoint not available — backend doesn't expose rank history yet.",
+    "close": "Close",
+    "closeAria": "Close rank history modal"
+  },
+  "trend": {
+    "title": "Trend: {keyword}",
+    "periodLabel": "Period",
+    "period": {
+      "14d": "14 days",
+      "30d": "30 days",
+      "60d": "60 days"
+    },
+    "metric": {
+      "clicks": "Clicks",
+      "spend": "Spend",
+      "orders": "Orders",
+      "sales": "Sales"
+    },
+    "empty": "No trend data yet.",
+    "unsupported": "Endpoint not available — backend doesn't expose per-term trend yet.",
+    "close": "Close",
+    "closeAria": "Close trend modal"
   }
 }
