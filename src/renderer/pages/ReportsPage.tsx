@@ -45,6 +45,8 @@ import {
 import { useBooks } from '../contexts/BooksContext';
 import { BreakdownTab } from '../components/reports/BreakdownTab';
 import { MatrixTab } from '../components/reports/MatrixTab';
+import { HourlyTab } from '../components/reports/HourlyTab';
+import { BudgetPacingTab } from '../components/reports/BudgetPacingTab';
 
 type ReportTab =
   | 'overview'
@@ -58,7 +60,9 @@ type ReportTab =
   | 'match_type'
   | 'targeting_type'
   | 'bidding_strategy'
-  | 'campaign_type';
+  | 'campaign_type'
+  | 'hourly'
+  | 'budget_pacing';
 
 const TAB_IDS: ReportTab[] = [
   'overview',
@@ -73,10 +77,12 @@ const TAB_IDS: ReportTab[] = [
   'targeting_type',
   'bidding_strategy',
   'campaign_type',
+  'hourly',
+  'budget_pacing',
 ];
 
 const BREAKDOWN_CONFIG: Record<
-  Exclude<ReportTab, 'overview' | 'matrix'>,
+  Exclude<ReportTab, 'overview' | 'matrix' | 'hourly' | 'budget_pacing'>,
   { endpoint: string; pluralKey: string; dimensionField: string }
 > = {
   marketplace: {
@@ -336,7 +342,7 @@ export const ReportsPage: React.FC = () => {
         })}
       </div>
 
-      {tab !== 'overview' && tab !== 'matrix' && (
+      {tab !== 'overview' && tab !== 'matrix' && tab !== 'hourly' && tab !== 'budget_pacing' && (
         <BreakdownTab
           {...BREAKDOWN_CONFIG[tab]}
           dimensionLabel={t(`tabs.${tab}` as 'tabs.placement')}
@@ -361,6 +367,29 @@ export const ReportsPage: React.FC = () => {
           from={from}
           to={to}
           attribution="7d"
+          marketplaces={
+            globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
+          }
+          bookIds={globalFilters.bookId != null ? [globalFilters.bookId] : undefined}
+          accounts={globalFilters.accounts.length ? globalFilters.accounts : undefined}
+        />
+      )}
+
+      {tab === 'hourly' && (
+        <HourlyTab
+          from={from}
+          to={to}
+          attribution="7d"
+          marketplaces={
+            globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
+          }
+          bookIds={globalFilters.bookId != null ? [globalFilters.bookId] : undefined}
+          accounts={globalFilters.accounts.length ? globalFilters.accounts : undefined}
+        />
+      )}
+
+      {tab === 'budget_pacing' && (
+        <BudgetPacingTab
           marketplaces={
             globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
           }

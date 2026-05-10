@@ -20,7 +20,9 @@
     "match_type": "Match type",
     "targeting_type": "Targeting",
     "bidding_strategy": "Bidding strategy",
-    "campaign_type": "Campaign type"
+    "campaign_type": "Campaign type",
+    "hourly": "Hourly",
+    "budget_pacing": "Budget Pacing"
   },
   "matrix": {
     "title": "Books × Marketplaces matrix",
@@ -94,5 +96,57 @@
       "orders": "Orders",
       "acos": "ACOS"
     }
+  },
+  "hourly": {
+    "title": "Hourly heatmap (day × hour)",
+    "empty": "No hourly data for this period",
+    "loadFailed": "Failed to load hourly data",
+    "unsupported": "Hourly breakdown is unavailable for this account.",
+    "totalLabel": "Total: {total}",
+    "drillLabel": "{dow} {hour}",
+    "drillClear": "Clear",
+    "metric": {
+      "spend": "Spend",
+      "sales": "Sales",
+      "orders": "Orders",
+      "acos": "ACOS"
+    },
+    "legend": {
+      "low": "Low",
+      "high": "High"
+    },
+    "dow": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  },
+  "pacing": {
+    "title": "Month-to-date budget pacing",
+    "empty": "No active budgets configured",
+    "loadFailed": "Failed to load budget pacing",
+    "unsupported": "Budget pacing endpoint is not available for this account.",
+    "th": {
+      "campaign": "Campaign",
+      "marketplace": "MP",
+      "budget": "Budget",
+      "spent": "Spent (MTD)",
+      "utilization": "Used %",
+      "projected": "Projected",
+      "trend": "Trend",
+      "status": "Status"
+    },
+    "status": {
+      "under": "Under-pace",
+      "on": "On pace",
+      "over": "Over-pace"
+    }
+  },
+  "exportButton": {
+    "label": "Export"
   }
 }
