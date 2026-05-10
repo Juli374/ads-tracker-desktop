@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hardened-runtime entitlements для signed Developer ID builds.
+
+  Минимально-необходимый набор:
+  - com.apple.security.cs.allow-jit:
+      Electron использует V8 → V8 JIT-компилирует JS в native code. Без этой
+      entitlement signed-build падает с EXC_BAD_ACCESS на первом JIT-кодировании.
+
+  Сознательно НЕ включаем:
+  - com.apple.security.cs.disable-library-validation:
+      Открывает загрузку чужих .dylib — нам не нужно (нет нативных модулей,
+      загружаемых вне нашего бандла). Если позже появится native dependency,
+      требующий unsigned dylib — сначала убедиться что нет signed альтернативы.
+  - com.apple.security.cs.allow-unsigned-executable-memory:
+      Покрывается allow-jit для современного V8.
+  - com.apple.security.cs.allow-dyld-environment-variables:
+      Не требуется и расширяет attack surface.
+
+  Используется через forge.config.ts → packagerConfig.osxSign:
+    entitlements: 'assets/entitlements.plist',
+    'entitlements-inherit': 'assets/entitlements.plist',
+
+  Reference: electron-knowledge-base/atlas/core/05-packaging-and-signing.md#L112
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+</dict>
+</plist>
