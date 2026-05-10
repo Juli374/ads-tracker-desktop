@@ -1,11 +1,25 @@
-import React, { useState } from 'react';
-import { KeyRound, Loader2, Mail } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { KeyRound, Loader2, Mail, RefreshCw, WifiOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../api/auth';
 import { ApiError } from '../api/client';
 
 type Mode = 'email' | 'token';
+
+/**
+ * Решает, показывать ли dedicated retry-screen вместо обычной формы:
+ * срабатывает при TIMEOUT (AbortSignal.timeout сработал в main) или при
+ * NETWORK (net.fetch упал до получения ответа). Cтатус 0 в legacy-ветке
+ * (если по какой-то причине code не пришёл) тоже считаем сетевой ошибкой.
+ */
+function isNetworkUnreachable(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return false;
+  if (err.code === 'TIMEOUT' || err.code === 'NETWORK') return true;
+  // Fallback на legacy-ответы без code: status 0 = network failure.
+  if (err.code === undefined && err.status === 0) return true;
+  return false;
+}
 
 export const LoginScreen: React.FC = () => {
   const { t } = useTranslation('auth');
@@ -16,6 +30,44 @@ export const LoginScreen: React.FC = () => {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  // Когда true — рисуем retry-экран вместо формы. Сбрасывается по кнопке Retry.
+  const [networkUnreachable, setNetworkUnreachable] = useState(false);
+  const [apiHost, setApiHost] = useState<string>('');
+
+  // Тянем base URL для красивого отображения хоста на retry-экране.
+  // Падать если не получили — не страшно, экран просто покажет дефолтный текст.
+  useEffect(() => {
+    let cancelled = false;
+    void window.api?.app
+      ?.getApiBaseUrl()
+      .then((url) => {
+        if (cancelled) return;
+        try {
+          const u = new URL(url);
+          setApiHost(u.host);
+        } catch {
+          setApiHost(url);
+        }
+      })
+      .catch(() => {
+        // ignore: pretty host — nice-to-have, не критично.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleAuthError = (err: unknown, fallbackKey: 'errors.loginFailed' | 'errors.tokenVerifyFailed') => {
+    if (isNetworkUnreachable(err)) {
+      setNetworkUnreachable(true);
+      return;
+    }
+    if (err instanceof ApiError && err.status === 401) {
+      setLocalError(t('errors.invalidCredentials'));
+      return;
+    }
+    setLocalError(err instanceof Error ? err.message : t(fallbackKey));
+  };
 
   const onEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,11 +78,7 @@ export const LoginScreen: React.FC = () => {
       const res = await authApi.login(email.trim(), password);
       await saveTokenAndVerify(res.access_token);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setLocalError(t('errors.invalidCredentials'));
-      } else {
-        setLocalError(err instanceof Error ? err.message : t('errors.loginFailed'));
-      }
+      handleAuthError(err, 'errors.loginFailed');
     } finally {
       setBusy(false);
     }
@@ -44,11 +92,52 @@ export const LoginScreen: React.FC = () => {
     try {
       await saveTokenAndVerify(token.trim());
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : t('errors.tokenVerifyFailed'));
+      handleAuthError(err, 'errors.tokenVerifyFailed');
     } finally {
       setBusy(false);
     }
   };
+
+  // Retry-screen для TIMEOUT / NETWORK. Не показываем raw error message —
+  // юзер не должен видеть "AbortError" или "fetch failed", это бесполезный шум.
+  if (networkUnreachable) {
+    return (
+      <div
+        className="h-screen w-screen flex items-center justify-center bg-zinc-50"
+        data-testid="login-screen-retry"
+      >
+        <div className="w-full max-w-md mx-auto px-8">
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden">
+            <div className="px-7 pt-7 pb-6 text-center">
+              <div className="w-10 h-10 rounded-lg bg-red-50 mx-auto flex items-center justify-center mb-4">
+                <WifiOff size={18} strokeWidth={2.2} className="text-red-600" />
+              </div>
+              <h1 className="text-base font-semibold text-zinc-900 tracking-tight">
+                {t('retry.title')}
+              </h1>
+              <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
+                {t('retry.description', { host: apiHost || t('appName') })}
+              </p>
+            </div>
+            <div className="px-7 pb-7">
+              <button
+                type="button"
+                data-testid="login-retry-button"
+                onClick={() => {
+                  setNetworkUnreachable(false);
+                  setLocalError(null);
+                }}
+                className={submitClass}
+              >
+                <RefreshCw size={14} />
+                {t('retry.button')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const displayError = localError ?? ctxError;
 
