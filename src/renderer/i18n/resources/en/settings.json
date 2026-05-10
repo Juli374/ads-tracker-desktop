@@ -130,6 +130,18 @@
     "languageEn": "English",
     "languageRu": "Русский (coming soon)"
   },
+  "about": {
+    "cardTitle": "About",
+    "appName": "App",
+    "appNameValue": "Ads Tracker",
+    "version": "Version",
+    "commit": "Commit",
+    "license": "License",
+    "licenseValue": "MIT",
+    "repo": "Repository",
+    "repoLink": "github.com/Juli374/ads-tracker-desktop",
+    "openRepoAria": "Open project repository on GitHub"
+  },
   "fullSync": {
     "title": "Full Sync",
     "queueTitle": "Job Queue",
