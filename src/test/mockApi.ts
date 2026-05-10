@@ -92,6 +92,10 @@ export function installMockApi(options: MockApiOptions = {}): void {
         ...options.appInfo,
       })),
       getApiBaseUrl: vi.fn(async () => options.apiBaseUrl ?? 'https://test.local'),
+      // Phase I.2 Lane B
+      getLogPath: vi.fn(async () => '/mock/logs/ads-tracker.log'),
+      // Phase I.7 Lane G
+      getGitCommit: vi.fn(async () => 'test123'),
     },
     auth: {
       getToken: vi.fn(async () => options.token ?? 'at_live_test_token_xxxxxxxx'),
@@ -105,6 +109,15 @@ export function installMockApi(options: MockApiOptions = {}): void {
     onDeepLink: vi.fn(() => () => undefined),
     shell: {
       openExternal: vi.fn(async () => undefined),
+      // Phase I.2 Lane B
+      showItemInFolder: vi.fn(async () => undefined),
+    },
+    // Phase I.2 Lane B — renderer log forwarder.
+    log: {
+      error: vi.fn(async () => undefined),
+      warn: vi.fn(async () => undefined),
+      info: vi.fn(async () => undefined),
+      debug: vi.fn(async () => undefined),
     },
     // Phase I.4 Lane D: OAuth CSRF state. Default mocks return empty state.
     oauth: {

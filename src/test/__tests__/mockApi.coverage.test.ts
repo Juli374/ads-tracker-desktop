@@ -42,13 +42,14 @@ const EXPECTED_API_SHAPE: {
   oauth: NamespaceKeys<DesktopApi['oauth']>;
   localRoyalty: NamespaceKeys<DesktopApi['localRoyalty']>;
   update: NamespaceKeys<DesktopApi['update']>;
+  log: NamespaceKeys<DesktopApi['log']>;
 } = {
-  app: ['getInfo', 'getApiBaseUrl'],
+  app: ['getInfo', 'getApiBaseUrl', 'getLogPath', 'getGitCommit'],
   auth: ['getToken', 'setToken', 'clearToken', 'onExpired'],
   request: 'function',
   mediaUpload: 'function',
   onDeepLink: 'function',
-  shell: ['openExternal'],
+  shell: ['openExternal', 'showItemInFolder'],
   oauth: ['writeState', 'consumeState'],
   localRoyalty: [
     'listUploads',
@@ -59,6 +60,7 @@ const EXPECTED_API_SHAPE: {
     'filePath',
   ],
   update: ['getStatus', 'check', 'quitAndInstall', 'onChange'],
+  log: ['error', 'warn', 'info', 'debug'],
 };
 
 // Compile-time exhaustiveness check: every top-level key of `DesktopApi` must
