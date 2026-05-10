@@ -92,16 +92,23 @@ describe('page smoke renders', () => {
     expect(await screen.findByText('marketplace.title')).toBeInTheDocument();
   });
 
-  it('SettingsPage renders sections', async () => {
+  it('SettingsPage renders tabs and default Application content', async () => {
     render(
       <Wrap>
         <SettingsPage />
       </Wrap>,
     );
     expect(await screen.findByTestId('settings-page')).toBeInTheDocument();
+    expect(await screen.findByTestId('settings-tabs')).toBeInTheDocument();
+    // 5 tabs visible
+    expect(screen.getByTestId('settings-tab-application')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-tab-credentials')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-tab-profiles')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-tab-token')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-tab-ai')).toBeInTheDocument();
+    // Application tab is active by default — its content visible
+    expect(await screen.findByTestId('settings-application-tab')).toBeInTheDocument();
     expect(await screen.findByText('account.cardTitle')).toBeInTheDocument();
-    expect(await screen.findByText('apiKey.cardTitle')).toBeInTheDocument();
-    expect(await screen.findByText('backend.cardTitle')).toBeInTheDocument();
     expect(await screen.findByText('app.cardTitle')).toBeInTheDocument();
   });
 });

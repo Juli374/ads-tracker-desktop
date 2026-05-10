@@ -4,6 +4,23 @@
   "errors": {
     "load": "Failed to load data"
   },
+  "tabs": {
+    "ariaLabel": "Settings tab: {label}",
+    "application": "Application",
+    "credentials": "Credentials",
+    "profiles": "Profiles",
+    "profilesWithCount": "Profiles ({count})",
+    "token": "Token",
+    "ai": "AI"
+  },
+  "ai": {
+    "cardTitle": "AI Assistant (Anthropic)",
+    "comingSoon": "AI Assistant configuration is coming in the next release. Backend supports key storage and 4 model slots; UI is being designed."
+  },
+  "credentials": {
+    "cardTitle": "Amazon Ads credentials",
+    "subtitle": "Connect your Amazon Advertising account via OAuth. After consent, profiles populate the Profiles tab."
+  },
   "account": {
     "cardTitle": "Account",
     "status": "Status",
