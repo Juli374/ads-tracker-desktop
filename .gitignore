@@ -108,3 +108,4 @@ CLAUDE.md.before-ruflo
 # Webpack bundles produced outside of Forge dist (e.g. accidental root build)
 /index.js
 /index.js.LICENSE.txt
+.claude/worktrees/
