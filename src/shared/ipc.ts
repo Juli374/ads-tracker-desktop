@@ -24,6 +24,10 @@ export const IpcChannel = {
   // Auto-update placeholder: renderer запрашивает статус, main отдаёт 'idle' до подключения electron-updater.
   UpdateGetStatus: 'update:getStatus',
   UpdateCheck: 'update:check',
+  // AI Advisor streaming: renderer запускает stream, main фетчит SSE и шлёт chunks обратно.
+  AiStreamStart: 'ai:stream:start',
+  AiStreamCancel: 'ai:stream:cancel',
+  AiStreamChunk: 'ai:stream:chunk',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -159,6 +163,25 @@ export interface UpdateStatus {
 }
 
 
+// === AI Advisor streaming ===
+
+export interface AiStreamStartPayload {
+  /** Unique stream id; renderer-controlled. */
+  streamId: string;
+  /** Path under /api/. Must start with /api/. */
+  path: string;
+  /** Request body (will be JSON.stringified). */
+  body: unknown;
+}
+
+export type AiStreamChunkType = 'text_delta' | 'done' | 'error' | 'tool_use' | string;
+
+export interface AiStreamChunk {
+  streamId: string;
+  /** Parsed JSON payload from the SSE `data:` line, or { type: 'error', message } on failure. */
+  data: { type: AiStreamChunkType; [k: string]: unknown };
+}
+
 // API, который выставляется в renderer через contextBridge как window.api
 export interface DesktopApi {
   app: {
@@ -190,5 +213,13 @@ export interface DesktopApi {
   update: {
     getStatus(): Promise<UpdateStatus>;
     check(): Promise<UpdateStatus>;
+  };
+  ai: {
+    /** Start an SSE stream. Returns immediately; chunks arrive via onStreamChunk. */
+    streamStart(payload: AiStreamStartPayload): Promise<void>;
+    /** Cancel an in-flight stream. */
+    streamCancel(streamId: string): Promise<void>;
+    /** Subscribe to chunk events. Returns unsubscribe. */
+    onStreamChunk(handler: (chunk: AiStreamChunk) => void): () => void;
   };
 }

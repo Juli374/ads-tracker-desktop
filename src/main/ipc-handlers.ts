@@ -1,4 +1,4 @@
-import { app, ipcMain, net, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, net, shell } from 'electron';
 import {
   IpcChannel,
   AppInfo,
@@ -8,6 +8,8 @@ import {
   MediaUploadResponse,
   LocalRoyaltyImportPayload,
   UpdateStatus,
+  AiStreamStartPayload,
+  AiStreamChunk,
 } from '../shared/ipc';
 import { readToken, writeToken, clearToken } from './auth-store';
 import { performApiRequest } from './api-client';
@@ -34,6 +36,17 @@ function validateUploadPath(path: unknown): string {
     throw Object.assign(new Error('media:upload: path must start with /api/'), { status: 400 });
   }
   return normalised;
+}
+
+// In-flight AI streams: map streamId -> AbortController for cancellation.
+const aiStreams = new Map<string, AbortController>();
+
+function emitAiChunk(chunk: AiStreamChunk): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send(IpcChannel.AiStreamChunk, chunk);
+    }
+  }
 }
 
 export function registerIpcHandlers(): void {
@@ -231,5 +244,134 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannel.UpdateCheck, async (): Promise<UpdateStatus> => {
     return checkForUpdates();
+  });
+
+  // ====== AI Advisor SSE streaming ======
+  // Renderer → main: открыть SSE-соединение, парсить data: lines, эмитить chunks.
+  // Main → renderer: AiStreamChunk events с { streamId, data }.
+  ipcMain.handle(
+    IpcChannel.AiStreamStart,
+    async (_evt, payload: AiStreamStartPayload): Promise<void> => {
+      // Валидация payload и path.
+      if (!payload || typeof payload.streamId !== 'string' || payload.streamId.length === 0) {
+        throw new Error('ai:stream:start expects streamId: string');
+      }
+      const streamId = payload.streamId;
+      let normalisedPath: string;
+      try {
+        normalisedPath = validateUploadPath(payload.path);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        emitAiChunk({ streamId, data: { type: 'error', message } });
+        emitAiChunk({ streamId, data: { type: 'done' } });
+        return;
+      }
+
+      // Если streamId уже занят — отменим старый.
+      const existing = aiStreams.get(streamId);
+      if (existing) {
+        existing.abort();
+        aiStreams.delete(streamId);
+      }
+
+      const controller = new AbortController();
+      aiStreams.set(streamId, controller);
+
+      const token = await readToken();
+      const url = apiBaseUrl() + normalisedPath;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      // Запускаем stream в фоне, не ждём окончания.
+      (async () => {
+        try {
+          const response = await net.fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload.body ?? {}),
+            signal: controller.signal,
+          });
+
+          if (!response.ok) {
+            const text = await response.text().catch(() => '');
+            let message = `HTTP ${response.status}`;
+            try {
+              const parsed = JSON.parse(text);
+              if (parsed && typeof parsed === 'object' && 'error' in parsed) {
+                message = String((parsed as { error: unknown }).error);
+              }
+            } catch {
+              if (text) message = text;
+            }
+            emitAiChunk({ streamId, data: { type: 'error', message, status: response.status } });
+            emitAiChunk({ streamId, data: { type: 'done' } });
+            return;
+          }
+
+          if (!response.body) {
+            emitAiChunk({ streamId, data: { type: 'error', message: 'no response body' } });
+            emitAiChunk({ streamId, data: { type: 'done' } });
+            return;
+          }
+
+          // Парсер SSE: накапливаем chunks, делим по \n\n, обрабатываем data: lines.
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            let separatorIdx = buffer.indexOf('\n\n');
+            while (separatorIdx >= 0) {
+              const event = buffer.slice(0, separatorIdx);
+              buffer = buffer.slice(separatorIdx + 2);
+
+              for (const line of event.split('\n')) {
+                if (!line.startsWith('data:')) continue;
+                const dataPart = line.slice(5).trimStart();
+                if (!dataPart) continue;
+                try {
+                  const parsed = JSON.parse(dataPart);
+                  if (parsed && typeof parsed === 'object') {
+                    emitAiChunk({ streamId, data: parsed });
+                  }
+                } catch {
+                  // Игнорируем malformed line.
+                }
+              }
+              separatorIdx = buffer.indexOf('\n\n');
+            }
+          }
+
+          emitAiChunk({ streamId, data: { type: 'done' } });
+        } catch (err) {
+          if (controller.signal.aborted) {
+            emitAiChunk({ streamId, data: { type: 'done', cancelled: true } });
+            return;
+          }
+          const message = err instanceof Error ? err.message : String(err);
+          emitAiChunk({ streamId, data: { type: 'error', message } });
+          emitAiChunk({ streamId, data: { type: 'done' } });
+        } finally {
+          aiStreams.delete(streamId);
+        }
+      })();
+    },
+  );
+
+  ipcMain.handle(IpcChannel.AiStreamCancel, async (_evt, streamId: unknown): Promise<void> => {
+    if (typeof streamId !== 'string') return;
+    const controller = aiStreams.get(streamId);
+    if (controller) {
+      controller.abort();
+      aiStreams.delete(streamId);
+    }
   });
 }

@@ -97,12 +97,25 @@
     },
     "advisor": {
       "buttonLabel": "AI Advisor",
-      "buttonTitle": "AI Advisor (preview)",
+      "buttonTitle": "Open AI Advisor",
       "panelTitle": "AI Advisor",
       "previewBadge": "Preview",
       "summaryHeader": "Campaign snapshot",
       "comingSoon": "Full chat coming in the next release.",
-      "closeAria": "Close panel"
+      "closeAria": "Close panel",
+      "loadingHistory": "Loading conversation…",
+      "empty": "Ask the advisor anything about this campaign.",
+      "placeholder": "Ask a question…",
+      "sendAria": "Send message",
+      "retry": "Retry",
+      "errors": {
+        "loadHistory": "Failed to load conversation",
+        "stream": "Streaming failed",
+        "unavailable": "AI Advisor is temporarily unavailable.",
+        "unavailableTitle": "Unavailable",
+        "noKey": "Configure your Claude API key in Settings → AI to start chatting.",
+        "noKeyTitle": "API key required"
+      }
     },
     "targets": {
       "empty": "No targets for this campaign.",

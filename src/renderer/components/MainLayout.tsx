@@ -67,6 +67,9 @@ const ReportsPage = lazy(() =>
 const NegativesPage = lazy(() =>
   import('../pages/NegativesPage').then((m) => ({ default: m.NegativesPage })),
 );
+const ProfilePage = lazy(() =>
+  import('../pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
+);
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
@@ -131,6 +134,7 @@ const HOTKEY_MAP: Record<string, ViewId> = {
   t: 'operations',
   y: 'royalties',
   f: 'accounting',
+  i: 'profile',
 };
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -222,6 +226,8 @@ const Layout: React.FC = () => {
         return <ReportsPage />;
       case 'negatives':
         return <NegativesPage />;
+      case 'profile':
+        return <ProfilePage />;
       case 'settings':
         return <SettingsPage />;
     }

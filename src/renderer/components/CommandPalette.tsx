@@ -20,6 +20,7 @@ import {
   LogOut,
   Copy,
   Search,
+  User,
 } from 'lucide-react';
 import { useNav, ViewId } from '../contexts/NavContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -77,6 +78,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
       { id: 'go-operations', label: goLabel('operations'), hint: 'G T', icon: ClipboardList, onRun: goto('operations') },
       { id: 'go-royalties', label: goLabel('royalties'), hint: 'G Y', icon: Coins, onRun: goto('royalties') },
       { id: 'go-accounting', label: goLabel('accounting'), hint: 'G F', icon: Wallet, onRun: goto('accounting') },
+      { id: 'go-profile', label: goLabel('profile'), hint: 'G I', icon: User, onRun: goto('profile') },
       { id: 'go-settings', label: goLabel('settings'), icon: Settings, onRun: goto('settings') },
       {
         id: 'reload',

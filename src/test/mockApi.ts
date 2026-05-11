@@ -39,6 +39,24 @@ export function installMockApi(options: MockApiOptions = {}): void {
     shell: {
       openExternal: vi.fn(async () => undefined),
     },
+    mediaUpload: vi.fn(async () => ({ ok: true, status: 200, data: null })),
+    localRoyalty: {
+      listUploads: vi.fn(async () => []),
+      listRecords: vi.fn(async () => []),
+      getSummary: vi.fn(async () => ({ target_month: '2026-04', totals: { units: 0, royalty: 0, revenue: 0 }, by_marketplace: [] })),
+      import: vi.fn(async () => ({ upload_id: 1, records_added: 0 })),
+      delete: vi.fn(async () => ({ deleted: 0 })),
+      filePath: vi.fn(async () => '/tmp/royalty.json'),
+    },
+    update: {
+      getStatus: vi.fn(async () => ({ state: 'idle', enabled: false })),
+      check: vi.fn(async () => ({ state: 'idle', enabled: false })),
+    },
+    ai: {
+      streamStart: vi.fn(async () => undefined),
+      streamCancel: vi.fn(async () => undefined),
+      onStreamChunk: vi.fn(() => () => undefined),
+    },
   };
 }
 

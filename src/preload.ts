@@ -9,6 +9,8 @@ import {
   DeepLinkEvent,
   LocalRoyaltyImportPayload,
   UpdateStatus,
+  AiStreamStartPayload,
+  AiStreamChunk,
 } from './shared/ipc';
 
 const api: DesktopApi = {
@@ -48,6 +50,17 @@ const api: DesktopApi = {
   update: {
     getStatus: () => ipcRenderer.invoke(IpcChannel.UpdateGetStatus) as Promise<UpdateStatus>,
     check: () => ipcRenderer.invoke(IpcChannel.UpdateCheck) as Promise<UpdateStatus>,
+  },
+  ai: {
+    streamStart: (payload: AiStreamStartPayload) =>
+      ipcRenderer.invoke(IpcChannel.AiStreamStart, payload) as Promise<void>,
+    streamCancel: (streamId: string) =>
+      ipcRenderer.invoke(IpcChannel.AiStreamCancel, streamId) as Promise<void>,
+    onStreamChunk: (handler) => {
+      const wrapped = (_e: IpcRendererEvent, chunk: AiStreamChunk) => handler(chunk);
+      ipcRenderer.on(IpcChannel.AiStreamChunk, wrapped);
+      return () => ipcRenderer.off(IpcChannel.AiStreamChunk, wrapped);
+    },
   },
 };
 

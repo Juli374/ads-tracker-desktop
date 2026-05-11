@@ -248,7 +248,37 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeSystem": "Auto",
+    "profile": "Profile",
     "settings": "Settings",
     "signOut": "Sign out"
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Update your account information and avatar.",
+    "loading": "Loading…",
+    "save": "Save",
+    "saved": "Profile updated",
+    "avatarUpload": "Upload avatar",
+    "avatarUploading": "Uploading…",
+    "avatarUploaded": "Avatar updated",
+    "avatarHint": "PNG / JPG / WEBP up to 5 MB",
+    "sections": {
+      "info": "Profile information",
+      "avatar": "Avatar"
+    },
+    "fields": {
+      "email": "Email",
+      "emailHint": "Email is managed by the backend and cannot be changed here.",
+      "fullName": "Full name",
+      "role": "Role: {role}"
+    },
+    "errors": {
+      "load": "Failed to load profile",
+      "saveFailed": "Failed to save profile",
+      "avatarFailed": "Failed to upload avatar",
+      "avatarType": "Unsupported file type",
+      "avatarSize": "File is too large (max 5 MB)",
+      "nameRequired": "Name cannot be empty"
+    }
   }
 }
