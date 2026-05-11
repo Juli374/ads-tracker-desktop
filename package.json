@@ -58,6 +58,7 @@
     "vitest": "^1.6.1"
   },
   "dependencies": {
+    "@tanstack/react-virtual": "^3.13.24",
     "electron-log": "^5.4.3",
     "electron-squirrel-startup": "^1.0.1",
     "electron-updater": "^6.8.3",
