@@ -51,3 +51,48 @@ if (!('createObjectURL' in URL)) {
   // @ts-expect-error jsdom polyfill
   URL.revokeObjectURL = vi.fn();
 }
+
+// Phase J.5 Lane E: @tanstack/react-virtual reads `offsetWidth`/`offsetHeight`
+// off the scroll element, but jsdom returns 0 for both — which makes the
+// virtualizer render zero rows. Stub them with realistic viewport sizes so
+// virtualization tests observe actual row elements.
+//
+// We override the prototype getters to a non-zero default; if a test needs
+// a different size, it can set `Object.defineProperty(el, 'offsetHeight', ...)`
+// directly. Existing non-virtualized tests are unaffected because they don't
+// look at offsetHeight/offsetWidth.
+if (typeof window !== 'undefined') {
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+    configurable: true,
+    get: function () {
+      // 640 matches the keywords table max-h. Other elements get whatever
+      // they happen to need from this default — that's fine: the
+      // virtualizer is the only consumer that cares.
+      return this.__offsetHeight ?? 640;
+    },
+  });
+  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+    configurable: true,
+    get: function () {
+      return this.__offsetWidth ?? 1024;
+    },
+  });
+
+  // ResizeObserver: jsdom doesn't ship one. Provide a no-op stub — the
+  // virtualizer falls back to `getRect` synchronously when the observer
+  // returns no entries, which is sufficient for our static tests.
+  if (!('ResizeObserver' in window)) {
+    // @ts-expect-error jsdom polyfill
+    window.ResizeObserver = class {
+      observe() {
+        // no-op
+      }
+      unobserve() {
+        // no-op
+      }
+      disconnect() {
+        // no-op
+      }
+    };
+  }
+}

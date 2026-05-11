@@ -5,7 +5,8 @@
   "errors": {
     "load": "Failed to load keywords",
     "noTargetId": "This keyword has no target_id (auto-target?), bid is not editable",
-    "updateBid": "Failed to update bid"
+    "updateBid": "Failed to update bid",
+    "bulk": "Bulk action failed"
   },
   "kpi": {
     "keywords": "Keywords",
@@ -34,7 +35,37 @@
       "bid": "Bid"
     }
   },
+  "noise": {
+    "title": "Noise filter",
+    "enable": "Hide noisy auto-targets",
+    "minTargets": "Min targets per campaign",
+    "maxCpc": "Max CPC ($)",
+    "hint": "Hides keywords from auto/research campaigns with many low-CPC targets to focus on actionable rows.",
+    "summary": "{filtered, plural, one {# row hidden} other {# rows hidden}}"
+  },
+  "bulk": {
+    "selected": "{count, plural, one {# selected} other {# selected}}",
+    "selectAll": "Select all",
+    "deselect": "Clear",
+    "pause": "Pause",
+    "resume": "Resume",
+    "changeBid": "Change bid…",
+    "addNegative": "Add to negatives",
+    "modal": {
+      "title": "Change bid for {count, plural, one {# target} other {# targets}}",
+      "modeMultiplier": "Multiply (×N)",
+      "modeDelta": "Add ($)",
+      "multiplierLabel": "Multiplier",
+      "deltaLabel": "Delta",
+      "apply": "Apply",
+      "cancel": "Cancel",
+      "preview": "Preview: {first} → {newFirst}"
+    },
+    "result": "Updated {count, plural, one {# target} other {# targets}}",
+    "error": "Bulk action failed: {message}"
+  },
   "th": {
+    "select": "",
     "keyword": "Keyword",
     "match": "Match",
     "campaign": "Campaign",
@@ -47,10 +78,12 @@
     "acos": "ACOS"
   },
   "row": {
-    "bidAria": "Bid for {keyword}"
+    "bidAria": "Bid for {keyword}",
+    "selectAria": "Select {keyword}"
   },
   "empty": {
     "noResults": "Nothing found.",
-    "noPeriod": "No keywords in the selected period."
+    "noPeriod": "No keywords in the selected period.",
+    "filteredOut": "All keywords are hidden by the noise filter. Try lowering the threshold."
   }
 }
