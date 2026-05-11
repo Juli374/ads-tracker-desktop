@@ -28,6 +28,11 @@ export interface Book {
   max_cpc?: number | null;
   royalty_pct?: number | null;
   organic_baseline?: number | null;
+  // Phase J.3 Lane C — book metadata used by Settings inline edit + future
+  // book formatter. Backend stores `book_language` (default 'en') and an
+  // optional series name, returned in `/api/books/<id>` payload.
+  book_language?: string | null;
+  series_name?: string | null;
 }
 
 export interface BookUpdate {
@@ -39,6 +44,21 @@ export interface BookUpdate {
   max_cpc?: number | null;
   royalty_pct?: number | null;
   organic_baseline?: number | null;
+  book_language?: string | null;
+  series_name?: string | null;
+}
+
+/**
+ * Phase J.3 Lane C — payload accepted by `/api/books` POST. Mirrors the
+ * subset Settings → Books inline-create / CSV import actually use.
+ */
+export interface BookCreate {
+  title: string;
+  subtitle?: string | null;
+  author?: string | null;
+  account?: string | null;
+  book_language?: string | null;
+  series_name?: string | null;
 }
 
 export interface AsinCreate {
@@ -97,8 +117,75 @@ export const booksApi = {
     return apiClient.get<Book>(`/api/books/${id}`);
   },
 
+  /**
+   * Phase J.3 Lane C — create a single book. Backend returns `{ id, message }`.
+   * Used both by Settings → Books quick-create and by CSV import (one POST per row).
+   */
+  create(data: BookCreate): Promise<{ id: number; message?: string }> {
+    return apiClient.post<{ id: number; message?: string }>('/api/books', data);
+  },
+
+  /**
+   * Phase J.3 Lane C — bulk create. The backend has no native bulk endpoint
+   * (verified 2026-05-11), so we fan out into N parallel POSTs. Failed rows
+   * are returned with their original index so the caller can report partials.
+   */
+  async bulkCreate(rows: BookCreate[]): Promise<{
+    created: Array<{ index: number; id: number }>;
+    failed: Array<{ index: number; error: string }>;
+  }> {
+    const results = await Promise.allSettled(
+      rows.map((row) => booksApi.create(row)),
+    );
+    const created: Array<{ index: number; id: number }> = [];
+    const failed: Array<{ index: number; error: string }> = [];
+    results.forEach((r, index) => {
+      if (r.status === 'fulfilled') {
+        created.push({ index, id: r.value.id });
+      } else {
+        const err = r.reason;
+        failed.push({
+          index,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    });
+    return { created, failed };
+  },
+
   update(id: number, data: BookUpdate): Promise<{ message: string }> {
     return apiClient.put<{ message: string }>(`/api/books/${id}`, data);
+  },
+
+  /**
+   * Phase J.3 Lane C — single delete. Distinct from `archive`: this drops the
+   * row entirely. Settings → Books bulk-delete fans out into N parallel calls.
+   */
+  delete(id: number): Promise<{ message: string }> {
+    return apiClient.del<{ message: string }>(`/api/books/${id}`);
+  },
+
+  /**
+   * Phase J.3 Lane C — bulk delete (parallel `delete` calls). Returns the
+   * tally of {deleted, failed} so callers can show toasts like "Deleted 3 of 5".
+   */
+  async bulkDelete(ids: number[]): Promise<{
+    deleted: number[];
+    failed: Array<{ id: number; error: string }>;
+  }> {
+    const results = await Promise.allSettled(ids.map((id) => booksApi.delete(id)));
+    const deleted: number[] = [];
+    const failed: Array<{ id: number; error: string }> = [];
+    results.forEach((r, idx) => {
+      const id = ids[idx];
+      if (r.status === 'fulfilled') {
+        deleted.push(id);
+      } else {
+        const err = r.reason;
+        failed.push({ id, error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+    return { deleted, failed };
   },
 
   archive(id: number): Promise<{ message: string }> {

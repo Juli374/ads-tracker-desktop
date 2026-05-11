@@ -10,6 +10,8 @@ import {
   LocalRoyaltyImportPayload,
   UpdateStatus,
   AppLogPayload,
+  AiSettings,
+  AiTestKeyResult,
 } from '../shared/ipc';
 import {
   clearToken,
@@ -19,7 +21,7 @@ import {
   writeToken,
 } from './auth-store';
 import { performApiRequest } from './api-client';
-import { localStore } from './local-db';
+import { localStore, DEFAULT_AI_SETTINGS, AiSettingsRow } from './local-db';
 import { localRoyalty } from './local-db/royalty';
 import { getStatus as getUpdateStatus, checkForUpdates, quitAndInstall as updaterQuitAndInstall } from './updater';
 import { logger, getLogFilePath, scrubSecrets, scrubValue } from './logger';
@@ -369,6 +371,155 @@ export function registerIpcHandlers(): void {
         throw new Error('shell:showItemInFolder: path outside allowed directories');
       }
       shell.showItemInFolder(resolved);
+    },
+  );
+
+  // ====== Phase J.3 Lane C: AI settings ======
+
+  /**
+   * Read AI settings (Claude key + 4 model slots + brand voice). Defaults are
+   * applied on the fly so an uninitialised local-db never returns undefined.
+   * Returned key is RAW (full plaintext) — renderer is trusted (contextIsolated)
+   * and only renders a masked preview.
+   */
+  ipcMain.handle(IpcChannel.AiSettingsGet, async (): Promise<AiSettings> => {
+    const state = localStore.read();
+    const ai: AiSettingsRow = state.ai_settings ?? { ...DEFAULT_AI_SETTINGS };
+    return {
+      claudeKey: ai.claudeKey,
+      models: { ...ai.models },
+      brandVoice: {
+        pov: ai.brandVoice.pov,
+        toneWords: [...ai.brandVoice.toneWords],
+        bannedWords: [...ai.brandVoice.bannedWords],
+      },
+    };
+  });
+
+  ipcMain.handle(
+    IpcChannel.AiSettingsSet,
+    async (_evt, payload: unknown): Promise<void> => {
+      // Strict shape validation: a compromised renderer must not be able to
+      // poison our local-db with arbitrary blobs.
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('ai:settings:set expects an object');
+      }
+      const p = payload as Partial<AiSettings>;
+      if (typeof p.claudeKey !== 'string') {
+        throw new Error('ai:settings:set: claudeKey must be a string');
+      }
+      if (p.claudeKey.length > 1024) {
+        throw new Error('ai:settings:set: claudeKey too long');
+      }
+      if (!p.models || typeof p.models !== 'object') {
+        throw new Error('ai:settings:set: models must be an object');
+      }
+      const m = p.models;
+      const requireSlot = (name: keyof AiSettings['models']): string => {
+        const v = m[name];
+        if (typeof v !== 'string' || v.length === 0 || v.length > 128) {
+          throw new Error(`ai:settings:set: models.${name} must be non-empty string`);
+        }
+        return v;
+      };
+      const models = {
+        completion: requireSlot('completion'),
+        vision: requireSlot('vision'),
+        fast: requireSlot('fast'),
+        advisor: requireSlot('advisor'),
+      };
+      if (!p.brandVoice || typeof p.brandVoice !== 'object') {
+        throw new Error('ai:settings:set: brandVoice must be an object');
+      }
+      const bv = p.brandVoice;
+      const stringArray = (val: unknown, label: string): string[] => {
+        if (!Array.isArray(val)) {
+          throw new Error(`ai:settings:set: brandVoice.${label} must be an array`);
+        }
+        if (val.length > 256) {
+          throw new Error(`ai:settings:set: brandVoice.${label} too long`);
+        }
+        return val.map((s) => {
+          if (typeof s !== 'string') {
+            throw new Error(`ai:settings:set: brandVoice.${label} items must be strings`);
+          }
+          if (s.length > 128) {
+            throw new Error(`ai:settings:set: brandVoice.${label} item too long`);
+          }
+          return s;
+        });
+      };
+      const brandVoice = {
+        pov: typeof bv.pov === 'string' ? bv.pov.slice(0, 256) : '',
+        toneWords: stringArray(bv.toneWords, 'toneWords'),
+        bannedWords: stringArray(bv.bannedWords, 'bannedWords'),
+      };
+      localStore.mutate((state) => {
+        state.ai_settings = { claudeKey: p.claudeKey as string, models, brandVoice };
+      });
+    },
+  );
+
+  /**
+   * Hit Anthropic /v1/messages with the supplied key + model. Returns
+   * {ok, status, error?}. We use net.fetch (proxy-aware). 5s timeout —
+   * a real Anthropic call usually responds in <2s; if it stalls we want to
+   * surface a clear error instead of hanging the renderer.
+   */
+  ipcMain.handle(
+    IpcChannel.AiTestKey,
+    async (_evt, key: unknown, model: unknown): Promise<AiTestKeyResult> => {
+      if (typeof key !== 'string' || key.length === 0) {
+        return { ok: false, status: 0, error: 'key must be a non-empty string' };
+      }
+      if (key.length > 1024) {
+        return { ok: false, status: 0, error: 'key too long' };
+      }
+      const modelId =
+        typeof model === 'string' && model.length > 0 && model.length <= 128
+          ? model
+          : DEFAULT_AI_SETTINGS.models.fast;
+      try {
+        const res = await net.fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: modelId,
+            max_tokens: 8,
+            messages: [{ role: 'user', content: 'ping' }],
+          }),
+          signal: AbortSignal.timeout(5_000),
+        });
+        if (res.ok) {
+          return { ok: true, status: res.status };
+        }
+        // 4xx/5xx — extract Anthropic error.message if available.
+        let errMsg = `HTTP ${res.status}`;
+        try {
+          const txt = await res.text();
+          if (txt) {
+            try {
+              const j = JSON.parse(txt) as { error?: { message?: string } };
+              if (j?.error?.message) errMsg = j.error.message;
+            } catch {
+              errMsg = txt.slice(0, 256);
+            }
+          }
+        } catch {
+          // Ignore body-read failure — keep generic HTTP-status error.
+        }
+        return { ok: false, status: res.status, error: errMsg };
+      } catch (err) {
+        if (isTimeoutError(err)) {
+          return { ok: false, status: 0, error: 'Request timed out' };
+        }
+        const message = err instanceof Error ? err.message : String(err);
+        return { ok: false, status: 0, error: message };
+      }
     },
   );
 }

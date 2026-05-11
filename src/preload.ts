@@ -11,6 +11,8 @@ import type {
   LocalRoyaltyImportPayload,
   UpdateStatus,
   AppLogPayload,
+  AiSettings,
+  AiTestKeyResult,
 } from './shared/ipc';
 
 const api: DesktopApi = {
@@ -94,6 +96,14 @@ const api: DesktopApi = {
       const payload: AppLogPayload = { level: 'debug', message, ctx };
       return ipcRenderer.invoke(IpcChannel.AppLog, payload) as Promise<void>;
     },
+  },
+  ai: {
+    getSettings: () =>
+      ipcRenderer.invoke(IpcChannel.AiSettingsGet) as Promise<AiSettings>,
+    setSettings: (settings: AiSettings) =>
+      ipcRenderer.invoke(IpcChannel.AiSettingsSet, settings) as Promise<void>,
+    testKey: (key: string, model?: string) =>
+      ipcRenderer.invoke(IpcChannel.AiTestKey, key, model) as Promise<AiTestKeyResult>,
   },
 };
 

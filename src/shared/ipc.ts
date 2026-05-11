@@ -51,6 +51,13 @@ export const IpcChannel = {
   // Phase I.2 Lane B: renderer fetches the absolute log file path so the
   // Settings → Application tab can render it + reveal it.
   AppGetLogPath: 'app:getLogPath',
+  // Phase J.3 Lane C: AI settings (Claude API key, model slots, brand voice).
+  // Persisted in local-db (NOT Railway — personal-use only). Test channel
+  // performs a real fetch to the Anthropic API in main (using the supplied
+  // key, never the user's own).
+  AiSettingsGet: 'ai:settings:get',
+  AiSettingsSet: 'ai:settings:set',
+  AiTestKey: 'ai:testKey',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -238,6 +245,47 @@ export interface UpdateStatus {
   enabled: boolean;
 }
 
+// === AI settings (Phase J.3 Lane C) ===
+
+/**
+ * 4 model "slots" the renderer dispatches Anthropic calls through. Each slot
+ * holds a model id string (e.g. 'claude-opus-4-7'). Defaults are wired in
+ * main when nothing is persisted yet.
+ *
+ * - completion: long-form text generation (book descriptions, ad copy).
+ * - vision:    multimodal (cover analysis).
+ * - fast:      lightweight calls (classification, quick checks).
+ * - advisor:   AI Advisor recommendations (most expensive call).
+ */
+export interface AiModelSlots {
+  completion: string;
+  vision: string;
+  fast: string;
+  advisor: string;
+}
+
+/** Brand-voice profile fed into prompts to keep tone consistent. */
+export interface AiBrandVoice {
+  pov: string;          // "first-person" | "third-person" | free text
+  toneWords: string[];  // e.g. ["confident", "warm", "playful"]
+  bannedWords: string[];// hard-banned words (compliance/style)
+}
+
+export interface AiSettings {
+  /** Anthropic API key (sk-ant-…). Empty string when not configured. */
+  claudeKey: string;
+  models: AiModelSlots;
+  brandVoice: AiBrandVoice;
+}
+
+export interface AiTestKeyResult {
+  ok: boolean;
+  /** HTTP status from Anthropic, or 0 on network failure. */
+  status: number;
+  /** Error message when ok=false. */
+  error?: string;
+}
+
 // === Logging (Phase I.2 Lane B) ===
 export type AppLogLevel = 'error' | 'warn' | 'info' | 'debug';
 
@@ -330,5 +378,16 @@ export interface DesktopApi {
     warn(message: string, ctx?: Record<string, unknown>): Promise<void>;
     info(message: string, ctx?: Record<string, unknown>): Promise<void>;
     debug(message: string, ctx?: Record<string, unknown>): Promise<void>;
+  };
+  /**
+   * Phase J.3 Lane C: AI settings (Claude API key + model slots + brand voice)
+   * persisted in local-db. testKey performs a real Anthropic /v1/messages
+   * request from main using the *supplied* key (the renderer's input — never
+   * silently using a different one) and returns ok/status/error.
+   */
+  ai: {
+    getSettings(): Promise<AiSettings>;
+    setSettings(settings: AiSettings): Promise<void>;
+    testKey(key: string, model?: string): Promise<AiTestKeyResult>;
   };
 }

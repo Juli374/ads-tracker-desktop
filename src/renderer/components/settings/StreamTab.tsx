@@ -1,9 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, Kpi, EmptyState, TableSkeletonBody, ErrorBanner } from '../ui';
+import {
+  Card,
+  Kpi,
+  EmptyState,
+  TableSkeletonBody,
+  ErrorBanner,
+  Pagination,
+} from '../ui';
 import { useApiQuery } from '../../lib/useApiQuery';
 import { marketingStreamApi } from '../../api/marketingStream';
 import type { StreamSyncRun, StreamAuditEntry } from '../../api/marketingStream';
+
+const HISTORY_PER_PAGE = 20;
 
 const SILENT = [401, 403, 404];
 
@@ -91,13 +100,42 @@ export const StreamTab: React.FC = () => {
     silentStatuses: SILENT,
   });
 
-  const countdown = useMemo(
-    () => formatCountdown(statusQ.data?.nextRunAt),
-    [statusQ.data?.nextRunAt],
-  );
+  // Phase J.3 Lane C — countdown ticker.
+  // `nextRunAt` is a static ISO string from the server, so we re-render the
+  // formatted countdown once a second to keep the "Xm Ys" display live without
+  // polling the backend. Cleanup on unmount + when the upstream nextRunAt
+  // changes (so we restart cleanly on a new schedule).
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!statusQ.data?.nextRunAt) return;
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [statusQ.data?.nextRunAt]);
 
+  // Re-evaluated on every render — Date.now() inside formatCountdown reads
+  // the current clock, and the 1s tick above forces re-renders.
+  const countdown = formatCountdown(statusQ.data?.nextRunAt);
+
+  // History pagination — paginate the in-memory list returned by the
+  // backend (the endpoint already returns the most-recent slice). We default
+  // to 20 rows per page; resetting to page 1 when the upstream list changes
+  // length protects against pointing at a now-out-of-bounds page after refetch.
   const runs = historyQ.data?.runs ?? [];
   const auditEntries = auditQ.data?.entries ?? [];
+
+  const [historyPage, setHistoryPage] = useState(1);
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [runs.length]);
+  const historyPages = Math.max(1, Math.ceil(runs.length / HISTORY_PER_PAGE));
+  const pageRuns = useMemo(
+    () =>
+      runs.slice(
+        (historyPage - 1) * HISTORY_PER_PAGE,
+        historyPage * HISTORY_PER_PAGE,
+      ),
+    [runs, historyPage],
+  );
 
   // Determine global status badge for KPI
   const isRunning = statusQ.data?.isRunning ?? false;
@@ -135,14 +173,24 @@ export const StreamTab: React.FC = () => {
         />
       </div>
 
-      {/* Countdown */}
+      {/* Countdown — ticks every second via setInterval above. */}
       {!statusQ.loading && countdown != null && (
-        <p className="text-sm text-zinc-500">
+        <p
+          className="text-sm text-zinc-500 tabular-nums"
+          data-testid="stream-countdown"
+          aria-live="polite"
+          aria-label={t('stream.countdown.tickAria')}
+        >
           {t('stream.countdown.nextRun', { duration: countdown })}
         </p>
       )}
       {!statusQ.loading && !isRunning && countdown == null && statusQ.data != null && (
-        <p className="text-sm text-zinc-400">{t('stream.countdown.never')}</p>
+        <p
+          className="text-sm text-zinc-400"
+          data-testid="stream-countdown-never"
+        >
+          {t('stream.countdown.never')}
+        </p>
       )}
 
       {/* History table */}
@@ -185,7 +233,7 @@ export const StreamTab: React.FC = () => {
                 </tbody>
               ) : (
                 <tbody>
-                  {runs.slice(0, 50).map((run: StreamSyncRun) => (
+                  {pageRuns.map((run: StreamSyncRun) => (
                     <tr key={run.id} className="border-t border-zinc-100 hover:bg-zinc-50">
                       <td className="px-5 py-2.5">{formatTimestamp(run.startedAt)}</td>
                       <td className="px-3 py-2.5">
@@ -202,6 +250,14 @@ export const StreamTab: React.FC = () => {
                 </tbody>
               )}
             </table>
+            <Pagination
+              page={historyPage}
+              pages={historyPages}
+              total={runs.length}
+              perPage={HISTORY_PER_PAGE}
+              onChange={setHistoryPage}
+              disabled={historyQ.loading}
+            />
           </div>
         )}
       </Card>

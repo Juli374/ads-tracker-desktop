@@ -15,7 +15,41 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+
+// Phase J.3 Lane C — AI settings (Claude API key, model slots, brand voice).
+// Stored locally because the personal-use first track does not push secrets to
+// Railway. The renderer reads the raw plaintext through an explicit IPC
+// (`ai:settings:get`); we never auto-inject the key into HTML or window state.
+export interface AiSettingsRow {
+  claudeKey: string;
+  models: {
+    completion: string;
+    vision: string;
+    fast: string;
+    advisor: string;
+  };
+  brandVoice: {
+    pov: string;
+    toneWords: string[];
+    bannedWords: string[];
+  };
+}
+
+export const DEFAULT_AI_SETTINGS: AiSettingsRow = {
+  claudeKey: '',
+  models: {
+    completion: 'claude-opus-4-7',
+    vision: 'claude-opus-4-7',
+    fast: 'claude-haiku-4-5',
+    advisor: 'claude-opus-4-7',
+  },
+  brandVoice: {
+    pov: '',
+    toneWords: [],
+    bannedWords: [],
+  },
+};
 
 export interface RoyaltyUploadRow {
   id: number;
@@ -51,6 +85,8 @@ export interface LocalDbState {
   // counter'ы для autoincrement-ID
   next_upload_id: number;
   next_record_id: number;
+  // Phase J.3 Lane C — AI settings (single row).
+  ai_settings: AiSettingsRow;
 }
 
 const EMPTY_STATE: LocalDbState = {
@@ -59,6 +95,7 @@ const EMPTY_STATE: LocalDbState = {
   royalty_records: [],
   next_upload_id: 1,
   next_record_id: 1,
+  ai_settings: DEFAULT_AI_SETTINGS,
 };
 
 function dbFilePath(): string {
@@ -79,13 +116,49 @@ function readState(): LocalDbState {
   try {
     const raw = fs.readFileSync(file, 'utf8');
     const parsed = JSON.parse(raw) as Partial<LocalDbState>;
-    // Sanity-check + миграция дефолтами.
+    // Sanity-check + миграция дефолтами. v1 → v2 added ai_settings:
+    // fall back to DEFAULT_AI_SETTINGS, keep royalty rows unchanged.
+    const ai = parsed.ai_settings;
+    const aiSettings: AiSettingsRow =
+      ai && typeof ai === 'object'
+        ? {
+            claudeKey: typeof ai.claudeKey === 'string' ? ai.claudeKey : '',
+            models: {
+              completion:
+                typeof ai.models?.completion === 'string'
+                  ? ai.models.completion
+                  : DEFAULT_AI_SETTINGS.models.completion,
+              vision:
+                typeof ai.models?.vision === 'string'
+                  ? ai.models.vision
+                  : DEFAULT_AI_SETTINGS.models.vision,
+              fast:
+                typeof ai.models?.fast === 'string'
+                  ? ai.models.fast
+                  : DEFAULT_AI_SETTINGS.models.fast,
+              advisor:
+                typeof ai.models?.advisor === 'string'
+                  ? ai.models.advisor
+                  : DEFAULT_AI_SETTINGS.models.advisor,
+            },
+            brandVoice: {
+              pov: typeof ai.brandVoice?.pov === 'string' ? ai.brandVoice.pov : '',
+              toneWords: Array.isArray(ai.brandVoice?.toneWords)
+                ? ai.brandVoice.toneWords.filter((w): w is string => typeof w === 'string')
+                : [],
+              bannedWords: Array.isArray(ai.brandVoice?.bannedWords)
+                ? ai.brandVoice.bannedWords.filter((w): w is string => typeof w === 'string')
+                : [],
+            },
+          }
+        : { ...DEFAULT_AI_SETTINGS };
     return {
       version: parsed.version ?? SCHEMA_VERSION,
       royalty_uploads: Array.isArray(parsed.royalty_uploads) ? parsed.royalty_uploads : [],
       royalty_records: Array.isArray(parsed.royalty_records) ? parsed.royalty_records : [],
       next_upload_id: parsed.next_upload_id ?? 1,
       next_record_id: parsed.next_record_id ?? 1,
+      ai_settings: aiSettings,
     };
   } catch (err) {
     // eslint-disable-next-line no-console
