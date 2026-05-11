@@ -25,7 +25,42 @@
       "done": "Done"
     },
     "columnEmpty": "empty",
-    "statusAria": "Task status: {title}"
+    "statusAria": "Task status: {title}",
+    "editAria": "Edit task: {title}",
+    "kpi": {
+      "total": "Total",
+      "open": "Open",
+      "blocked": "Blocked",
+      "doneThisWeek": "Done this week"
+    }
+  },
+  "edit": {
+    "title": "Edit task",
+    "closeAria": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "saved": "Task updated",
+    "deleted": "Task deleted",
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "status": "Status",
+      "priority": "Priority",
+      "dueDate": "Due date"
+    },
+    "priorities": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "errors": {
+      "titleRequired": "Title is required",
+      "saveFailed": "Failed to save task",
+      "deleteFailed": "Failed to delete task"
+    }
   },
   "title": "Action Center",
   "loading": "Loading…",

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Settings, LogOut, Moon, Sun, Monitor } from 'lucide-react';
+import { Settings, LogOut, Moon, Sun, Monitor, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useNav } from '../contexts/NavContext';
@@ -26,6 +26,11 @@ export const UserMenu: React.FC = () => {
 
   const goToSettings = () => {
     navigate('settings');
+    setOpen(false);
+  };
+
+  const goToProfile = () => {
+    navigate('profile');
     setOpen(false);
   };
 
@@ -62,6 +67,7 @@ export const UserMenu: React.FC = () => {
             <ThemeSegment mode={mode} onChange={setMode} />
           </div>
           <div className="py-1">
+            <MenuItem icon={User} label={t('userMenu.profile')} onClick={goToProfile} testId="user-menu-profile" />
             <MenuItem icon={Settings} label={t('userMenu.settings')} onClick={goToSettings} />
             <MenuItem icon={LogOut} label={t('userMenu.signOut')} onClick={onSignOut} tone="danger" />
           </div>
@@ -114,9 +120,11 @@ const MenuItem: React.FC<{
   label: string;
   onClick: () => void;
   tone?: 'default' | 'danger';
-}> = ({ icon: Icon, label, onClick, tone = 'default' }) => (
+  testId?: string;
+}> = ({ icon: Icon, label, onClick, tone = 'default', testId }) => (
   <button
     onClick={onClick}
+    data-testid={testId}
     className={`
       w-full flex items-center gap-2.5 px-3 h-8 text-sm text-left
       transition-colors

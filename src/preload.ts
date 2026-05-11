@@ -16,6 +16,8 @@ import type {
   AppLogPayload,
   AiSettings,
   AiTestKeyResult,
+  AiStreamStartPayload,
+  AiStreamChunk,
 } from './shared/ipc';
 
 const api: DesktopApi = {
@@ -107,12 +109,23 @@ const api: DesktopApi = {
     },
   },
   ai: {
+    // Phase J.3 Lane C — settings + test-key.
     getSettings: () =>
       ipcRenderer.invoke(IpcChannel.AiSettingsGet) as Promise<AiSettings>,
     setSettings: (settings: AiSettings) =>
       ipcRenderer.invoke(IpcChannel.AiSettingsSet, settings) as Promise<void>,
     testKey: (key: string, model?: string) =>
       ipcRenderer.invoke(IpcChannel.AiTestKey, key, model) as Promise<AiTestKeyResult>,
+    // Phase J.7 Lane G — AI Advisor streaming.
+    streamStart: (payload: AiStreamStartPayload) =>
+      ipcRenderer.invoke(IpcChannel.AiStreamStart, payload) as Promise<void>,
+    streamCancel: (streamId: string) =>
+      ipcRenderer.invoke(IpcChannel.AiStreamCancel, streamId) as Promise<void>,
+    onStreamChunk: (handler) => {
+      const wrapped = (_e: IpcRendererEvent, chunk: AiStreamChunk) => handler(chunk);
+      ipcRenderer.on(IpcChannel.AiStreamChunk, wrapped);
+      return () => ipcRenderer.off(IpcChannel.AiStreamChunk, wrapped);
+    },
   },
 };
 

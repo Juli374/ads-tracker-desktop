@@ -177,6 +177,7 @@ export function installMockApi(options: MockApiOptions = {}): void {
       onChange: vi.fn(() => () => undefined),
     },
     // Phase J.3 Lane C: AI settings + test-key channel.
+    // Phase J.7 Lane G: AI Advisor streaming.
     ai: {
       getSettings: vi.fn(async (): Promise<AiSettings> => ({
         claudeKey: '',
@@ -194,6 +195,9 @@ export function installMockApi(options: MockApiOptions = {}): void {
         async (): Promise<AiTestKeyResult> =>
           options.aiTestKey ?? { ok: true, status: 200 },
       ),
+      streamStart: vi.fn(async () => undefined),
+      streamCancel: vi.fn(async () => undefined),
+      onStreamChunk: vi.fn(() => () => undefined),
     },
     // Phase J.4 Lane D: native open-file dialog.
     dialog: {

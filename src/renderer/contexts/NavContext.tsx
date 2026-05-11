@@ -22,6 +22,7 @@ export type ViewId =
   | 'royalties'
   | 'operations'
   | 'accounting'
+  | 'profile'
   | 'settings';
 
 // Filters passed during drill-down between pages.

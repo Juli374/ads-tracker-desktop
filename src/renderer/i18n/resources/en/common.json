@@ -127,9 +127,48 @@
   "calendarBell": {
     "aria": "Calendar",
     "closeAria": "Close",
-    "title": "Calendar · upcoming",
+    "title": "Upcoming",
     "loading": "Loading…",
-    "empty": "No upcoming events"
+    "empty": "No upcoming events",
+    "add": "Event",
+    "prevMonthAria": "Previous month",
+    "nextMonthAria": "Next month",
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  },
+  "addEvent": {
+    "title": "Add event",
+    "closeAria": "Close",
+    "submit": "Add",
+    "cancel": "Cancel",
+    "created": "Event added",
+    "fields": {
+      "title": "Title",
+      "date": "Date",
+      "time": "Time",
+      "description": "Description",
+      "importance": "Importance"
+    },
+    "importance": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "placeholders": {
+      "title": "What's happening?"
+    },
+    "errors": {
+      "titleRequired": "Title is required",
+      "dateRequired": "Date is required",
+      "createFailed": "Failed to add event"
+    }
   },
   "errorBoundary": {
     "title": "Something went wrong",
