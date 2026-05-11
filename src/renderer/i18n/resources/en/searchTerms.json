@@ -198,5 +198,9 @@
     "unsupported": "Endpoint not available — backend doesn't expose per-term trend yet.",
     "close": "Close",
     "closeAria": "Close trend modal"
+  },
+  "export": {
+    "label": "Export",
+    "success": "Exported: {count, plural, one {# term} other {# terms}}"
   }
 }

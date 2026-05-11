@@ -5,6 +5,10 @@
     "loading": "Loading…"
   },
   "loadFailed": "Failed to load data",
+  "export": {
+    "label": "Export",
+    "success": "Exported: {count, plural, one {# book} other {# books}}"
+  },
   "kpi": {
     "books": "Books"
   },

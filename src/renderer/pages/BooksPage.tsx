@@ -10,11 +10,13 @@ import {
   Card,
   Kpi,
   EmptyState,
+  ExportMenu,
   LoadingRow,
   ActiveFiltersBar,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtMoneyPrecise, fmtNumber, fmtPct } from '../lib/format';
+import { downloadExcel, type ExportColumn } from '../lib/export';
 import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
 import {
@@ -304,13 +306,55 @@ export const BooksPage: React.FC = () => {
             : t('subtitle.loading')
         }
         rightSlot={
-          <RangePicker
-            value={range}
-            onChange={setRange}
-            onRefresh={() => load()}
-            refreshing={loading}
-            autoRefresh={{ storageKey: 'auto-refresh-books' }}
-          />
+          <div className="flex items-center gap-2">
+            <ExportMenu
+              testId="books-export"
+              buttonLabel={t('export.label')}
+              items={[
+                {
+                  id: 'xlsx',
+                  label: 'XLSX',
+                  disabled: filtered.length === 0 || loading,
+                  onClick: () => {
+                    const columns: ExportColumn[] = [
+                      { key: 'title', label: 'Book', width: 40 },
+                      { key: 'account', label: 'Account', width: 18 },
+                      { key: 'spend', label: 'Spend', align: 'right', width: 18 },
+                      { key: 'sales', label: 'Sales', align: 'right', width: 18 },
+                      { key: 'orders', label: 'Orders', align: 'right', width: 14 },
+                      { key: 'royalty', label: 'Royalty', align: 'right', width: 18 },
+                      { key: 'acos', label: 'ACOS%', align: 'right', width: 14 },
+                      { key: 'tacos', label: 'TACoS%', align: 'right', width: 14 },
+                    ];
+                    const exportRows = filtered.map((g) => ({
+                      title: g.title,
+                      account: g.account ?? '',
+                      spend: g.totals.cost.toFixed(2),
+                      sales: g.totals.sales.toFixed(2),
+                      orders: g.totals.orders,
+                      royalty: g.totals.royalty.toFixed(2),
+                      acos: g.acos.toFixed(2),
+                      tacos: g.tacos.toFixed(2),
+                    }));
+                    downloadExcel(
+                      `ads-tracker-books-${from}-${to}.xlsx`,
+                      exportRows,
+                      columns,
+                      'Books',
+                    );
+                    toast.success(t('export.success', { count: exportRows.length }));
+                  },
+                },
+              ]}
+            />
+            <RangePicker
+              value={range}
+              onChange={setRange}
+              onRefresh={() => load()}
+              refreshing={loading}
+              autoRefresh={{ storageKey: 'auto-refresh-books' }}
+            />
+          </div>
         }
       />
 

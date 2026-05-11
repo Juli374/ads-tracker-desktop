@@ -85,5 +85,9 @@
     "noResults": "Nothing found.",
     "noPeriod": "No keywords in the selected period.",
     "filteredOut": "All keywords are hidden by the noise filter. Try lowering the threshold."
+  },
+  "export": {
+    "label": "Export",
+    "success": "Exported: {count, plural, one {# keyword} other {# keywords}}"
   }
 }

@@ -32,6 +32,10 @@
       "openSearchTerms": "Open search terms for this campaign",
       "edit": "Edit",
       "editAria": "Edit campaign"
+    },
+    "export": {
+      "label": "Export",
+      "success": "Exported: {count, plural, one {# campaign} other {# campaigns}}"
     }
   },
   "details": {

@@ -81,5 +81,11 @@
     "cancel": "Cancel",
     "importing": "Importing…",
     "success": "Imported {count, plural, one {# record} other {# records}}"
+  },
+  "export": {
+    "label": "Export",
+    "success": "Exported: {count, plural, one {# upload} other {# uploads}}",
+    "empty": "Nothing to export",
+    "failed": "Export failed"
   }
 }

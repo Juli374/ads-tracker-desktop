@@ -17,6 +17,7 @@ import {
   Card,
   Kpi,
   EmptyState,
+  ExportMenu,
   LoadingRow,
   Pagination,
   ActiveFiltersBar,
@@ -24,6 +25,7 @@ import {
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { downloadExcel, type ExportColumn } from '../lib/export';
 import { useToast } from '../contexts/ToastContext';
 import { useInitialFilters } from '../contexts/NavContext';
 import {
@@ -318,6 +320,49 @@ export const SearchTermsPage: React.FC = () => {
               {showRightPane ? <PanelRightClose size={12} /> : <PanelRightOpen size={12} />}
               {showRightPane ? t('rightPane.toggleHide') : t('rightPane.toggleShow')}
             </button>
+            <ExportMenu
+              testId="search-terms-export"
+              buttonLabel={t('export.label')}
+              items={[
+                {
+                  id: 'xlsx',
+                  label: 'XLSX',
+                  disabled: !data || data.items.length === 0 || loading,
+                  onClick: () => {
+                    const items = data?.items ?? [];
+                    const columns: ExportColumn[] = [
+                      { key: 'term', label: 'Search term', width: 36 },
+                      { key: 'campaign', label: 'Campaign', width: 30 },
+                      { key: 'marketplace', label: 'MP', width: 14 },
+                      { key: 'impressions', label: 'Impr', align: 'right', width: 14 },
+                      { key: 'clicks', label: 'Clicks', align: 'right', width: 14 },
+                      { key: 'cost', label: 'Spend', align: 'right', width: 16 },
+                      { key: 'sales', label: 'Sales', align: 'right', width: 16 },
+                      { key: 'orders', label: 'Orders', align: 'right', width: 14 },
+                      { key: 'acos', label: 'ACOS%', align: 'right', width: 14 },
+                    ];
+                    const exportRows = items.map((it: SearchTermItem) => ({
+                      term: it.searchTerm || '',
+                      campaign: it.campaignName || '',
+                      marketplace: it.marketplace || '',
+                      impressions: it.impressions ?? 0,
+                      clicks: it.clicks ?? 0,
+                      cost: Number(it.cost ?? 0).toFixed(2),
+                      sales: Number(it.sales ?? 0).toFixed(2),
+                      orders: it.orders ?? 0,
+                      acos: Number(it.acos ?? 0).toFixed(2),
+                    }));
+                    downloadExcel(
+                      `ads-tracker-search-terms-${from}-${to}.xlsx`,
+                      exportRows,
+                      columns,
+                      'Search Terms',
+                    );
+                    toast.success(t('export.success', { count: exportRows.length }));
+                  },
+                },
+              ]}
+            />
             <RangePicker
               value={range}
               onChange={setRange}
