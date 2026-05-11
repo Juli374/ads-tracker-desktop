@@ -57,6 +57,22 @@
       "loadFailed": "Failed to load KDP metrics"
     }
   },
+  "weekly": {
+    "title": "Weekly metrics",
+    "subtitle": "{from} → {to}",
+    "loading": "Loading weekly metrics…",
+    "empty": "No weekly data available for this book.",
+    "loadFailed": "Failed to load weekly metrics",
+    "metric": {
+      "spend": "Spend",
+      "sales": "Sales",
+      "orders": "Orders",
+      "acos": "ACOS",
+      "roi": "ROI",
+      "royalty": "Royalty"
+    },
+    "rowLabel": "Metric"
+  },
   "modals": {
     "edit": {
       "title": "Edit Book",

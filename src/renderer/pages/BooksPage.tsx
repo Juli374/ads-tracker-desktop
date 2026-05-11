@@ -14,7 +14,7 @@ import {
   ActiveFiltersBar,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
-import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
+import { fmtMoney, fmtMoneyPrecise, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
 import {
@@ -228,6 +228,37 @@ export const BooksPage: React.FC = () => {
     }
   };
 
+  // ────────────────────────────────────────────────────────────────────────
+  // Phase J.5 Lane E — KDP metrics inline columns.
+  //
+  // We compute three derived metrics per book row and render them gracefully
+  // (`—` when an input is missing). Backend has /api/books/:id/kdp-metrics
+  // for precise per-marketplace numbers, but firing 1+N requests just to
+  // populate a list view would dominate page latency. Instead we lean on
+  // metadata that's already loaded in `useBooks()`:
+  //
+  //   royalty/page = total_royalty / page_count    (truly per-page royalty)
+  //   BE-ACOS      = book.be_acos                   (set in Edit Book modal)
+  //   Max CPC      = book.max_cpc                   (set in Edit Book modal)
+  //
+  // BE-ACOS and Max CPC are user-configured per book; the alternative
+  // (royalty / sales_price × 100) requires a list price we don't have in
+  // the summary payload. We keep the spec's gracefully-`—` contract so the
+  // column doesn't shout at users who haven't filled the fields yet.
+  const kdpMetricsFor = (
+    bookId: number,
+    royalty: number,
+  ): { royaltyPerPage: number | null; beAcos: number | null; maxCpc: number | null } => {
+    const book = booksList.find((b) => b.id === bookId);
+    const pages = book?.page_count ?? null;
+    return {
+      royaltyPerPage:
+        pages && pages > 0 && royalty > 0 ? royalty / pages : null,
+      beAcos: book?.be_acos ?? null,
+      maxCpc: book?.max_cpc ?? null,
+    };
+  };
+
   const handleBreadcrumbNav = (level: 'list' | 'marketplaces' | 'campaigns') => {
     if (level === 'list') {
       setBooksDrill({ level: 'list' });
@@ -329,6 +360,9 @@ export const BooksPage: React.FC = () => {
                     <th className="text-right px-3 py-2 font-medium">Orders</th>
                     <th className="text-right px-3 py-2 font-medium">ACOS</th>
                     <th className="text-right px-3 py-2 font-medium">{t('th.ratings')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('th.royalty')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('th.beAcos')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('th.maxCpc')}</th>
                     <th className="text-right px-5 py-2 font-medium">TACoS</th>
                   </tr>
                 </thead>
@@ -341,6 +375,7 @@ export const BooksPage: React.FC = () => {
                       onToggle={() => toggle(g.book_id)}
                       onDrillDown={() => handleDrillToMarketplaces(g)}
                       ratings={getRatingsForBook(g.book_id)}
+                      kdp={kdpMetricsFor(g.book_id, g.totals.royalty)}
                       onOpenModal={(type) => {
                         const book = booksList.find((b) => b.id === g.book_id);
                         if (book) openModal(type, book);
@@ -425,8 +460,9 @@ const BookGroupRows: React.FC<{
   onToggle: () => void;
   onDrillDown: () => void;
   ratings: BookRating[];
+  kdp: { royaltyPerPage: number | null; beAcos: number | null; maxCpc: number | null };
   onOpenModal: (type: ModalType) => void;
-}> = ({ group, expanded, onToggle, onDrillDown, ratings }) => {
+}> = ({ group, expanded, onToggle, onDrillDown, ratings, kdp }) => {
   const { t } = useTranslation('books');
   const Chevron = expanded ? ChevronDown : ChevronRight;
   const topRating = ratings[0];
@@ -492,6 +528,28 @@ const BookGroupRows: React.FC<{
             ? `${topRating.stars.toFixed(1)}★ (${topRating.count})`
             : '—'}
         </td>
+        {/* KDP metrics — three columns. `—` when input data is missing,
+            preserving the spec's gracefully-degrade contract. */}
+        <td
+          className="px-3 py-2.5 text-xs text-right tabular-nums text-zinc-700"
+          data-testid={`book-royalty-per-page-${group.book_id}`}
+        >
+          {kdp.royaltyPerPage != null
+            ? fmtMoneyPrecise(kdp.royaltyPerPage)
+            : '—'}
+        </td>
+        <td
+          className="px-3 py-2.5 text-xs text-right tabular-nums text-zinc-700"
+          data-testid={`book-be-acos-${group.book_id}`}
+        >
+          {kdp.beAcos != null ? fmtPct(kdp.beAcos) : '—'}
+        </td>
+        <td
+          className="px-3 py-2.5 text-xs text-right tabular-nums text-zinc-700"
+          data-testid={`book-max-cpc-${group.book_id}`}
+        >
+          {kdp.maxCpc != null ? fmtMoneyPrecise(kdp.maxCpc) : '—'}
+        </td>
         <td className="px-5 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
           {group.tacos > 0 ? fmtPct(group.tacos) : '—'}
         </td>
@@ -528,6 +586,11 @@ const BookGroupRows: React.FC<{
                 {row.acos > 0 ? fmtPct(row.acos) : '—'}
               </span>
             </td>
+            <td className="px-3 py-2 text-[11px] text-zinc-400 text-right">—</td>
+            {/* KDP columns are only meaningful at the book level (book.metadata)
+                — leave child rows empty so the row aligns. */}
+            <td className="px-3 py-2 text-[11px] text-zinc-400 text-right">—</td>
+            <td className="px-3 py-2 text-[11px] text-zinc-400 text-right">—</td>
             <td className="px-3 py-2 text-[11px] text-zinc-400 text-right">—</td>
             <td className="px-5 py-2 text-[11px] text-zinc-600 text-right tabular-nums">
               {row.tacos != null && row.tacos > 0 ? fmtPct(row.tacos) : '—'}
