@@ -106,7 +106,9 @@ export const MoveModal: React.FC<Props> = ({
     return () => {
       cancelled = true;
     };
-  }, [bookId, marketplace, sourceCampaignId, t, toast]);
+    // `t` is intentionally outside deps — react-i18next returns a new
+    // function reference each render, which triggers infinite reloads.
+  }, [bookId, marketplace, sourceCampaignId, toast]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

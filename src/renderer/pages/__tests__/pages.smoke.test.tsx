@@ -70,14 +70,16 @@ describe('page smoke renders', () => {
     expect(await screen.findByText('Test Campaign')).toBeInTheDocument();
   });
 
-  it('SearchTermsPage renders header without crashing on empty list', async () => {
+  it('SearchTermsPage renders header and inbox-status tabs', async () => {
     render(
       <Wrap>
         <SearchTermsPage />
       </Wrap>,
     );
     expect(await screen.findByTestId('search_terms-page')).toBeInTheDocument();
-    expect(await screen.findByText('empty.noPeriod')).toBeInTheDocument();
+    // Phase J.1 Lane A — inbox-status tabs are part of the page now.
+    expect(await screen.findByTestId('search-terms-tabs')).toBeInTheDocument();
+    expect(await screen.findByTestId('tab-inbox')).toBeInTheDocument();
   });
 
   it('ReportsPage renders header, table and marketplace card', async () => {

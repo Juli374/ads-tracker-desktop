@@ -179,14 +179,14 @@ export const SearchTermsPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [filters, toast, t],
+    // `t` is intentionally outside deps — react-i18next returns a new
+    // function reference on every render, which would re-create `load`
+    // every render and re-fire the load() effect → infinite loop.
+    [filters, toast],
   );
 
   useEffect(() => {
     load();
-    // reloadTick is intentionally outside the load() dep — it forces re-fetch
-    // after bulk actions без перетряски input-фильтров.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, reloadTick]);
 
   useEffect(() => {

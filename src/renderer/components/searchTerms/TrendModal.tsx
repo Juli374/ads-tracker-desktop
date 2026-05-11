@@ -76,7 +76,8 @@ export const TrendModal: React.FC<Props> = ({ statusId, keyword, onClose }) => {
     return () => {
       cancelled = true;
     };
-  }, [statusId, days, t, toast]);
+    // `t` is intentionally outside deps — see RankHistoryModal for rationale.
+  }, [statusId, days, toast]);
 
   const chartData = useMemo(
     () =>

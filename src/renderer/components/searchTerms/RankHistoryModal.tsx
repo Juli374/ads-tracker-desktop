@@ -89,7 +89,9 @@ export const RankHistoryModal: React.FC<Props> = ({
     return () => {
       cancelled = true;
     };
-  }, [statusId, keyword, bookId, marketplace, days, t, toast]);
+    // `t` is intentionally outside deps — react-i18next returns a new
+    // function reference each render, which would trigger infinite reloads.
+  }, [statusId, keyword, bookId, marketplace, days, toast]);
 
   const chartData: ChartPoint[] = (points ?? [])
     .filter((p) => p.organicRank != null)
