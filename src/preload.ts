@@ -9,6 +9,9 @@ import type {
   MediaUploadResponse,
   DeepLinkEvent,
   LocalRoyaltyImportPayload,
+  LocalRoyaltyParseResult,
+  DialogOpenFileOptions,
+  DialogOpenFileResult,
   UpdateStatus,
   AppLogPayload,
   AiSettings,
@@ -67,6 +70,12 @@ const api: DesktopApi = {
     delete: (uploadId: number) =>
       ipcRenderer.invoke(IpcChannel.LocalRoyaltyDelete, uploadId),
     filePath: () => ipcRenderer.invoke(IpcChannel.LocalRoyaltyFilePath) as Promise<string>,
+    parseFile: (absPath: string) =>
+      ipcRenderer.invoke(IpcChannel.LocalRoyaltyParseFile, absPath) as Promise<LocalRoyaltyParseResult>,
+  },
+  dialog: {
+    openFile: (options?: DialogOpenFileOptions) =>
+      ipcRenderer.invoke(IpcChannel.DialogOpenFile, options) as Promise<DialogOpenFileResult>,
   },
   update: {
     getStatus: () => ipcRenderer.invoke(IpcChannel.UpdateGetStatus) as Promise<UpdateStatus>,

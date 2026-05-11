@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Calendar, Cloud, HardDrive, Loader2, Trash2, Upload } from 'lucide-react';
+import { Calendar, Cloud, FileSpreadsheet, HardDrive, Loader2, Trash2, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../../api/client';
 import {
@@ -20,6 +20,7 @@ import {
 } from '../ui';
 import { fmtMoney, fmtNumber } from '../../lib/format';
 import { useToast } from '../../contexts/ToastContext';
+import { ImportRoyaltyModal } from './ImportRoyaltyModal';
 
 type Source = 'cloud' | 'local';
 
@@ -68,6 +69,7 @@ export const RoyaltiesTab: React.FC = () => {
   const [, setSummary] = useState<RoyaltySummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [filePath, setFilePath] = useState<string>('');
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -285,15 +287,27 @@ export const RoyaltiesTab: React.FC = () => {
             }
             rightSlot={
               source === 'local' ? (
-                <button
-                  type="button"
-                  onClick={handleSeed}
-                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
-                  title={t('card.demoSeedTitle')}
-                >
-                  <Upload size={11} />
-                  {t('card.demoSeed')}
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setImportOpen(true)}
+                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium text-white bg-zinc-900 hover:bg-zinc-800 transition-colors"
+                    title={t('card.importTitle')}
+                    data-testid="royalty-import-btn"
+                  >
+                    <FileSpreadsheet size={11} />
+                    {t('card.import')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSeed}
+                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
+                    title={t('card.demoSeedTitle')}
+                  >
+                    <Upload size={11} />
+                    {t('card.demoSeed')}
+                  </button>
+                </div>
               ) : null
             }
           >
@@ -362,6 +376,17 @@ export const RoyaltiesTab: React.FC = () => {
             )}
           </Card>
         </>
+      )}
+
+      {importOpen && (
+        <ImportRoyaltyModal
+          defaultMonth={selectedMonth ?? undefined}
+          onClose={() => setImportOpen(false)}
+          onImported={() => {
+            setImportOpen(false);
+            loadUploads();
+          }}
+        />
       )}
     </div>
   );

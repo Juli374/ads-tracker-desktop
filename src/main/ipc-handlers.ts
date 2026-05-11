@@ -1,4 +1,5 @@
-import { app, ipcMain, net, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, net, shell } from 'electron';
+import fs from 'fs';
 import nodePath from 'path';
 import {
   IpcChannel,
@@ -8,6 +9,9 @@ import {
   MediaUploadPayload,
   MediaUploadResponse,
   LocalRoyaltyImportPayload,
+  LocalRoyaltyParseResult,
+  DialogOpenFileOptions,
+  DialogOpenFileResult,
   UpdateStatus,
   AppLogPayload,
   AiSettings,
@@ -22,9 +26,14 @@ import {
 } from './auth-store';
 import { performApiRequest } from './api-client';
 import { localStore, DEFAULT_AI_SETTINGS, AiSettingsRow } from './local-db';
-import { localRoyalty } from './local-db/royalty';
+import { localRoyalty, RoyaltyParseError } from './local-db/royalty';
 import { getStatus as getUpdateStatus, checkForUpdates, quitAndInstall as updaterQuitAndInstall } from './updater';
 import { logger, getLogFilePath, scrubSecrets, scrubValue } from './logger';
+
+// 10 MB cap for any single file going through media:upload. The Railway
+// backend has its own 16MB body limit, but we want a clear UX-side error
+// (and to avoid base64-encoding a 50MB blob in renderer memory).
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 const DEFAULT_API_BASE_URL = 'https://ads-tracker-production.up.railway.app';
 
@@ -117,6 +126,25 @@ export function registerIpcHandlers(): void {
       // --- validate files array ---
       if (!Array.isArray(payload?.files) || payload.files.length === 0) {
         return { ok: false, status: 400, data: null, error: 'media:upload: files must be a non-empty array' };
+      }
+
+      // --- size guard ---
+      // base64 inflates the original by ~33% (4 chars per 3 bytes), so we
+      // back-compute the decoded size from the encoded length. This catches
+      // 10MB+ files BEFORE Buffer.from() spends memory on the decode.
+      for (const f of payload.files) {
+        if (typeof f?.base64 !== 'string') continue;
+        const padding = (f.base64.endsWith('==') ? 2 : f.base64.endsWith('=') ? 1 : 0);
+        const decodedBytes = Math.floor((f.base64.length * 3) / 4) - padding;
+        if (decodedBytes > MAX_UPLOAD_BYTES) {
+          const mb = (decodedBytes / 1024 / 1024).toFixed(1);
+          return {
+            ok: false,
+            status: 413,
+            data: null,
+            error: `media:upload: file "${f.name}" is ${mb} MB — limit is 10 MB`,
+          };
+        }
       }
 
       const token = await readToken();
@@ -293,6 +321,77 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.LocalRoyaltyFilePath, async (): Promise<string> => {
     return localStore.filePath();
   });
+
+  // ====== Phase J.4 Lane D: local royalty parse + native open-file dialog ======
+
+  ipcMain.handle(
+    IpcChannel.LocalRoyaltyParseFile,
+    async (_evt, absPath: unknown): Promise<LocalRoyaltyParseResult> => {
+      if (typeof absPath !== 'string' || absPath.length === 0) {
+        throw new Error('local:royalty:parseFile expects an absolute path string');
+      }
+      const resolved = nodePath.resolve(absPath);
+      let stat: fs.Stats;
+      try {
+        stat = fs.statSync(resolved);
+      } catch (err) {
+        throw new Error(
+          `local:royalty:parseFile: cannot stat "${resolved}": ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+      if (!stat.isFile()) {
+        throw new Error('local:royalty:parseFile: path is not a regular file');
+      }
+      if (stat.size > MAX_UPLOAD_BYTES) {
+        throw new Error(
+          `local:royalty:parseFile: file is ${(stat.size / 1024 / 1024).toFixed(1)} MB — limit is 10 MB`,
+        );
+      }
+      const buf = fs.readFileSync(resolved);
+      try {
+        const parsed = localRoyalty.parseFile(buf);
+        return {
+          records: parsed.records,
+          warnings: parsed.warnings,
+          format: parsed.format,
+          source_path: resolved,
+        };
+      } catch (err) {
+        if (err instanceof RoyaltyParseError) {
+          throw new Error(`Royalty parse failed (${err.code}): ${err.message}`);
+        }
+        throw err;
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.DialogOpenFile,
+    async (
+      evt,
+      options: unknown,
+    ): Promise<DialogOpenFileResult> => {
+      const opts = (options ?? {}) as DialogOpenFileOptions;
+      const win = BrowserWindow.fromWebContents(evt.sender) ?? undefined;
+      const result = win
+        ? await dialog.showOpenDialog(win, {
+            title: typeof opts.title === 'string' ? opts.title : undefined,
+            properties: ['openFile'],
+            filters: Array.isArray(opts.filters) ? opts.filters : undefined,
+          })
+        : await dialog.showOpenDialog({
+            title: typeof opts.title === 'string' ? opts.title : undefined,
+            properties: ['openFile'],
+            filters: Array.isArray(opts.filters) ? opts.filters : undefined,
+          });
+      if (result.canceled || result.filePaths.length === 0) {
+        return { path: null };
+      }
+      return { path: result.filePaths[0] };
+    },
+  );
 
   // ====== Auto-update (electron-updater) ======
 

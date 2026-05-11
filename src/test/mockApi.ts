@@ -6,7 +6,9 @@ import type {
   ApiResponse,
   AppInfo,
   DesktopApi,
+  DialogOpenFileResult,
   LocalRoyaltyMonthSummary,
+  LocalRoyaltyParseResult,
   LocalRoyaltyRecord,
   LocalRoyaltyUpload,
   MediaUploadPayload,
@@ -21,6 +23,12 @@ interface MockApiOptions {
   token?: string | null;
   aiSettings?: Partial<AiSettings>;
   aiTestKey?: AiTestKeyResult;
+  /** Path returned by `dialog.openFile`. `null` simulates a cancelled picker. */
+  dialogPath?: string | null;
+  /** Pre-canned `localRoyalty.parseFile` result. */
+  parseResult?: LocalRoyaltyParseResult;
+  /** Pre-canned `mediaUpload` response (defaults to a 200 success). */
+  mediaUploadResponse?: MediaUploadResponse;
 }
 
 export function installMockApi(options: MockApiOptions = {}): void {
@@ -35,13 +43,14 @@ export function installMockApi(options: MockApiOptions = {}): void {
   }) as unknown as <T = unknown>(payload: ApiRequestPayload) => Promise<ApiResponse<T>>;
 
   // Multipart upload — default success shape; tests that need different behaviour
-  // can override via vi.stubGlobal('api', {...}) (see upload.test.ts).
+  // can override via options.mediaUploadResponse or vi.stubGlobal('api', {...}).
+  const mediaUploadResponse: MediaUploadResponse = options.mediaUploadResponse ?? {
+    ok: true,
+    status: 200,
+    data: { url: 'https://test.local/uploaded.png' },
+  };
   const mediaUpload = vi.fn(
-    async (): Promise<MediaUploadResponse> => ({
-      ok: true,
-      status: 200,
-      data: { url: 'https://test.local/uploaded.png' },
-    }),
+    async (): Promise<MediaUploadResponse> => mediaUploadResponse,
   ) as unknown as <T = unknown>(payload: MediaUploadPayload) => Promise<MediaUploadResponse<T>>;
 
   // Local royalty store — shapes mirror cloud /api/royalties/* responses (see
@@ -86,6 +95,25 @@ export function installMockApi(options: MockApiOptions = {}): void {
     state: 'idle',
     enabled: false,
   };
+
+  // Phase J.4 Lane D defaults.
+  const dialogPath = options.dialogPath === undefined ? null : options.dialogPath;
+  const defaultParseResult: LocalRoyaltyParseResult = {
+    records: [
+      {
+        asin: 'B01TEST001',
+        book_title: 'Mock Book',
+        units: 5,
+        royalty: 12.5,
+        revenue: 12.5,
+        currency: 'USD',
+      },
+    ],
+    warnings: [],
+    format: 'monthly-royalty',
+    source_path: dialogPath ?? '/mock/path/report.xlsx',
+  };
+  const parseResult = options.parseResult ?? defaultParseResult;
 
   (window as unknown as { api: DesktopApi }).api = {
     app: {
@@ -138,6 +166,8 @@ export function installMockApi(options: MockApiOptions = {}): void {
       })),
       delete: vi.fn(async () => ({ deleted: 1 })),
       filePath: vi.fn(async () => '/tmp/test-royalty.json'),
+      // Phase J.4 Lane D
+      parseFile: vi.fn(async () => parseResult),
     },
     update: {
       getStatus: vi.fn(async () => updateIdle),
@@ -164,6 +194,10 @@ export function installMockApi(options: MockApiOptions = {}): void {
         async (): Promise<AiTestKeyResult> =>
           options.aiTestKey ?? { ok: true, status: 200 },
       ),
+    },
+    // Phase J.4 Lane D: native open-file dialog.
+    dialog: {
+      openFile: vi.fn(async (): Promise<DialogOpenFileResult> => ({ path: dialogPath })),
     },
   };
 }

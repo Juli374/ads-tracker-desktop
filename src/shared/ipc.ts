@@ -32,6 +32,10 @@ export const IpcChannel = {
   LocalRoyaltyImport: 'local:royalty:import',
   LocalRoyaltyDelete: 'local:royalty:delete',
   LocalRoyaltyFilePath: 'local:royalty:filePath',
+  // Phase J.4 Lane D: parse a KDP xlsx/csv file in main and return rows for review.
+  LocalRoyaltyParseFile: 'local:royalty:parseFile',
+  // Phase J.4 Lane D: open native file picker (for importing xlsx/csv royalty).
+  DialogOpenFile: 'dialog:openFile',
   // Auto-update (electron-updater + GitHub Releases). В dev / unpackaged build
   // апдейтер выключен и возвращает state='idle', enabled=false. В packaged build
   // main подписан на события electron-updater и эмитит UpdateChanged каждый раз,
@@ -207,6 +211,27 @@ export interface LocalRoyaltyImportPayload {
   }>;
 }
 
+export interface LocalRoyaltyParseResult {
+  records: LocalRoyaltyImportPayload['records'];
+  warnings: string[];
+  format: 'monthly-royalty' | 'sales-dashboard' | 'unknown';
+  /** Absolute path that was parsed; useful as `source_filename` fallback. */
+  source_path: string;
+}
+
+// === Native dialog ===
+export interface DialogOpenFileOptions {
+  /** Window title shown in the picker. */
+  title?: string;
+  /** File-extension filters (without the leading dot). */
+  filters?: Array<{ name: string; extensions: string[] }>;
+}
+
+export interface DialogOpenFileResult {
+  /** Absolute path; null if the user cancelled. */
+  path: string | null;
+}
+
 // === Auto-update ===
 export type UpdateState =
   | 'idle'
@@ -353,6 +378,12 @@ export interface DesktopApi {
     import(payload: LocalRoyaltyImportPayload): Promise<{ upload_id: number; records_added: number }>;
     delete(uploadId: number): Promise<{ deleted: number }>;
     filePath(): Promise<string>;
+    /** Read + parse a KDP report file from disk. Throws on failure. */
+    parseFile(absPath: string): Promise<LocalRoyaltyParseResult>;
+  };
+  dialog: {
+    /** Native open-file picker. Returns `{ path: null }` on cancel. */
+    openFile(options?: DialogOpenFileOptions): Promise<DialogOpenFileResult>;
   };
   update: {
     getStatus(): Promise<UpdateStatus>;

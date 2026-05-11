@@ -31,12 +31,14 @@
     "title": "Imports {month, select, none {} other {· {month}}}",
     "demoSeed": "Demo seed",
     "demoSeedTitle": "Add a demo upload to the local DB",
-    "demoSeedSuccess": "Demo upload added to local DB ({month})"
+    "demoSeedSuccess": "Demo upload added to local DB ({month})",
+    "import": "Import xlsx",
+    "importTitle": "Import KDP royalty report (.xlsx, .csv)"
   },
   "empty": {
     "title": "No imports for this month",
     "hintCloud": "You can upload KDP report in the web app (Settings → Royalty Import).",
-    "hintLocal": "xlsx import will be ported from royalty_import_service.py at public release."
+    "hintLocal": "Click \"Import xlsx\" above to load a KDP Monthly Royalty Report or Sales Dashboard CSV."
   },
   "th": {
     "marketplace": "MP",
@@ -44,7 +46,10 @@
     "units": "Units",
     "royalty": "Royalty",
     "revenue": "Revenue",
-    "uploadedAt": "Uploaded"
+    "uploadedAt": "Uploaded",
+    "asin": "ASIN",
+    "book": "Book",
+    "currency": "CCY"
   },
   "row": {
     "deleteAria": "Delete upload {id}",
@@ -52,5 +57,29 @@
     "deleteConfirm": "Delete local import? Records inside will be removed too.",
     "deleted": "Deleted"
   },
-  "localDbPrefix": "local-db: {path}"
+  "localDbPrefix": "local-db: {path}",
+  "import": {
+    "title": "Import royalty report",
+    "pickerTitle": "Choose KDP royalty report (.xlsx, .csv)",
+    "loading": "Reading file…",
+    "warnings": "Warnings",
+    "detected": "Format: {format} — {count, plural, one {# record} other {# records}}",
+    "previewTruncated": "…showing {shown} of {total} rows",
+    "noRecords": "No records found in the file",
+    "parseFailed": "Failed to parse file",
+    "fields": {
+      "month": "Month (YYYY-MM)",
+      "marketplace": "Marketplace",
+      "account": "Account label"
+    },
+    "errors": {
+      "monthFormat": "Month must be YYYY-MM",
+      "marketplaceFormat": "Marketplace must be 2–8 uppercase letters",
+      "importFailed": "Failed to save import"
+    },
+    "confirm": "Confirm import",
+    "cancel": "Cancel",
+    "importing": "Importing…",
+    "success": "Imported {count, plural, one {# record} other {# records}}"
+  }
 }

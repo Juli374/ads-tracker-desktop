@@ -6,6 +6,7 @@ import type {
   LocalRoyaltyRecord,
   LocalRoyaltyMonthSummary,
   LocalRoyaltyImportPayload,
+  LocalRoyaltyParseResult,
 } from '../../shared/ipc';
 
 export type {
@@ -13,6 +14,7 @@ export type {
   LocalRoyaltyRecord,
   LocalRoyaltyMonthSummary,
   LocalRoyaltyImportPayload,
+  LocalRoyaltyParseResult,
 };
 
 const winApi = (): NonNullable<Window['api']>['localRoyalty'] | null => {
@@ -60,5 +62,11 @@ export const localRoyaltyApi = {
     const api = winApi();
     if (!api) return '';
     return api.filePath();
+  },
+
+  async parseFile(absPath: string): Promise<LocalRoyaltyParseResult> {
+    const api = winApi();
+    if (!api?.parseFile) throw new Error('localRoyalty.parseFile IPC unavailable');
+    return api.parseFile(absPath);
   },
 };
