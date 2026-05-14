@@ -1,0 +1,47 @@
+{
+  "title": "P&L",
+  "subtitle": {
+    "loading": "Loading…",
+    "loaded": "{from} → {to} · {window} attribution",
+    "rows": "{count, plural, one {# book} other {# books}}"
+  },
+  "kpi": {
+    "revenue": "Revenue",
+    "spend": "Spend",
+    "netProfit": "Net profit",
+    "margin": "Margin"
+  },
+  "kpiHint": {
+    "revenue": "Royalty + sales",
+    "spend": "Ads cost",
+    "netProfit": "Revenue − spend − print × orders − returns",
+    "margin": "Net profit / revenue"
+  },
+  "matrix": {
+    "title": "Per-book P&L",
+    "empty": "No P&L data for this period",
+    "th": {
+      "book": "Book",
+      "marketplace": "MP",
+      "revenue": "Revenue",
+      "spend": "Spend",
+      "printCost": "Print cost",
+      "returns": "Returns",
+      "netProfit": "Net profit",
+      "margin": "Margin"
+    }
+  },
+  "chart": {
+    "title": "Rolling 30-day net profit",
+    "empty": "No daily data yet",
+    "tooltipProfit": "Net profit",
+    "axisLabel": "Net profit"
+  },
+  "exportButton": "Export Excel",
+  "exportFilename": "ads-tracker-pnl-{from}-{to}.xlsx",
+  "exportSuccess": "Exported {count, plural, one {# row} other {# rows}}",
+  "errors": {
+    "load": "Failed to load P&L data",
+    "exportFailed": "Export failed"
+  }
+}
