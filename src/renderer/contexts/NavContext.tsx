@@ -20,6 +20,7 @@ export type ViewId =
   | 'automation'
   | 'alerts'
   | 'royalties'
+  | 'pnl'
   | 'operations'
   | 'accounting'
   | 'settings';

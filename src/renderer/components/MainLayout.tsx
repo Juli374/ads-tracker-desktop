@@ -17,6 +17,7 @@ import {
   Wallet,
   ClipboardList,
   Coins,
+  PiggyBank,
   Loader2,
 } from 'lucide-react';
 
@@ -67,6 +68,9 @@ const ReportsPage = lazy(() =>
 const NegativesPage = lazy(() =>
   import('../pages/NegativesPage').then((m) => ({ default: m.NegativesPage })),
 );
+const PnLPage = lazy(() =>
+  import('../pages/PnLPage').then((m) => ({ default: m.PnLPage })),
+);
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
@@ -100,6 +104,7 @@ const actionsNav: NavItem[] = [
 
 const financeNav: NavItem[] = [
   { id: 'royalties', icon: Coins, shortcut: 'G Y' },
+  { id: 'pnl', icon: PiggyBank, shortcut: 'G E' },
   { id: 'accounting', icon: Wallet, shortcut: 'G F' },
 ];
 
@@ -130,6 +135,7 @@ const HOTKEY_MAP: Record<string, ViewId> = {
   l: 'alerts',
   t: 'operations',
   y: 'royalties',
+  e: 'pnl',
   f: 'accounting',
 };
 
@@ -214,6 +220,8 @@ const Layout: React.FC = () => {
         return <ComparisonPage />;
       case 'royalties':
         return <RoyaltiesPage />;
+      case 'pnl':
+        return <PnLPage />;
       case 'operations':
         return <OperationsCenterPage />;
       case 'accounting':

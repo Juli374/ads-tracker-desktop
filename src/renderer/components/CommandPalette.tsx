@@ -16,6 +16,7 @@ import {
   Wallet,
   ClipboardList,
   Coins,
+  PiggyBank,
   RefreshCw,
   LogOut,
   Copy,
@@ -76,6 +77,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
       { id: 'go-alerts', label: goLabel('alerts'), hint: 'G L', icon: Activity, onRun: goto('alerts') },
       { id: 'go-operations', label: goLabel('operations'), hint: 'G T', icon: ClipboardList, onRun: goto('operations') },
       { id: 'go-royalties', label: goLabel('royalties'), hint: 'G Y', icon: Coins, onRun: goto('royalties') },
+      { id: 'go-pnl', label: goLabel('pnl'), hint: 'G E', icon: PiggyBank, onRun: goto('pnl') },
       { id: 'go-accounting', label: goLabel('accounting'), hint: 'G F', icon: Wallet, onRun: goto('accounting') },
       { id: 'go-settings', label: goLabel('settings'), icon: Settings, onRun: goto('settings') },
       {
