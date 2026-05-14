@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import { ApiError } from '../api/client';
 import { metricsApi, BookMetric, BookSummary, CampaignAnalyticsItem } from '../api/metrics';
 import { ratingsApi, BookRating, Book } from '../api/books';
@@ -30,6 +30,7 @@ import { DeleteBookModal } from '../components/books/DeleteBookModal';
 import { AddAsinModal } from '../components/books/AddAsinModal';
 import { UploadCoverModal } from '../components/books/UploadCoverModal';
 import { AddChangeModal } from '../components/books/AddChangeModal';
+import { CoverQAModal } from '../components/books/CoverQAModal';
 
 interface BookGroup {
   book_id: number;
@@ -74,6 +75,8 @@ export const BooksPage: React.FC = () => {
   // Modal state
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  // Standalone cover QA modal — independent of selectedBook (no upload happens).
+  const [coverQaOpen, setCoverQaOpen] = useState(false);
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
 
@@ -273,13 +276,25 @@ export const BooksPage: React.FC = () => {
             : t('subtitle.loading')
         }
         rightSlot={
-          <RangePicker
-            value={range}
-            onChange={setRange}
-            onRefresh={() => load()}
-            refreshing={loading}
-            autoRefresh={{ storageKey: 'auto-refresh-books' }}
-          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCoverQaOpen(true)}
+              className="h-7 px-2 text-[11px] font-medium rounded-md border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors flex items-center gap-1.5"
+              data-testid="books-cover-qa-button"
+              title={t('coverQaButton')}
+            >
+              <ImageIcon size={12} />
+              {t('coverQaButton')}
+            </button>
+            <RangePicker
+              value={range}
+              onChange={setRange}
+              onRefresh={() => load()}
+              refreshing={loading}
+              autoRefresh={{ storageKey: 'auto-refresh-books' }}
+            />
+          </div>
         }
       />
 
@@ -414,6 +429,9 @@ export const BooksPage: React.FC = () => {
           onClose={closeModal}
           onSaved={() => { /* no-op: AddChangeModal saves immediately */ }}
         />
+      )}
+      {coverQaOpen && (
+        <CoverQAModal onClose={() => setCoverQaOpen(false)} />
       )}
     </div>
   );
