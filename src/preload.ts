@@ -23,6 +23,8 @@ import type {
   AutoNegState,
   AutoNegThresholds,
   AutoNegScanResult,
+  WeeklyBriefing,
+  BriefingRunResult,
 } from './shared/ipc';
 import type { Entitlements } from './shared/entitlements';
 
@@ -168,6 +170,24 @@ const api: DesktopApi = {
       const wrapped = (_e: IpcRendererEvent, state: AutoNegState) => handler(state);
       ipcRenderer.on(IpcChannel.AutoNegStateChanged, wrapped);
       return () => ipcRenderer.off(IpcChannel.AutoNegStateChanged, wrapped);
+    },
+  },
+  // Phase M.5 Lane E — Weekly Author Briefing. main schedules a Sunday 9 AM
+  // local-time cron; renderer reads the latest briefing for the dashboard
+  // card + full history for the dedicated page. Run-now forces an immediate
+  // AI call (Pro-tier-gated in the UI; main accepts the call regardless and
+  // surfaces "key not configured" if the AI key is missing).
+  briefing: {
+    getLast: () =>
+      ipcRenderer.invoke(IpcChannel.BriefingGetLast) as Promise<WeeklyBriefing | null>,
+    list: () =>
+      ipcRenderer.invoke(IpcChannel.BriefingList) as Promise<WeeklyBriefing[]>,
+    runNow: () =>
+      ipcRenderer.invoke(IpcChannel.BriefingRunNow) as Promise<BriefingRunResult>,
+    onChange: (handler) => {
+      const wrapped = (_e: IpcRendererEvent, briefing: WeeklyBriefing) => handler(briefing);
+      ipcRenderer.on(IpcChannel.BriefingChanged, wrapped);
+      return () => ipcRenderer.off(IpcChannel.BriefingChanged, wrapped);
     },
   },
 };

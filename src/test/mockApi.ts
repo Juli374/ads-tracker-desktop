@@ -9,6 +9,7 @@ import type {
   AutoNegScanResult,
   AutoNegState,
   AutoNegThresholds,
+  BriefingRunResult,
   DesktopApi,
   DialogOpenFileResult,
   LocalRoyaltyMonthSummary,
@@ -18,6 +19,7 @@ import type {
   MediaUploadPayload,
   MediaUploadResponse,
   UpdateStatus,
+  WeeklyBriefing,
 } from '../shared/ipc';
 import {
   ALL_FEATURE_KEYS,
@@ -55,6 +57,12 @@ interface MockApiOptions {
   autoNegThresholds?: AutoNegThresholds;
   /** Phase L.2 Lane B — override autoNeg.runNow() return value. */
   autoNegScanResult?: AutoNegScanResult;
+  /** Phase M.5 Lane E — override briefing.getLast() return value. */
+  briefingLast?: WeeklyBriefing | null;
+  /** Phase M.5 Lane E — override briefing.list() return value. */
+  briefingList?: WeeklyBriefing[];
+  /** Phase M.5 Lane E — override briefing.runNow() return value. */
+  briefingRunResult?: BriefingRunResult;
 }
 
 export function installMockApi(options: MockApiOptions = {}): void {
@@ -320,6 +328,30 @@ export function installMockApi(options: MockApiOptions = {}): void {
         async (t: AutoNegThresholds): Promise<AutoNegThresholds> => t,
       ),
       onStateChange: vi.fn(() => () => undefined),
+    },
+    // Phase M.5 Lane E — Weekly Author Briefing. Default: nothing yet.
+    briefing: {
+      getLast: vi.fn(
+        async (): Promise<WeeklyBriefing | null> =>
+          options.briefingLast === undefined ? null : options.briefingLast,
+      ),
+      list: vi.fn(
+        async (): Promise<WeeklyBriefing[]> => options.briefingList ?? [],
+      ),
+      runNow: vi.fn(
+        async (): Promise<BriefingRunResult> =>
+          options.briefingRunResult ?? {
+            briefing: {
+              id: 1,
+              generated_at: '2026-05-14T09:00:00Z',
+              period_from: '2026-05-07',
+              period_to: '2026-05-14',
+              content: 'Top movers:\n- Test Book performed well.\n\nUnderperforming:\n- N/A this week.\n\nSuggested actions:\n- Keep going.',
+              model: 'claude-opus-4-7',
+            },
+          },
+      ),
+      onChange: vi.fn(() => () => undefined),
     },
   };
 }

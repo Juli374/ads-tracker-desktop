@@ -51,6 +51,7 @@ import {
   rangeFromQuick,
 } from '../components/dashboard/QuickPeriodSegment';
 import { OrganicPaidBlock } from '../components/dashboard/OrganicPaidBlock';
+import { BriefingCard } from '../components/dashboard/BriefingCard';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation('dashboard');
@@ -291,6 +292,8 @@ export const DashboardPage: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      <BriefingCard />
 
       <OrganicPaidBlock
         from={from}

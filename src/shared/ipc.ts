@@ -95,6 +95,15 @@ export const IpcChannel = {
   AutoNegSettingsGet: 'auto-neg:settings:get',
   AutoNegSettingsSet: 'auto-neg:settings:set',
   AutoNegStateChanged: 'auto-neg:stateChanged',
+  // Phase M.5 Lane E — Weekly Author Briefing. main schedules a Sunday 9 AM
+  // local-time cron; on fire it pulls last-7-days metrics, runs them through
+  // Anthropic, persists to local-db, and emits a native notification.
+  // Renderer reads via getLast/list and can trigger an ad-hoc run via runNow.
+  BriefingGetLast: 'briefing:getLast',
+  BriefingList: 'briefing:list',
+  BriefingRunNow: 'briefing:runNow',
+  /** main → renderer push: a new briefing landed. Renderer refreshes its view. */
+  BriefingChanged: 'briefing:changed',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -480,6 +489,35 @@ export interface AutoNegScanResult {
   errors: string[];
 }
 
+// === Weekly Briefing (Phase M.5 Lane E) ===
+
+/**
+ * Single weekly briefing record. Mirrors `WeeklyBriefingRow` from local-db
+ * with all fields renderer-safe (no internal-only fields).
+ *
+ * - `period_from` / `period_to`: YYYY-MM-DD strings — the 7-day window the
+ *   briefing summarises.
+ * - `content`: AI-generated text. Markdown-flavoured (headings, bullets);
+ *   the renderer applies a tiny inline transformer to render basic markdown.
+ * - `error`: present when generation failed. UI surfaces it inline so the
+ *   user knows to fix the AI key / retry.
+ */
+export interface WeeklyBriefing {
+  id: number;
+  generated_at: string;
+  period_from: string;
+  period_to: string;
+  content: string;
+  error?: string;
+  model?: string;
+}
+
+/** Result of a `runNow()` request. `briefing` is null when generation failed. */
+export interface BriefingRunResult {
+  briefing: WeeklyBriefing | null;
+  error?: string;
+}
+
 // API, который выставляется в renderer через contextBridge как window.api
 export interface DesktopApi {
   app: {
@@ -631,5 +669,23 @@ export interface DesktopApi {
     getSettings(): Promise<AutoNegThresholds>;
     setSettings(thresholds: AutoNegThresholds): Promise<AutoNegThresholds>;
     onStateChange(handler: (state: AutoNegState) => void): () => void;
+  };
+  /**
+   * Phase M.5 Lane E — Weekly Author Briefing. Background scheduler runs
+   * every Sunday 9 AM local time, pulls last-7-days metrics, calls Anthropic
+   * with a strict-format prompt, and stores the result locally. Renderer:
+   *
+   * - `getLast()` — most recent briefing (or null when none ever generated).
+   * - `list()` — full history (bounded to BRIEFING_HISTORY_CAP records).
+   * - `runNow()` — force a briefing right now (e.g. user clicked "Run new").
+   *   Resolves with the new briefing or an error string.
+   * - `onChange(handler)` — push subscription. Main emits whenever a new
+   *   briefing lands so the dashboard card auto-refreshes.
+   */
+  briefing: {
+    getLast(): Promise<WeeklyBriefing | null>;
+    list(): Promise<WeeklyBriefing[]>;
+    runNow(): Promise<BriefingRunResult>;
+    onChange(handler: (briefing: WeeklyBriefing) => void): () => void;
   };
 }

@@ -24,6 +24,8 @@ import {
   AutoNegState,
   AutoNegThresholds,
   AutoNegScanResult,
+  WeeklyBriefing,
+  BriefingRunResult,
 } from '../shared/ipc';
 import {
   clearToken,
@@ -45,6 +47,7 @@ import {
 } from './entitlements';
 import type { Entitlements } from '../shared/entitlements';
 import { getAutoNegativator } from './automation';
+import { getWeeklyBriefer } from './briefing';
 
 // 10 MB cap for any single file going through media:upload. The Railway
 // backend has its own 16MB body limit, but we want a clear UX-side error
@@ -1078,6 +1081,33 @@ export function registerIpcHandlers(): void {
             : 2,
       };
       return getAutoNegativator().setThresholds(next);
+    },
+  );
+
+  // ====== Phase M.5 Lane E: Weekly Author Briefing ======
+  // Renderer вызывает getLast() для dashboard card и list() для full page.
+  // runNow() форсит немедленный AI run, возвращает результат (или error). Push:
+  // BriefingChanged эмитится из main при каждом завершении run'а (cron или
+  // manual) — renderer ре-фетчит без polling'а.
+
+  ipcMain.handle(
+    IpcChannel.BriefingGetLast,
+    async (): Promise<WeeklyBriefing | null> => {
+      return getWeeklyBriefer().getLastBriefing();
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.BriefingList,
+    async (): Promise<WeeklyBriefing[]> => {
+      return getWeeklyBriefer().list();
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.BriefingRunNow,
+    async (): Promise<BriefingRunResult> => {
+      return getWeeklyBriefer().runNow();
     },
   );
 }

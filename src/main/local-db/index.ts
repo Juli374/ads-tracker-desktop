@@ -18,7 +18,10 @@ import { AutoNegThresholds, DEFAULT_AUTO_NEG_THRESHOLDS } from '../../shared/ipc
 
 // Schema v3 adds `auto_negativator` row (Phase L.2 Lane B). Migration from v2
 // is forward-only and additive — old uploads/ai_settings/etc остаются on disk.
-export const SCHEMA_VERSION = 3;
+// Schema v4 adds `weekly_briefings` table (Phase M.5 Lane E) — array of past
+// AI-generated weekly briefing records. Forward-only: existing v3 installs
+// migrate to an empty briefings list on first read.
+export const SCHEMA_VERSION = 4;
 
 // Phase J.3 Lane C — AI settings (Claude API key, model slots, brand voice).
 // Stored locally because the personal-use first track does not push secrets to
@@ -103,6 +106,35 @@ export const DEFAULT_AUTO_NEG: AutoNegRow = {
   lastError: null,
 };
 
+/**
+ * Phase M.5 Lane E — single record of an AI-generated weekly briefing. Stored
+ * locally because the briefing content itself can mention royalty / KDP-only
+ * numbers that we do not want to push to Railway (TOS-aligned: same reason
+ * `royalty_*` lives here). The renderer fetches the latest one for the dashboard
+ * card and the full list for the briefing page.
+ *
+ * - `id` is monotonically increasing (`next_briefing_id`).
+ * - `period_from` / `period_to` are ISO date strings (YYYY-MM-DD) — the window
+ *   the briefing summarises. Stored as strings (not Date) so JSON round-trips
+ *   cleanly.
+ * - `content` is the raw AI output text (markdown-flavoured plain text). May
+ *   include `# Heading` / `- bullets`; the renderer can render it as
+ *   monospace-friendly markdown via a tiny inline transformer.
+ * - `error` is set when generation failed (no AI key, network failure, etc).
+ *   In that case `content` will be empty, and the UI shows the error instead.
+ */
+export interface WeeklyBriefingRow {
+  id: number;
+  generated_at: string;
+  period_from: string;
+  period_to: string;
+  content: string;
+  /** Set only when generation failed; UI shows it inline. */
+  error?: string;
+  /** Model id that produced the briefing (for diagnostics / future caching). */
+  model?: string;
+}
+
 export interface LocalDbState {
   version: number;
   royalty_uploads: RoyaltyUploadRow[];
@@ -114,7 +146,19 @@ export interface LocalDbState {
   ai_settings: AiSettingsRow;
   // Phase L.2 Lane B — Auto-Negativator persisted state (single row).
   auto_negativator: AutoNegRow;
+  // Phase M.5 Lane E — weekly briefings (array of past records). Bounded by
+  // BRIEFING_HISTORY_CAP to keep the JSON file from growing unbounded.
+  weekly_briefings: WeeklyBriefingRow[];
+  next_briefing_id: number;
 }
+
+/**
+ * Phase M.5 Lane E — soft cap on how many briefings we keep on disk. ~6 months
+ * worth at weekly cadence; older entries get evicted FIFO when a new briefing
+ * lands. The renderer never paginates this list (full list is small), so the
+ * cap is more about disk hygiene than UI performance.
+ */
+export const BRIEFING_HISTORY_CAP = 26;
 
 const EMPTY_STATE: LocalDbState = {
   version: SCHEMA_VERSION,
@@ -124,6 +168,8 @@ const EMPTY_STATE: LocalDbState = {
   next_record_id: 1,
   ai_settings: DEFAULT_AI_SETTINGS,
   auto_negativator: DEFAULT_AUTO_NEG,
+  weekly_briefings: [],
+  next_briefing_id: 1,
 };
 
 function dbFilePath(): string {
@@ -215,6 +261,52 @@ function readState(): LocalDbState {
         lastError: typeof an.lastError === 'string' ? an.lastError : null,
       };
     }
+    // v3 → v4: weekly_briefings. Filter to well-shaped records on read so a
+    // corrupted entry can't crash the renderer. `next_briefing_id` defaults
+    // to (max-id + 1) when missing — handles installs that v4-migrated but
+    // never wrote the counter.
+    const briefingsRaw = (parsed as { weekly_briefings?: unknown }).weekly_briefings;
+    let weeklyBriefings: WeeklyBriefingRow[] = [];
+    if (Array.isArray(briefingsRaw)) {
+      for (const row of briefingsRaw) {
+        if (!row || typeof row !== 'object') continue;
+        const r = row as Partial<WeeklyBriefingRow>;
+        if (
+          typeof r.id !== 'number' ||
+          typeof r.generated_at !== 'string' ||
+          typeof r.period_from !== 'string' ||
+          typeof r.period_to !== 'string' ||
+          typeof r.content !== 'string'
+        ) {
+          continue;
+        }
+        weeklyBriefings.push({
+          id: r.id,
+          generated_at: r.generated_at,
+          period_from: r.period_from,
+          period_to: r.period_to,
+          content: r.content,
+          error: typeof r.error === 'string' ? r.error : undefined,
+          model: typeof r.model === 'string' ? r.model : undefined,
+        });
+      }
+      // Apply cap defensively — if the file was hand-edited beyond cap,
+      // keep the most recent N.
+      if (weeklyBriefings.length > BRIEFING_HISTORY_CAP) {
+        weeklyBriefings = weeklyBriefings
+          .slice()
+          .sort((a, b) => a.generated_at.localeCompare(b.generated_at))
+          .slice(weeklyBriefings.length - BRIEFING_HISTORY_CAP);
+      }
+    }
+    const rawNextBriefingId = (parsed as { next_briefing_id?: unknown }).next_briefing_id;
+    const nextBriefingId =
+      typeof rawNextBriefingId === 'number' && Number.isFinite(rawNextBriefingId) && rawNextBriefingId > 0
+        ? rawNextBriefingId
+        : weeklyBriefings.length > 0
+          ? Math.max(...weeklyBriefings.map((b) => b.id)) + 1
+          : 1;
+
     return {
       version: parsed.version ?? SCHEMA_VERSION,
       royalty_uploads: Array.isArray(parsed.royalty_uploads) ? parsed.royalty_uploads : [],
@@ -223,6 +315,8 @@ function readState(): LocalDbState {
       next_record_id: parsed.next_record_id ?? 1,
       ai_settings: aiSettings,
       auto_negativator: autoNegSettings,
+      weekly_briefings: weeklyBriefings,
+      next_briefing_id: nextBriefingId,
     };
   } catch (err) {
     // eslint-disable-next-line no-console

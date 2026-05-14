@@ -5,6 +5,7 @@ import { registerIpcHandlers } from './main/ipc-handlers';
 import { initAutoUpdater } from './main/updater';
 import { startEntitlementsTracking, subscribe as subscribeEntitlements } from './main/entitlements';
 import { getAutoNegativator } from './main/automation';
+import { getWeeklyBriefer } from './main/briefing';
 import { IpcChannel, DeepLinkEvent } from './shared/ipc';
 
 // Initialise the file logger before any other module that might want to log.
@@ -303,16 +304,22 @@ app.on('ready', () => {
   //
   // (2) проверяем дважды: на старте + по подписке на entitlements changes
   // (юзер может апгрейднуть подписку в браузере → entitlements push → стартуем).
+  //
+  // Phase M.5 Lane E: Weekly Briefer. Запускается по тем же правилам, но
+  // привязан к ai.weekly_briefing (Pro tier). Cron — Sunday 9 AM local.
   if (app.isPackaged) {
     const negativator = getAutoNegativator();
+    const briefer = getWeeklyBriefer();
     const maybeStart = (tier: 'start' | 'pro' | 'business') => {
       if (tier === 'pro' || tier === 'business') {
         // .start() сам респектит persisted enabled flag — если юзер toggle-off,
         // ничего не произойдёт. Идемпотентно.
         negativator.start();
+        briefer.start();
       } else {
         // Подписка истекла / даунгрейд — гасим scheduler сразу.
         negativator.stop();
+        briefer.stop();
       }
     };
     // Initial — на основании текущего snapshot (может быть EMPTY до первого fetch'а).
