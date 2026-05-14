@@ -75,11 +75,19 @@ import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
 import { NotificationsBell } from './NotificationsBell';
 import { UserMenu } from './UserMenu';
+import { useEntitlement } from '../hooks/useEntitlement';
+import type { FeatureKey } from '../../shared/entitlements';
 
 interface NavItem {
   id: ViewId;
   icon: React.ElementType;
   shortcut?: string;
+  /**
+   * Phase K: если задан — sidebar item получает Pro/Business badge, когда
+   * фича закрыта. Клик не блокируется (юзер попадёт на страницу, где сам
+   * AutomationPage / etc. рендерит "upgrade card").
+   */
+  feature?: FeatureKey;
 }
 
 // labelKey для каждого item — `items.<id>` в namespace 'nav'.
@@ -96,9 +104,9 @@ const mainNav: NavItem[] = [
 
 const actionsNav: NavItem[] = [
   { id: 'action_center', icon: History, shortcut: 'G A' },
-  { id: 'automation', icon: Zap, shortcut: 'G U' },
+  { id: 'automation', icon: Zap, shortcut: 'G U', feature: 'automation.rules' },
   { id: 'alerts', icon: Activity, shortcut: 'G L' },
-  { id: 'operations', icon: ClipboardList, shortcut: 'G T' },
+  { id: 'operations', icon: ClipboardList, shortcut: 'G T', feature: 'automation.rules' },
 ];
 
 const financeNav: NavItem[] = [
@@ -233,41 +241,14 @@ const Layout: React.FC = () => {
     }
   };
 
-  const renderNavItem = (item: NavItem) => {
-    const Icon = item.icon;
-    const isActive = page === item.id;
-    return (
-      <button
-        key={item.id}
-        data-testid={`nav-${item.id}`}
-        onClick={() => navigate(item.id)}
-        className={`
-          group flex items-center gap-2.5 w-full h-9 px-3 rounded-md text-sm
-          transition-colors duration-100 select-none
-          ${isActive
-            ? 'bg-zinc-100 text-zinc-900 font-medium'
-            : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'}
-        `}
-      >
-        <Icon
-          size={16}
-          strokeWidth={2}
-          className={isActive ? 'text-zinc-900' : 'text-zinc-500 group-hover:text-zinc-700'}
-        />
-        <span className="flex-1 text-left truncate">{t(`items.${item.id}` as 'items.dashboard')}</span>
-        {item.shortcut && (
-          <span
-            className={`
-              text-[10px] font-mono tracking-wider opacity-0 group-hover:opacity-100
-              transition-opacity ${isActive ? 'opacity-60' : ''}
-            `}
-          >
-            {item.shortcut}
-          </span>
-        )}
-      </button>
-    );
-  };
+  const renderNavItem = (item: NavItem) => (
+    <NavItemRow
+      key={item.id}
+      item={item}
+      isActive={page === item.id}
+      onClick={() => navigate(item.id)}
+    />
+  );
 
   return (
     <div className="h-screen w-screen flex flex-col bg-white text-foreground overflow-hidden">
@@ -351,6 +332,76 @@ const PageFallback: React.FC = () => (
     <Loader2 size={18} className="animate-spin text-zinc-400" />
   </div>
 );
+
+interface NavItemRowProps {
+  item: NavItem;
+  isActive: boolean;
+  onClick(): void;
+}
+
+/**
+ * Phase K: вынесли в отдельный компонент чтобы можно было дёрнуть
+ * `useEntitlement` per-item. Sidebar item рендерит Pro/Business badge
+ * рядом с label если фича закрыта, но навигация всё равно работает —
+ * страница сама покажет upgrade-card.
+ */
+const NavItemRow: React.FC<NavItemRowProps> = ({ item, isActive, onClick }) => {
+  const { t } = useTranslation('nav');
+  const { t: tCommon } = useTranslation('common');
+  // useEntitlement дёрнем безусловно (one hook order). Если у item нет
+  // feature — `locked=false` всегда.
+  const ent = useEntitlement(item.feature ?? 'ai.title_generator');
+  const isLocked = item.feature ? !ent.on : false;
+  const tierRequired = item.feature ? ent.tierRequired : 'pro';
+  const Icon = item.icon;
+
+  const badgeLabel =
+    tierRequired === 'business'
+      ? tCommon('entitlements.lockedBadgeBusiness')
+      : tCommon('entitlements.lockedBadge');
+
+  return (
+    <button
+      data-testid={`nav-${item.id}`}
+      data-locked={isLocked ? 'true' : undefined}
+      onClick={onClick}
+      className={`
+        group flex items-center gap-2.5 w-full h-9 px-3 rounded-md text-sm
+        transition-colors duration-100 select-none
+        ${isActive
+          ? 'bg-zinc-100 text-zinc-900 font-medium'
+          : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'}
+      `}
+    >
+      <Icon
+        size={16}
+        strokeWidth={2}
+        className={isActive ? 'text-zinc-900' : 'text-zinc-500 group-hover:text-zinc-700'}
+      />
+      <span className="flex-1 text-left truncate">
+        {t(`items.${item.id}` as 'items.dashboard')}
+      </span>
+      {isLocked && (
+        <span
+          data-testid={`nav-badge-${item.id}`}
+          className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-100 text-violet-700"
+        >
+          {badgeLabel}
+        </span>
+      )}
+      {item.shortcut && !isLocked && (
+        <span
+          className={`
+            text-[10px] font-mono tracking-wider opacity-0 group-hover:opacity-100
+            transition-opacity ${isActive ? 'opacity-60' : ''}
+          `}
+        >
+          {item.shortcut}
+        </span>
+      )}
+    </button>
+  );
+};
 
 type ConnState = 'online' | 'offline' | 'checking';
 

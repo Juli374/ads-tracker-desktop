@@ -45,6 +45,14 @@ if (!('clipboard' in navigator)) {
   });
 }
 
+// jsdom не реализует Element.prototype.scrollIntoView — компоненты типа
+// AIAdvisorPanel (Phase J.7) дёргают его на каждое новое сообщение через
+// `messagesEndRef.current?.scrollIntoView(...)`. Без stub'а — TypeError на
+// первом render'е, тест валится.
+if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = vi.fn();
+}
+
 if (!('createObjectURL' in URL)) {
   // @ts-expect-error jsdom polyfill
   URL.createObjectURL = vi.fn(() => 'blob:mock');

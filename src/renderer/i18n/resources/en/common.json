@@ -182,5 +182,62 @@
   },
   "toast": {
     "closeAria": "Close"
+  },
+  "entitlements": {
+    "lockedBadge": "Pro",
+    "lockedBadgeBusiness": "Business",
+    "nudge": {
+      "title": "Upgrade to unlock",
+      "subtitle": "This feature is part of the {tier} plan.",
+      "cta": "See plans"
+    },
+    "upgrade": {
+      "title": "Choose your plan",
+      "subtitle": "Unlock powerful tools to scale your KDP ads operation.",
+      "cta": "Upgrade",
+      "cancel": "Maybe later",
+      "currentBadge": "Current plan",
+      "plans": {
+        "start": {
+          "name": "Start",
+          "price": "Free",
+          "tagline": "Track your ads on one marketplace."
+        },
+        "pro": {
+          "name": "Pro",
+          "price": "$29/mo",
+          "tagline": "AI advisor, deep analytics, automation lite."
+        },
+        "business": {
+          "name": "Business",
+          "price": "$99/mo",
+          "tagline": "Multi-marketplace, automation rules, priority support."
+        }
+      },
+      "features": {
+        "ai.title_generator": "AI title generator",
+        "ai.advisor_panel": "AI Advisor chat",
+        "analytics.hourly_dynamics": "Hourly dynamics chart",
+        "analytics.multi_period_metrics": "Multi-period metrics",
+        "analytics.search_terms_deep": "Search-terms deep analytics",
+        "marketplace.multi": "Multiple marketplaces",
+        "automation.rules": "Automation rules",
+        "automation.scheduled_reports": "Scheduled reports",
+        "books.bulk_import": "Bulk book import",
+        "royalties.advanced_breakdown": "Per-country royalty breakdown",
+        "export.unlimited": "Unlimited exports",
+        "support.priority": "Priority support"
+      }
+    },
+    "automationLocked": {
+      "title": "Automation rules — Business plan",
+      "subtitle": "Build rules that automatically pause, scale or rebalance campaigns based on metrics you define. Available on the Business plan.",
+      "cta": "Upgrade to Business"
+    },
+    "marketplaceLimit": {
+      "title": "Marketplace limit reached",
+      "subtitleStart": "Start plan supports 1 marketplace. Upgrade to Pro for up to 3, or Business for unlimited.",
+      "subtitlePro": "Pro plan supports up to 3 marketplaces. Upgrade to Business for unlimited."
+    }
   }
 }

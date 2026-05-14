@@ -87,6 +87,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const verifiedUser = await authApi.verify(token);
       setUser(verifiedUser);
       setStatus('authenticated');
+      // Phase K: main уже триггерит refresh при AuthSetToken, но дополнительно
+      // явно дёргаем — чтобы UI получил свежие entitlements синхронно с
+      // первым рендером authenticated-state. Fire-and-forget: главное — push
+      // через EntitlementsChanged всё равно прилетит.
+      if (typeof window.api?.entitlements?.refresh === 'function') {
+        void window.api.entitlements.refresh().catch(() => undefined);
+      }
     } catch (err) {
       await window.api.auth.clearToken();
       const msg = err instanceof Error ? err.message : 'Failed to verify token';
@@ -100,6 +107,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await window.api.auth.clearToken();
     setUser(null);
     setStatus('unauthenticated');
+    // Phase K: на logout main очистит cache и эмитит EntitlementsChanged
+    // с EMPTY snapshot — нам ничего дополнительно делать не нужно. Но
+    // на всякий случай форсим refresh, чтобы renderer гарантированно получил
+    // EMPTY на следующий тик.
+    if (typeof window.api?.entitlements?.refresh === 'function') {
+      void window.api.entitlements.refresh().catch(() => undefined);
+    }
   }, []);
 
   return (

@@ -4,6 +4,7 @@ import i18n from './i18n';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { EntitlementsProvider } from './contexts/EntitlementsContext';
 import { MarketplacesProvider } from './contexts/MarketplacesContext';
 import { BooksProvider } from './contexts/BooksContext';
 import { GlobalFiltersProvider } from './contexts/GlobalFiltersContext';
@@ -33,15 +34,17 @@ export const App: React.FC = () => (
       <ThemeProvider>
         <ToastProvider>
           <AuthProvider>
-            <MarketplacesProvider>
-              <BooksProvider>
-                <GlobalFiltersProvider>
-                  <WeeksFilterProvider>
-                    <Gate />
-                  </WeeksFilterProvider>
-                </GlobalFiltersProvider>
-              </BooksProvider>
-            </MarketplacesProvider>
+            <EntitlementsProvider>
+              <MarketplacesProvider>
+                <BooksProvider>
+                  <GlobalFiltersProvider>
+                    <WeeksFilterProvider>
+                      <Gate />
+                    </WeeksFilterProvider>
+                  </GlobalFiltersProvider>
+                </BooksProvider>
+              </MarketplacesProvider>
+            </EntitlementsProvider>
           </AuthProvider>
         </ToastProvider>
       </ThemeProvider>

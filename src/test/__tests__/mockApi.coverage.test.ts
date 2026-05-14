@@ -43,6 +43,9 @@ const EXPECTED_API_SHAPE: {
   localRoyalty: NamespaceKeys<DesktopApi['localRoyalty']>;
   update: NamespaceKeys<DesktopApi['update']>;
   log: NamespaceKeys<DesktopApi['log']>;
+  ai: NamespaceKeys<DesktopApi['ai']>;
+  dialog: NamespaceKeys<DesktopApi['dialog']>;
+  entitlements: NamespaceKeys<DesktopApi['entitlements']>;
 } = {
   app: ['getInfo', 'getApiBaseUrl', 'getLogPath', 'getGitCommit'],
   auth: ['getToken', 'setToken', 'clearToken', 'onExpired'],
@@ -58,9 +61,13 @@ const EXPECTED_API_SHAPE: {
     'import',
     'delete',
     'filePath',
+    'parseFile',
   ],
   update: ['getStatus', 'check', 'quitAndInstall', 'onChange'],
   log: ['error', 'warn', 'info', 'debug'],
+  ai: ['getSettings', 'setSettings', 'testKey', 'streamStart', 'streamCancel', 'onStreamChunk'],
+  dialog: ['openFile'],
+  entitlements: ['get', 'refresh', 'onChange'],
 };
 
 // Compile-time exhaustiveness check: every top-level key of `DesktopApi` must
