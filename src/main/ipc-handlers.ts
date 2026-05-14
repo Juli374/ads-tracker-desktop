@@ -1,4 +1,6 @@
 import { app, ipcMain, net, shell } from 'electron';
+import { promises as fs } from 'fs';
+import * as path from 'path';
 import {
   IpcChannel,
   AppInfo,
@@ -8,12 +10,15 @@ import {
   MediaUploadResponse,
   LocalRoyaltyImportPayload,
   UpdateStatus,
+  CoverQAPayload,
+  CoverQAReport,
 } from '../shared/ipc';
 import { readToken, writeToken, clearToken } from './auth-store';
 import { performApiRequest } from './api-client';
 import { localStore } from './local-db';
 import { localRoyalty } from './local-db/royalty';
 import { getUpdateStatus, checkForUpdates } from './updater';
+import { analyzeCover } from './cover-qa';
 
 const DEFAULT_API_BASE_URL = 'https://ads-tracker-production.up.railway.app';
 
@@ -232,4 +237,42 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.UpdateCheck, async (): Promise<UpdateStatus> => {
     return checkForUpdates();
   });
+
+  // ====== Cover QA (Phase M.4) ======
+  //
+  // Accepts either {path} (absolute filesystem path) or {base64} (raw image
+  // bytes from the renderer). Returns a CoverQAReport. No HTTP, no auth — all
+  // analysis is local. Tier-free: Start tier gets this for virality.
+
+  ipcMain.handle(
+    IpcChannel.CoverQACheck,
+    async (_evt, payload: CoverQAPayload): Promise<CoverQAReport> => {
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('cover-qa:check: payload must be an object');
+      }
+      const target = payload.target === 'print' ? 'print' : 'ebook';
+
+      let buffer: Buffer;
+      if (typeof payload.path === 'string' && payload.path.length > 0) {
+        // Defence-in-depth: resolve to absolute and refuse anything other
+        // than a regular file. Prevents directory traversal beyond what the
+        // renderer-side dialog can already restrict.
+        const resolved = path.resolve(payload.path);
+        const stat = await fs.stat(resolved);
+        if (!stat.isFile()) {
+          throw new Error('cover-qa:check: path is not a regular file');
+        }
+        buffer = await fs.readFile(resolved);
+      } else if (typeof payload.base64 === 'string' && payload.base64.length > 0) {
+        buffer = Buffer.from(payload.base64, 'base64');
+        if (buffer.length === 0) {
+          throw new Error('cover-qa:check: base64 decoded to an empty buffer');
+        }
+      } else {
+        throw new Error('cover-qa:check: payload must include either `path` or `base64`');
+      }
+
+      return analyzeCover(buffer, { target });
+    },
+  );
 }

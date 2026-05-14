@@ -9,6 +9,8 @@ import {
   DeepLinkEvent,
   LocalRoyaltyImportPayload,
   UpdateStatus,
+  CoverQAPayload,
+  CoverQAReport,
 } from './shared/ipc';
 
 const api: DesktopApi = {
@@ -48,6 +50,10 @@ const api: DesktopApi = {
   update: {
     getStatus: () => ipcRenderer.invoke(IpcChannel.UpdateGetStatus) as Promise<UpdateStatus>,
     check: () => ipcRenderer.invoke(IpcChannel.UpdateCheck) as Promise<UpdateStatus>,
+  },
+  coverQa: {
+    check: (payload: CoverQAPayload) =>
+      ipcRenderer.invoke(IpcChannel.CoverQACheck, payload) as Promise<CoverQAReport>,
   },
 };
 
