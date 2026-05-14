@@ -17,6 +17,7 @@ import type enRoyalties from './resources/en/royalties.json';
 import type enSettings from './resources/en/settings.json';
 import type enAuth from './resources/en/auth.json';
 import type enPnl from './resources/en/pnl.json';
+import type enResearch from './resources/en/research.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -40,6 +41,7 @@ declare module 'i18next' {
       settings: typeof enSettings;
       auth: typeof enAuth;
       pnl: typeof enPnl;
+      research: typeof enResearch;
     };
     returnNull: false;
   }

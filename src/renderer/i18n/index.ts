@@ -20,6 +20,8 @@ import enRoyalties from './resources/en/royalties.json';
 import enSettings from './resources/en/settings.json';
 import enAuth from './resources/en/auth.json';
 import enPnl from './resources/en/pnl.json';
+// Phase M.1 — Niche Explorer / Research page
+import enResearch from './resources/en/research.json';
 
 void i18next
   .use(ICU)
@@ -28,7 +30,7 @@ void i18next
     lng: 'en',
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['common', 'nav', 'dashboard', 'campaigns', 'books', 'searchTerms', 'keywords', 'negatives', 'reports', 'comparison', 'alerts', 'operations', 'automation', 'accounting', 'royalties', 'settings', 'auth', 'pnl'],
+    ns: ['common', 'nav', 'dashboard', 'campaigns', 'books', 'searchTerms', 'keywords', 'negatives', 'reports', 'comparison', 'alerts', 'operations', 'automation', 'accounting', 'royalties', 'settings', 'auth', 'pnl', 'research'],
     resources: {
       en: {
         common: enCommon,
@@ -49,6 +51,7 @@ void i18next
         settings: enSettings,
         auth: enAuth,
         pnl: enPnl,
+        research: enResearch,
       },
     },
     interpolation: { escapeValue: false },
