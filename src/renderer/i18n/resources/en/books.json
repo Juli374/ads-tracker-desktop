@@ -30,6 +30,7 @@
     "collapseAria": "Collapse"
   },
   "search": "Search…",
+  "coverQaButton": "Cover QA",
   "drill": {
     "breadcrumbAll": "Books",
     "marketplaces": "Marketplaces",
@@ -103,9 +104,31 @@
       "title": "Upload Cover",
       "picker": "Choose image file (JPG, PNG)",
       "save": "Upload",
+      "uploadWithWarnings": "Upload (with warnings)",
+      "uploadAnyway": "Upload anyway",
       "uploading": "Uploading…",
       "cancel": "Cancel",
       "error": "Failed to upload cover"
+    },
+    "coverQa": {
+      "title": "Cover QA",
+      "target": "Format:",
+      "targets": {
+        "ebook": "Ebook",
+        "print": "Print"
+      },
+      "dropzone": "Drop a cover here or click to choose a file",
+      "changeFile": "Change file",
+      "analysing": "Analysing cover…",
+      "close": "Close",
+      "proceed": "Use this cover",
+      "proceedAnyway": "Use anyway",
+      "error": "Cover analysis failed",
+      "summary": {
+        "errors": "{count, plural, one {# error} other {# errors}}",
+        "warnings": "{count, plural, one {# warning} other {# warnings}}",
+        "passed": "{count, plural, one {# passed} other {# passed}}"
+      }
     },
     "addChange": {
       "title": "Log Content Change",
