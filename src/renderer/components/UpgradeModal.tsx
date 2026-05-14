@@ -31,6 +31,7 @@ const PLAN_FEATURES: Record<Tier, FeatureKey[]> = {
   pro: [
     'ai.title_generator',
     'ai.advisor_panel',
+    'ai.reverse_asin',
     'analytics.hourly_dynamics',
     'analytics.multi_period_metrics',
     'analytics.search_terms_deep',
@@ -41,6 +42,7 @@ const PLAN_FEATURES: Record<Tier, FeatureKey[]> = {
   business: [
     'ai.title_generator',
     'ai.advisor_panel',
+    'ai.reverse_asin',
     'analytics.hourly_dynamics',
     'analytics.multi_period_metrics',
     'analytics.search_terms_deep',
