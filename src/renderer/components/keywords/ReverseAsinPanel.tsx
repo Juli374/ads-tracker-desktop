@@ -40,6 +40,25 @@ interface AdGroupChoice {
   name: string;
 }
 
+/**
+ * Read a File as a UTF-8 text string. Wraps FileReader in a Promise so the
+ * caller can `await` it. Used instead of File.text() because jsdom (our test
+ * environment) doesn't implement File.text() consistently.
+ */
+function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === 'string') resolve(result);
+      else reject(new Error('File could not be read as text'));
+    };
+    reader.onerror = () =>
+      reject(reader.error ?? new Error('FileReader failed'));
+    reader.readAsText(file);
+  });
+}
+
 export const ReverseAsinPanel: React.FC = () => {
   const { t } = useTranslation('keywords');
   const toast = useToast();
@@ -66,7 +85,9 @@ export const ReverseAsinPanel: React.FC = () => {
     fileInputRef.current?.click();
   }, []);
 
-  // Renderer-side CSV read. File.text() is available in modern Chromium.
+  // Renderer-side CSV read. We use FileReader.readAsText instead of File.text()
+  // because jsdom (our test environment) doesn't ship a working File.text()
+  // implementation — FileReader is universally polyfilled.
   const onFileChosen = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
@@ -75,7 +96,7 @@ export const ReverseAsinPanel: React.FC = () => {
       if (!file) return;
       setImporting(true);
       try {
-        const text = await file.text();
+        const text = await readFileAsText(file);
         const parsed = parseReverseAsinCsv(text);
         if (parsed.length === 0) {
           toast.error(t('reverseAsin.importEmpty'));
