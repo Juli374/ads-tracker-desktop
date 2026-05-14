@@ -1,0 +1,79 @@
+{
+  "title": "Research",
+  "subtitle": "Niche Explorer — research keywords and competitor ASINs to find untapped opportunities.",
+  "locked": {
+    "title": "Niche Explorer is a Pro feature",
+    "description": "Import competitor data from Publisher Rocket, see BSR-to-revenue estimates, and let Claude analyse niche saturation in one click.",
+    "cta": "Upgrade to Pro"
+  },
+  "tabs": {
+    "byKeyword": "By keyword",
+    "byAsin": "By ASIN"
+  },
+  "query": {
+    "keywordLabel": "Niche / keyword",
+    "keywordPlaceholder": "e.g. \"crockpot recipes\" or \"keto desserts\"",
+    "asinLabel": "Competitor ASIN",
+    "asinPlaceholder": "B07KQRMS9F",
+    "asinInvalid": "ASIN must be 10 characters (letters + digits)",
+    "marketplaceLabel": "Marketplace",
+    "marketplaceHint": "Affects the BSR→revenue estimate."
+  },
+  "import": {
+    "csvButton": "Import Publisher Rocket CSV…",
+    "importing": "Importing…",
+    "hint": "Export keyword search results (or a Reverse-ASIN run) from Publisher Rocket → load the CSV here.",
+    "manualEntryToggle": "Or enter rows manually",
+    "noFile": "No data yet — import a Publisher Rocket CSV or paste rows manually.",
+    "parseError": "Couldn't parse CSV: {message}",
+    "importEmpty": "CSV parsed, but no rows survived the filter (every row had blank ASIN + Title).",
+    "importSuccess": "{count, plural, one {Imported # row} other {Imported # rows}}",
+    "rowsImported": "{count, plural, one {# row} other {# rows}}"
+  },
+  "manual": {
+    "title": "Manual entry",
+    "subtitle": "Add competitor books row-by-row when you don't have a Publisher Rocket export.",
+    "addRow": "Add row",
+    "clearAll": "Clear all"
+  },
+  "table": {
+    "title": "Top competing books",
+    "asin": "ASIN",
+    "bookTitle": "Title",
+    "bsr": "BSR",
+    "estimatedRevenue": "Est. revenue (USD/mo)",
+    "estimatedRevenueDerived": "derived from BSR",
+    "pageCount": "Pages",
+    "reviewCount": "Reviews",
+    "releaseDate": "Released",
+    "weakCover": "Weak cover",
+    "weakCoverHint": "Flagged by AI synthesis as a potential opening.",
+    "noData": "No competitors to show. Import a CSV or add a manual row to start."
+  },
+  "estimateDisclaimer": "BSR-derived estimates are a rough order-of-magnitude guide only — actual revenue depends on price, royalty share, KU borrows, returns, and ads.",
+  "synthesis": {
+    "title": "AI synthesis",
+    "subtitle": "Claude analyses the niche and returns saturation, weak covers, and a suggested angle.",
+    "runButton": "Analyse niche",
+    "running": "Analysing…",
+    "minRows": "Add at least 3 competitor rows before running the analysis.",
+    "saturationLabel": "Saturation score",
+    "saturationScale": "(1 = wide open · 10 = saturated)",
+    "weakCoversLabel": "Possible weak covers",
+    "noWeakCovers": "No weak covers identified.",
+    "angleLabel": "Suggested angle",
+    "notesLabel": "Notes",
+    "missingKey": "Claude API key not configured — set in Settings → AI to enable AI synthesis.",
+    "error": "AI synthesis failed: {message}",
+    "parseError": "AI returned malformed JSON — try running it again. Raw output: {preview}"
+  },
+  "projects": {
+    "title": "Saved research",
+    "empty": "No saved research yet.",
+    "open": "Open",
+    "delete": "Delete",
+    "saveCurrent": "Save research",
+    "saved": "Saved as \"{label}\"",
+    "savedAtSuffix": "{rowCount, plural, one {# row} other {# rows}} · saved {when}"
+  }
+}
