@@ -366,6 +366,12 @@ export function installMockApi(options: MockApiOptions = {}): void {
         checks: [],
       })),
     },
+    // Phase N — Telemetry consent. Default: opted out (matches main default).
+    // Tests that exercise the privacy UI can override via vi.stubGlobal.
+    telemetry: {
+      getConsent: vi.fn(async () => false),
+      setConsent: vi.fn(async () => undefined),
+    },
   };
 }
 

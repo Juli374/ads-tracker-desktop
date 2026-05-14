@@ -12,6 +12,7 @@ import { ProfilesTab } from '../components/settings/ProfilesTab';
 import { TokenTab } from '../components/settings/TokenTab';
 import { AITab } from '../components/settings/AITab';
 import { StreamTab } from '../components/settings/StreamTab';
+import { PrivacyTab } from '../components/settings/PrivacyTab';
 import { FullSyncTab } from '../components/settings/fullSync';
 import { SearchTermTab } from '../components/settings/searchTerm';
 import { RoyaltiesTab } from '../components/settings/RoyaltiesTab';
@@ -28,6 +29,7 @@ const VALID_TABS: SettingsTabId[] = [
   'searchTerm',
   'royalties',
   'stream',
+  'privacy',
 ];
 
 function readHashTab(): SettingsTabId | null {
@@ -90,6 +92,7 @@ export const SettingsPage: React.FC = () => {
       {activeTab === 'searchTerm' && <SearchTermTab />}
       {activeTab === 'royalties' && <RoyaltiesTab />}
       {activeTab === 'stream' && <StreamTab />}
+      {activeTab === 'privacy' && <PrivacyTab />}
     </div>
   );
 };

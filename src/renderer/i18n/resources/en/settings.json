@@ -16,7 +16,21 @@
     "fullSync": "Full Sync",
     "searchTerm": "Search Term",
     "royalties": "Royalties",
-    "stream": "Stream"
+    "stream": "Stream",
+    "privacy": "Privacy"
+  },
+  "privacy": {
+    "title": "Privacy & telemetry",
+    "intro": "Ads Tracker runs entirely on your machine. The only data that leaves your computer goes to Amazon Advertising, Anthropic (only when you use AI features), and our optional crash/usage telemetry — which is OFF by default.",
+    "consentLabel": "Send anonymous usage and crash reports",
+    "consentHint": "Helps us catch crashes and prioritise features. Never includes book titles, ad copy, API keys, or any account identifiers. Toggle off at any time.",
+    "statusLabel": "Status",
+    "statusOn": "Telemetry enabled (opted in).",
+    "statusOff": "Telemetry disabled (opt-in only).",
+    "transportStub": "Phase N stub: consent is persisted locally. No transport is wired yet, so no data leaves your machine regardless of this toggle. The hook will be enabled in a later release with a clear release note.",
+    "optedIn": "Telemetry enabled.",
+    "optedOut": "Telemetry disabled.",
+    "saveFailed": "Could not update telemetry preference."
   },
   "booksTab": {
     "search": "Search books…",

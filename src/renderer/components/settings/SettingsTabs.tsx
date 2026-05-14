@@ -9,6 +9,7 @@ import {
   KeyRound,
   RefreshCw,
   Server,
+  Shield,
   Sparkles,
   Users,
 } from 'lucide-react';
@@ -23,7 +24,8 @@ export type SettingsTabId =
   | 'fullSync'
   | 'searchTerm'
   | 'royalties'
-  | 'stream';
+  | 'stream'
+  | 'privacy';
 
 interface TabSpec {
   id: SettingsTabId;
@@ -41,6 +43,7 @@ const TABS: TabSpec[] = [
   { id: 'royalties', icon: Coins },
   { id: 'ai', icon: Sparkles },
   { id: 'stream', icon: Activity },
+  { id: 'privacy', icon: Shield },
 ];
 
 interface Props {

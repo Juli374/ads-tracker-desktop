@@ -160,6 +160,9 @@ export interface LocalDbState {
   // BRIEFING_HISTORY_CAP to keep the JSON file from growing unbounded.
   weekly_briefings: WeeklyBriefingRow[];
   next_briefing_id: number;
+  // Phase N — Telemetry consent. Defaults to false (opt-in). Persisted so the
+  // user doesn't see the consent prompt on every boot.
+  telemetry_consent?: boolean;
 }
 
 /**
@@ -360,6 +363,8 @@ function readState(): LocalDbState {
       auto_negativator: autoNegSettings,
       weekly_briefings: weeklyBriefings,
       next_briefing_id: nextBriefingId,
+      // Phase N — telemetry consent. Default false → opt-in.
+      telemetry_consent: typeof parsed.telemetry_consent === 'boolean' ? parsed.telemetry_consent : false,
     };
   } catch (err) {
     // eslint-disable-next-line no-console

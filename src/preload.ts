@@ -196,6 +196,12 @@ const api: DesktopApi = {
     check: (payload: CoverQAPayload) =>
       ipcRenderer.invoke(IpcChannel.CoverQACheck, payload) as Promise<CoverQAReport>,
   },
+  // Phase N — Telemetry consent. Persists locally; transport is stub today.
+  telemetry: {
+    getConsent: () => ipcRenderer.invoke(IpcChannel.TelemetryGetConsent) as Promise<boolean>,
+    setConsent: (consent: boolean) =>
+      ipcRenderer.invoke(IpcChannel.TelemetrySetConsent, consent) as Promise<void>,
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

@@ -106,6 +106,10 @@ export const IpcChannel = {
   BriefingChanged: 'briefing:changed',
   // Cover QA (Phase M.4) — анализ обложек книг через sharp в main process.
   CoverQACheck: 'cover-qa:check',
+  // Phase N — Telemetry consent (stub). Renderer toggles consent; main stores
+  // it in local-db and forwards to telemetry module's runtime gate.
+  TelemetryGetConsent: 'telemetry:getConsent',
+  TelemetrySetConsent: 'telemetry:setConsent',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -757,5 +761,13 @@ export interface DesktopApi {
   coverQa: {
     /** Analyse a cover image. Pass either `path` or `base64` (not both). */
     check(payload: CoverQAPayload): Promise<CoverQAReport>;
+  };
+  /**
+   * Phase N — Telemetry consent. Stub today: consent persists locally but
+   * is not yet wired to a transport. UI uses these to render the toggle.
+   */
+  telemetry: {
+    getConsent(): Promise<boolean>;
+    setConsent(consent: boolean): Promise<void>;
   };
 }

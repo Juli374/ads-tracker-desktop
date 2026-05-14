@@ -49,6 +49,7 @@ const EXPECTED_API_SHAPE: {
   autoNeg: NamespaceKeys<DesktopApi['autoNeg']>;
   briefing: NamespaceKeys<DesktopApi['briefing']>;
   coverQa: NamespaceKeys<DesktopApi['coverQa']>;
+  telemetry: NamespaceKeys<DesktopApi['telemetry']>;
 } = {
   app: ['getInfo', 'getApiBaseUrl', 'getLogPath', 'getGitCommit'],
   auth: ['getToken', 'setToken', 'clearToken', 'onExpired'],
@@ -77,6 +78,8 @@ const EXPECTED_API_SHAPE: {
   briefing: ['getLast', 'list', 'runNow', 'onChange'],
   // Phase M.4 Lane D — Cover QA.
   coverQa: ['check'],
+  // Phase N — Telemetry consent (stub today).
+  telemetry: ['getConsent', 'setConsent'],
 };
 
 // Compile-time exhaustiveness check: every top-level key of `DesktopApi` must

@@ -52,6 +52,7 @@ import type { Entitlements } from '../shared/entitlements';
 import { getAutoNegativator } from './automation';
 import { getWeeklyBriefer } from './briefing';
 import { analyzeCover } from './cover-qa';
+import { setConsent as telemetrySetConsent } from './telemetry';
 
 // 10 MB cap for any single file going through media:upload. The Railway
 // backend has its own 16MB body limit, but we want a clear UX-side error
@@ -1205,6 +1206,29 @@ export function registerIpcHandlers(): void {
       }
 
       return analyzeCover(buffer, { target });
+    },
+  );
+
+  // ====== Phase N: Telemetry consent (stub) ======
+  // Persist user consent in local-db; mirror runtime gate into telemetry
+  // module. Today the module is a no-op — these handlers exist so the UI
+  // can be built end-to-end before the real transport lands.
+
+  ipcMain.handle(IpcChannel.TelemetryGetConsent, async (): Promise<boolean> => {
+    const state = localStore.read();
+    return state.telemetry_consent === true;
+  });
+
+  ipcMain.handle(
+    IpcChannel.TelemetrySetConsent,
+    async (_evt, consent: unknown): Promise<void> => {
+      if (typeof consent !== 'boolean') {
+        throw new Error('telemetry:setConsent expects a boolean');
+      }
+      localStore.mutate((state) => {
+        state.telemetry_consent = consent;
+      });
+      telemetrySetConsent(consent);
     },
   );
 }
