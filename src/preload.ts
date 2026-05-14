@@ -25,6 +25,8 @@ import type {
   AutoNegScanResult,
   WeeklyBriefing,
   BriefingRunResult,
+  CoverQAPayload,
+  CoverQAReport,
 } from './shared/ipc';
 import type { Entitlements } from './shared/entitlements';
 
@@ -189,6 +191,10 @@ const api: DesktopApi = {
       ipcRenderer.on(IpcChannel.BriefingChanged, wrapped);
       return () => ipcRenderer.off(IpcChannel.BriefingChanged, wrapped);
     },
+  },
+  coverQa: {
+    check: (payload: CoverQAPayload) =>
+      ipcRenderer.invoke(IpcChannel.CoverQACheck, payload) as Promise<CoverQAReport>,
   },
 };
 

@@ -353,6 +353,19 @@ export function installMockApi(options: MockApiOptions = {}): void {
       ),
       onChange: vi.fn(() => () => undefined),
     },
+    // Phase M.4 — Cover QA. Default: report says ok with no failed checks.
+    coverQa: {
+      check: vi.fn(async () => ({
+        width: 1600,
+        height: 2560,
+        aspectRatio: 1.6,
+        dpi: 300,
+        format: 'png',
+        colorSpace: 'srgb',
+        fileSize: 1024 * 500,
+        checks: [],
+      })),
+    },
   };
 }
 

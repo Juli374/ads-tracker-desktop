@@ -104,6 +104,8 @@ export const IpcChannel = {
   BriefingRunNow: 'briefing:runNow',
   /** main → renderer push: a new briefing landed. Renderer refreshes its view. */
   BriefingChanged: 'briefing:changed',
+  // Cover QA (Phase M.4) — анализ обложек книг через sharp в main process.
+  CoverQACheck: 'cover-qa:check',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -272,6 +274,46 @@ export interface DialogOpenFileOptions {
 export interface DialogOpenFileResult {
   /** Absolute path; null if the user cancelled. */
   path: string | null;
+}
+
+// === Cover QA (Phase M.4) ===
+
+export type CoverQASeverity = 'error' | 'warning' | 'info';
+
+export interface CoverQACheck {
+  id: string;
+  passed: boolean;
+  severity: CoverQASeverity;
+  message: string;
+  suggestion?: string;
+}
+
+export interface CoverQAReport {
+  width: number;
+  height: number;
+  /** Computed as width / height with 3 decimal places. */
+  aspectRatio: number;
+  /** 0 when the image format does not record a density (e.g. screen PNG). */
+  dpi: number;
+  format: string;
+  colorSpace: string;
+  fileSize: number;
+  checks: CoverQACheck[];
+}
+
+/**
+ * Caller may pass either:
+ *  - an absolute filesystem path (main reads via fs.promises.readFile), OR
+ *  - the raw image bytes encoded as base64 (handy when the renderer already
+ *    has a `File` object loaded into memory).
+ *
+ * `target` is optional; defaults to "ebook". The path/base64 fields are
+ * mutually exclusive.
+ */
+export interface CoverQAPayload {
+  path?: string;
+  base64?: string;
+  target?: 'ebook' | 'print';
 }
 
 // === Auto-update ===
@@ -687,5 +729,9 @@ export interface DesktopApi {
     list(): Promise<WeeklyBriefing[]>;
     runNow(): Promise<BriefingRunResult>;
     onChange(handler: (briefing: WeeklyBriefing) => void): () => void;
+  };
+  coverQa: {
+    /** Analyse a cover image. Pass either `path` or `base64` (not both). */
+    check(payload: CoverQAPayload): Promise<CoverQAReport>;
   };
 }

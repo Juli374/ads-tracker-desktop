@@ -26,6 +26,8 @@ import {
   AutoNegScanResult,
   WeeklyBriefing,
   BriefingRunResult,
+  CoverQAPayload,
+  CoverQAReport,
 } from '../shared/ipc';
 import {
   clearToken,
@@ -48,6 +50,7 @@ import {
 import type { Entitlements } from '../shared/entitlements';
 import { getAutoNegativator } from './automation';
 import { getWeeklyBriefer } from './briefing';
+import { analyzeCover } from './cover-qa';
 
 // 10 MB cap for any single file going through media:upload. The Railway
 // backend has its own 16MB body limit, but we want a clear UX-side error
@@ -1108,6 +1111,41 @@ export function registerIpcHandlers(): void {
     IpcChannel.BriefingRunNow,
     async (): Promise<BriefingRunResult> => {
       return getWeeklyBriefer().runNow();
+    },
+  );
+
+  // ====== Cover QA (Phase M.4) ======
+  //
+  // Accepts either {path} (absolute filesystem path) or {base64} (raw image
+  // bytes from the renderer). Returns a CoverQAReport. No HTTP, no auth — all
+  // analysis is local. Tier-free: Start tier gets this for virality.
+
+  ipcMain.handle(
+    IpcChannel.CoverQACheck,
+    async (_evt, payload: CoverQAPayload): Promise<CoverQAReport> => {
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('cover-qa:check: payload must be an object');
+      }
+      const target = payload.target === 'print' ? 'print' : 'ebook';
+
+      let buffer: Buffer;
+      if (typeof payload.path === 'string' && payload.path.length > 0) {
+        const resolved = nodePath.resolve(payload.path);
+        const stat = fs.statSync(resolved);
+        if (!stat.isFile()) {
+          throw new Error('cover-qa:check: path is not a regular file');
+        }
+        buffer = fs.readFileSync(resolved);
+      } else if (typeof payload.base64 === 'string' && payload.base64.length > 0) {
+        buffer = Buffer.from(payload.base64, 'base64');
+        if (buffer.length === 0) {
+          throw new Error('cover-qa:check: base64 decoded to an empty buffer');
+        }
+      } else {
+        throw new Error('cover-qa:check: payload must include either `path` or `base64`');
+      }
+
+      return analyzeCover(buffer, { target });
     },
   );
 }
