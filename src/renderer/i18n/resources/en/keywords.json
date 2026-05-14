@@ -89,5 +89,63 @@
   "export": {
     "label": "Export",
     "success": "Exported: {count, plural, one {# keyword} other {# keywords}}"
+  },
+  "tabs": {
+    "list": "List",
+    "reverseAsin": "Reverse ASIN"
+  },
+  "reverseAsin": {
+    "title": "Reverse-ASIN keyword mining",
+    "subtitle": "Paste an ASIN and import a Publisher Rocket export — pick the keywords worth adding to an ad group or to a negative list.",
+    "asinLabel": "Competitor ASIN",
+    "asinPlaceholder": "B0XXXXXXXX",
+    "asinInvalid": "Expected a 10-character ASIN (e.g. B07KQRMS9F).",
+    "importButton": "Import Publisher Rocket CSV…",
+    "importHint": "Export from Publisher Rocket → Reverse ASIN, then load the .csv here.",
+    "importing": "Parsing…",
+    "importEmpty": "No keywords found in the file.",
+    "importSuccess": "Loaded {count, plural, one {# keyword} other {# keywords}} from CSV",
+    "parseError": "Could not parse CSV: {message}",
+    "noFile": "No file imported yet. Paste a competitor ASIN above and click \"Import\" to begin.",
+    "table": {
+      "keyword": "Keyword",
+      "volume": "Search volume",
+      "competing": "Competing products",
+      "clicks": "Est. clicks",
+      "selectAll": "Select all keywords",
+      "selectRow": "Select keyword {keyword}"
+    },
+    "bulk": {
+      "selected": "{count, plural, one {# selected} other {# selected}}",
+      "sendToAdGroup": "Send to ad group…",
+      "addNegatives": "Add to negatives…",
+      "clear": "Clear",
+      "sending": "Sending…",
+      "sendSuccess": "Added {count, plural, one {# keyword} other {# keywords}} to ad group",
+      "sendError": "Failed to add keywords: {message}",
+      "negativeSuccess": "Added {count, plural, one {# negative} other {# negatives}}",
+      "negativeError": "Failed to add negatives: {message}"
+    },
+    "sendModal": {
+      "title": "Send {count, plural, one {# keyword} other {# keywords}} to ad group",
+      "adGroupLabel": "Destination ad group",
+      "adGroupPlaceholder": "Select an ad group…",
+      "matchTypeLabel": "Match type",
+      "bidLabel": "Bid ($)",
+      "bidPlaceholder": "0.75",
+      "loadingChoices": "Loading ad groups…",
+      "noChoices": "No ad groups available. Open Campaigns first to create one.",
+      "submit": "Send",
+      "cancel": "Cancel"
+    },
+    "negativeModal": {
+      "title": "Add {count, plural, one {# keyword} other {# keywords}} to negatives",
+      "listLabel": "Negative list",
+      "listPlaceholder": "Select a list…",
+      "matchTypeLabel": "Match type",
+      "submit": "Add",
+      "cancel": "Cancel",
+      "noLists": "No negative lists available. Create one from the Negatives page first."
+    }
   }
 }

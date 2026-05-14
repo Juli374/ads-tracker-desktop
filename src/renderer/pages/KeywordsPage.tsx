@@ -9,6 +9,8 @@ import {
   type KeywordSummary,
 } from '../api/metrics';
 import { targetsApi } from '../api/targets';
+import { ReverseAsinPanel } from '../components/keywords/ReverseAsinPanel';
+import { LockedFeature } from '../components/LockedFeature';
 import {
   ActiveFiltersBar,
   Card,
@@ -90,6 +92,10 @@ export const KeywordsPage: React.FC = () => {
   const { list: booksList } = useBooks();
   const chips = useGlobalFilterChips(booksList);
 
+  // Phase L.4: sub-tab switch between the original analytics list and the
+  // new Reverse-ASIN mining panel. We intentionally keep state local (no
+  // sessionState) — the panel is transient: import → action → done.
+  const [tab, setTab] = useState<'list' | 'reverseAsin'>('list');
   const [range, setRange] = useState<RangeId>('30d');
   const [summary, setSummary] = useState<KeywordSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -343,16 +349,22 @@ export const KeywordsPage: React.FC = () => {
       <PageHeader
         title={t('title')}
         subtitle={
-          summary
-            ? t('subtitle', {
-                from: summary.date_from,
-                to: summary.date_to,
-                filtered: filtered.length,
-                total: summary.total_count,
-              })
-            : t('loading')
+          tab === 'reverseAsin'
+            ? t('reverseAsin.subtitle')
+            : summary
+              ? t('subtitle', {
+                  from: summary.date_from,
+                  to: summary.date_to,
+                  filtered: filtered.length,
+                  total: summary.total_count,
+                })
+              : t('loading')
         }
         rightSlot={
+          // The export menu and range picker only apply to the analytics
+          // list — hide them while the Reverse-ASIN tab is active so the
+          // header doesn't suggest export/refresh options for that view.
+          tab === 'list' ? (
           <div className="flex items-center gap-2">
             <ExportMenu
               testId="keywords-export"
@@ -406,9 +418,18 @@ export const KeywordsPage: React.FC = () => {
               autoRefresh={{ storageKey: 'auto-refresh-keywords' }}
             />
           </div>
+          ) : null
         }
       />
 
+      <KeywordsTabs tab={tab} onChange={setTab} />
+
+      {tab === 'reverseAsin' ? (
+        <LockedFeature feature="ai.reverse_asin" mode="dim">
+          <ReverseAsinPanel />
+        </LockedFeature>
+      ) : (
+        <>
       <ActiveFiltersBar chips={chips} />
 
       <div className="grid grid-cols-4 gap-3">
@@ -500,6 +521,47 @@ export const KeywordsPage: React.FC = () => {
           onClose={() => setBidModalOpen(false)}
         />
       )}
+        </>
+      )}
+    </div>
+  );
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Tab strip — switches between the analytics list and the Reverse-ASIN panel.
+// Lightweight component (no Headless UI / Radix) to match the rest of the
+// app's home-grown UI primitives. Hides itself behind a data-testid so e2e
+// tests can drive it.
+// ────────────────────────────────────────────────────────────────────────────
+
+const KeywordsTabs: React.FC<{
+  tab: 'list' | 'reverseAsin';
+  onChange: (t: 'list' | 'reverseAsin') => void;
+}> = ({ tab, onChange }) => {
+  const { t } = useTranslation('keywords');
+  return (
+    <div
+      className="inline-flex bg-white border border-zinc-200 rounded-md p-0.5"
+      data-testid="keywords-tabs"
+      role="tablist"
+    >
+      {(['list', 'reverseAsin'] as const).map((id) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          aria-selected={tab === id}
+          onClick={() => onChange(id)}
+          data-testid={`keywords-tab-${id}`}
+          className={`px-4 h-8 text-xs font-medium rounded transition-colors ${
+            tab === id
+              ? 'bg-zinc-900 text-white'
+              : 'text-zinc-600 hover:text-zinc-900'
+          }`}
+        >
+          {t(`tabs.${id}` as 'tabs.list')}
+        </button>
+      ))}
     </div>
   );
 };
