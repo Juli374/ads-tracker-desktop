@@ -104,7 +104,16 @@
     "brandTone": "Tone words (one per line)",
     "brandTonePlaceholder": "confident\nwarm\nplayful",
     "brandBanned": "Banned words (one per line)",
-    "brandBannedPlaceholder": "synergy\ndisrupt"
+    "brandBannedPlaceholder": "synergy\ndisrupt",
+    "brandSeriesTitle": "Per-series overrides",
+    "brandSeriesHint": "Tweak the base brand voice for a specific series. The book's series_name is matched exactly. Empty fields fall through to the base profile. Banned words are added on top of base bans.",
+    "brandSeriesEmpty": "No per-series overrides yet. Add one below to tune voice for a specific series.",
+    "brandSeriesAdd": "Add series override",
+    "brandSeriesRemove": "Remove this series override",
+    "brandSeriesNamePlaceholder": "Exact series_name from your books list",
+    "brandSeriesPovPlaceholder": "POV override (optional)",
+    "brandSeriesTonePlaceholder": "Override tone words (one per line)",
+    "brandSeriesBannedPlaceholder": "Extra banned words for this series (one per line)"
   },
   "credentials": {
     "cardTitle": "Amazon Ads credentials",

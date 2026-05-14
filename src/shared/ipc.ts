@@ -373,11 +373,29 @@ export interface AiModelSlots {
   advisor: string;
 }
 
+/**
+ * Per-series override of the base brand voice. Phase M.2 — allows authors
+ * to keep one base profile and tweak it per series_name (e.g. base is warm
+ * non-fiction, but the "Krimi" series is darker). Empty / omitted fields
+ * fall through to the base profile. `bannedWords` from the override is
+ * UNION'd with the base — overrides cannot drop a base ban.
+ */
+export interface AiBrandVoiceOverride {
+  pov?: string;
+  toneWords?: string[];
+  bannedWords?: string[];
+}
+
 /** Brand-voice profile fed into prompts to keep tone consistent. */
 export interface AiBrandVoice {
   pov: string;          // "first-person" | "third-person" | free text
   toneWords: string[];  // e.g. ["confident", "warm", "playful"]
   bannedWords: string[];// hard-banned words (compliance/style)
+  /**
+   * Phase M.2 — Per-series overrides. Key = exact series_name match.
+   * Optional & sparse: a series without an entry uses the base profile as-is.
+   */
+  seriesOverrides?: Record<string, AiBrandVoiceOverride>;
 }
 
 export interface AiSettings {
@@ -426,6 +444,12 @@ export interface AiGeneratePayload {
    * Surfaced into the system prompt so AI can reason about what user is viewing.
    */
   context?: Record<string, string | number | boolean | null | undefined>;
+  /**
+   * Phase M.2 — Optional series name. When present, main looks up
+   * `brandVoice.seriesOverrides[seriesName]` and merges it on top of the
+   * base profile before composing the system prompt.
+   */
+  seriesName?: string;
 }
 
 export interface AiGenerateResult {

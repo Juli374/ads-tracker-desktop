@@ -161,6 +161,9 @@ const ListingStudioInner: React.FC = () => {
         asin,
         currentText: currentText || undefined,
         guidance: guidance.trim() || undefined,
+        // Phase M.2 — let main merge per-series brand-voice override on top
+        // of the base profile. Books without a series fall through to base.
+        seriesName: selectedBook.series_name ?? undefined,
       });
       setProposed(result.text);
       setRationale(result.rationale);

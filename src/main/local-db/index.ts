@@ -39,6 +39,16 @@ export interface AiSettingsRow {
     pov: string;
     toneWords: string[];
     bannedWords: string[];
+    /**
+     * Phase M.2 — Per-series overrides. Map of series_name → partial override.
+     * Sparse: missing series → use base profile as-is. Merge semantics live
+     * in `src/main/ai/brandVoice.ts`.
+     */
+    seriesOverrides?: Record<string, {
+      pov?: string;
+      toneWords?: string[];
+      bannedWords?: string[];
+    }>;
   };
 }
 
@@ -172,6 +182,35 @@ const EMPTY_STATE: LocalDbState = {
   next_briefing_id: 1,
 };
 
+/**
+ * Phase M.2 — defensively coerce on-disk seriesOverrides. Drops rows that
+ * aren't plain objects; preserves any object with at least one valid field.
+ * Returns `undefined` when there's nothing usable so callers can stay sparse.
+ */
+function sanitiseSeriesOverrides(
+  raw: unknown,
+): AiSettingsRow['brandVoice']['seriesOverrides'] {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const out: NonNullable<AiSettingsRow['brandVoice']['seriesOverrides']> = {};
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof key !== 'string' || key.length === 0) continue;
+    if (!val || typeof val !== 'object' || Array.isArray(val)) continue;
+    const v = val as Record<string, unknown>;
+    const override: { pov?: string; toneWords?: string[]; bannedWords?: string[] } = {};
+    if (typeof v.pov === 'string') override.pov = v.pov;
+    if (Array.isArray(v.toneWords)) {
+      override.toneWords = v.toneWords.filter((w): w is string => typeof w === 'string');
+    }
+    if (Array.isArray(v.bannedWords)) {
+      override.bannedWords = v.bannedWords.filter((w): w is string => typeof w === 'string');
+    }
+    if (override.pov !== undefined || override.toneWords || override.bannedWords) {
+      out[key] = override;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 function dbFilePath(): string {
   // app.getPath('userData') обычно ~/Library/Application Support/Ads Tracker.
   // Для тестов / случаев когда app не доступен — fallback на os.tmpdir().
@@ -223,6 +262,10 @@ function readState(): LocalDbState {
               bannedWords: Array.isArray(ai.brandVoice?.bannedWords)
                 ? ai.brandVoice.bannedWords.filter((w): w is string => typeof w === 'string')
                 : [],
+              // Phase M.2 — seriesOverrides forward-compat: filter rows that
+              // aren't plain objects, coerce field types defensively. Missing
+              // on disk → leave undefined (cheaper than empty object every read).
+              seriesOverrides: sanitiseSeriesOverrides(ai.brandVoice?.seriesOverrides),
             },
           }
         : { ...DEFAULT_AI_SETTINGS };

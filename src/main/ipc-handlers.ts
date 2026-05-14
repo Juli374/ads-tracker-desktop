@@ -42,6 +42,7 @@ import { localRoyalty, RoyaltyParseError } from './local-db/royalty';
 import { getStatus as getUpdateStatus, checkForUpdates, quitAndInstall as updaterQuitAndInstall } from './updater';
 import { logger, getLogFilePath, scrubSecrets, scrubValue } from './logger';
 import { generate as anthropicGenerate } from './ai/anthropic';
+import { describeBrandVoice, mergeForSeries } from './ai/brandVoice';
 import {
   clearOnLogout as clearEntitlementsOnLogout,
   getCurrent as getCurrentEntitlements,
@@ -99,20 +100,9 @@ const aiStreams = new Map<string, AbortController>();
 // IPC handler's responsibility — it's how we map "task=title" to a deterministic
 // system prompt without exposing any user-controlled content to the system slot.
 
-/** Returns a one-line brand voice hint, or empty when unconfigured. */
-function describeBrandVoice(settings: AiSettingsRow): string {
-  const bv = settings.brandVoice;
-  if (!bv) return '';
-  const parts: string[] = [];
-  if (bv.pov && bv.pov.trim().length > 0) parts.push(`POV: ${bv.pov.trim()}`);
-  if (Array.isArray(bv.toneWords) && bv.toneWords.length > 0) {
-    parts.push(`Tone: ${bv.toneWords.slice(0, 6).join(', ')}`);
-  }
-  if (Array.isArray(bv.bannedWords) && bv.bannedWords.length > 0) {
-    parts.push(`Avoid: ${bv.bannedWords.slice(0, 12).join(', ')}`);
-  }
-  return parts.join(' | ');
-}
+// Phase M.2 — describeBrandVoice + per-series merge moved to src/main/ai/brandVoice.ts.
+// Imported at the top of this file; the ai:generate handler calls
+// mergeForSeries(settings.brandVoice, payload.seriesName) → describeBrandVoice(merged).
 
 /** Compose the system prompt for a given task. Stable across calls (caches well). */
 function buildSystemPrompt(task: AiGenerateTask, brandVoiceHint: string): string {
@@ -665,6 +655,20 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.AiSettingsGet, async (): Promise<AiSettings> => {
     const state = localStore.read();
     const ai: AiSettingsRow = state.ai_settings ?? { ...DEFAULT_AI_SETTINGS };
+    // Phase M.2 — deep-clone seriesOverrides so renderer mutation can't leak
+    // back into the in-memory store.
+    const seriesOverrides = ai.brandVoice.seriesOverrides
+      ? Object.fromEntries(
+          Object.entries(ai.brandVoice.seriesOverrides).map(([k, v]) => [
+            k,
+            {
+              ...(v.pov !== undefined ? { pov: v.pov } : {}),
+              ...(v.toneWords ? { toneWords: [...v.toneWords] } : {}),
+              ...(v.bannedWords ? { bannedWords: [...v.bannedWords] } : {}),
+            },
+          ]),
+        )
+      : undefined;
     return {
       claudeKey: ai.claudeKey,
       models: { ...ai.models },
@@ -672,6 +676,7 @@ export function registerIpcHandlers(): void {
         pov: ai.brandVoice.pov,
         toneWords: [...ai.brandVoice.toneWords],
         bannedWords: [...ai.brandVoice.bannedWords],
+        ...(seriesOverrides ? { seriesOverrides } : {}),
       },
     };
   });
@@ -729,10 +734,57 @@ export function registerIpcHandlers(): void {
           return s;
         });
       };
-      const brandVoice = {
+      // Phase M.2 — validate optional seriesOverrides map. Hard caps the
+      // total number of series rows so a compromised renderer can't blow
+      // up disk / memory.
+      let seriesOverrides: AiSettingsRow['brandVoice']['seriesOverrides'];
+      if (bv.seriesOverrides !== undefined) {
+        if (
+          !bv.seriesOverrides ||
+          typeof bv.seriesOverrides !== 'object' ||
+          Array.isArray(bv.seriesOverrides)
+        ) {
+          throw new Error('ai:settings:set: brandVoice.seriesOverrides must be a plain object');
+        }
+        const rows = Object.entries(bv.seriesOverrides as Record<string, unknown>);
+        if (rows.length > 128) {
+          throw new Error('ai:settings:set: brandVoice.seriesOverrides too many entries');
+        }
+        const out: NonNullable<AiSettingsRow['brandVoice']['seriesOverrides']> = {};
+        for (const [key, val] of rows) {
+          if (typeof key !== 'string' || key.length === 0 || key.length > 200) {
+            throw new Error('ai:settings:set: seriesOverrides key must be string ≤ 200 chars');
+          }
+          if (!val || typeof val !== 'object' || Array.isArray(val)) {
+            throw new Error(`ai:settings:set: seriesOverrides["${key}"] must be a plain object`);
+          }
+          const v = val as Record<string, unknown>;
+          const entry: { pov?: string; toneWords?: string[]; bannedWords?: string[] } = {};
+          if (v.pov !== undefined) {
+            if (typeof v.pov !== 'string' || v.pov.length > 256) {
+              throw new Error(`ai:settings:set: seriesOverrides["${key}"].pov must be string ≤ 256 chars`);
+            }
+            entry.pov = v.pov;
+          }
+          if (v.toneWords !== undefined) {
+            entry.toneWords = stringArray(v.toneWords, `seriesOverrides["${key}"].toneWords`);
+          }
+          if (v.bannedWords !== undefined) {
+            entry.bannedWords = stringArray(v.bannedWords, `seriesOverrides["${key}"].bannedWords`);
+          }
+          // Skip rows that are completely empty after validation.
+          if (entry.pov !== undefined || entry.toneWords || entry.bannedWords) {
+            out[key] = entry;
+          }
+        }
+        seriesOverrides = Object.keys(out).length > 0 ? out : undefined;
+      }
+
+      const brandVoice: AiSettingsRow['brandVoice'] = {
         pov: typeof bv.pov === 'string' ? bv.pov.slice(0, 256) : '',
         toneWords: stringArray(bv.toneWords, 'toneWords'),
         bannedWords: stringArray(bv.bannedWords, 'bannedWords'),
+        ...(seriesOverrides ? { seriesOverrides } : {}),
       };
       localStore.mutate((state) => {
         state.ai_settings = { claudeKey: p.claudeKey as string, models, brandVoice };
@@ -982,6 +1034,11 @@ export function registerIpcHandlers(): void {
           throw new Error('ai:generate: context must be a plain object');
         }
       }
+      if (p.seriesName !== undefined) {
+        if (typeof p.seriesName !== 'string' || p.seriesName.length > 200) {
+          throw new Error('ai:generate: seriesName must be a string ≤ 200 chars');
+        }
+      }
 
       const task = p.task as AiGenerateTask;
       const aiSettings: AiSettingsRow = localStore.read().ai_settings ?? DEFAULT_AI_SETTINGS;
@@ -989,8 +1046,10 @@ export function registerIpcHandlers(): void {
 
       // --- Compose the task-specific system prompt. Keep them small and
       //     deterministic — large prompts pile up cost; specifics live in the
-      //     user message below. ---
-      const brandVoiceHint = describeBrandVoice(aiSettings);
+      //     user message below. Phase M.2: merge per-series brand-voice
+      //     override on top of the base profile before composing. ---
+      const effectiveBrandVoice = mergeForSeries(aiSettings.brandVoice, p.seriesName);
+      const brandVoiceHint = describeBrandVoice(effectiveBrandVoice);
       const system = buildSystemPrompt(task, brandVoiceHint);
       const userMessage = buildUserMessage(task, p);
 

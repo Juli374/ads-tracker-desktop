@@ -47,6 +47,8 @@ const EXPECTED_API_SHAPE: {
   dialog: NamespaceKeys<DesktopApi['dialog']>;
   entitlements: NamespaceKeys<DesktopApi['entitlements']>;
   autoNeg: NamespaceKeys<DesktopApi['autoNeg']>;
+  briefing: NamespaceKeys<DesktopApi['briefing']>;
+  coverQa: NamespaceKeys<DesktopApi['coverQa']>;
 } = {
   app: ['getInfo', 'getApiBaseUrl', 'getLogPath', 'getGitCommit'],
   auth: ['getToken', 'setToken', 'clearToken', 'onExpired'],
@@ -71,6 +73,10 @@ const EXPECTED_API_SHAPE: {
   entitlements: ['get', 'refresh', 'onChange'],
   // Phase L.2 Lane B — Auto-Negativator scheduler.
   autoNeg: ['getState', 'toggle', 'runNow', 'getSettings', 'setSettings', 'onStateChange'],
+  // Phase M.5 Lane E — Weekly Author Briefing.
+  briefing: ['getLast', 'list', 'runNow', 'onChange'],
+  // Phase M.4 Lane D — Cover QA.
+  coverQa: ['check'],
 };
 
 // Compile-time exhaustiveness check: every top-level key of `DesktopApi` must

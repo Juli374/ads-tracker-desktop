@@ -4,12 +4,14 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  Plus,
   Save,
   Sparkles,
+  Trash2,
   XCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { AiSettings } from '../../../shared/ipc';
+import type { AiBrandVoiceOverride, AiSettings } from '../../../shared/ipc';
 import { Card } from '../ui';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -61,6 +63,61 @@ function linesToList(text: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Phase M.2 — local-only shape for series override rows. `id` is a UI key
+ * (uuid-ish counter) so React can stable-key rows even with empty names.
+ * `seriesName` is what's persisted as the map key on save.
+ */
+interface SeriesRow {
+  id: string;
+  seriesName: string;
+  pov: string;
+  toneText: string;
+  bannedText: string;
+}
+
+let nextRowId = 0;
+const newRowId = (): string => `series-row-${++nextRowId}`;
+
+function overridesMapToRows(
+  map: Record<string, AiBrandVoiceOverride> | undefined,
+): SeriesRow[] {
+  if (!map) return [];
+  return Object.entries(map).map(([seriesName, ov]) => ({
+    id: newRowId(),
+    seriesName,
+    pov: ov.pov ?? '',
+    toneText: (ov.toneWords ?? []).join('\n'),
+    bannedText: (ov.bannedWords ?? []).join('\n'),
+  }));
+}
+
+/**
+ * Convert UI rows back into the persisted map. Drops rows with empty
+ * seriesName so the user can leave half-edited drafts visible without
+ * polluting the store; collapses duplicate seriesName keys (last wins,
+ * mirroring Object spread semantics).
+ */
+function rowsToOverridesMap(
+  rows: SeriesRow[],
+): Record<string, AiBrandVoiceOverride> | undefined {
+  const out: Record<string, AiBrandVoiceOverride> = {};
+  for (const row of rows) {
+    const name = row.seriesName.trim();
+    if (!name) continue;
+    const entry: AiBrandVoiceOverride = {};
+    if (row.pov.trim().length > 0) entry.pov = row.pov.trim();
+    const tone = linesToList(row.toneText);
+    if (tone.length > 0) entry.toneWords = tone;
+    const banned = linesToList(row.bannedText);
+    if (banned.length > 0) entry.bannedWords = banned;
+    // Skip rows with name but zero override fields — they'd be no-op.
+    if (entry.pov === undefined && !entry.toneWords && !entry.bannedWords) continue;
+    out[name] = entry;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 export const AITab: React.FC = () => {
   const { t } = useTranslation('settings');
   const toast = useToast();
@@ -76,6 +133,9 @@ export const AITab: React.FC = () => {
   const [pov, setPov] = useState('');
   const [toneText, setToneText] = useState('');
   const [bannedText, setBannedText] = useState('');
+  // Phase M.2 — per-series overrides edited as a draft array (stable order).
+  // Persisted as map keyed by seriesName; row.id is a local UI key only.
+  const [seriesRows, setSeriesRows] = useState<SeriesRow[]>([]);
   const [savedKey, setSavedKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -94,6 +154,7 @@ export const AITab: React.FC = () => {
         setPov(s.brandVoice.pov);
         setToneText(s.brandVoice.toneWords.join('\n'));
         setBannedText(s.brandVoice.bannedWords.join('\n'));
+        setSeriesRows(overridesMapToRows(s.brandVoice.seriesOverrides));
         setLoaded(true);
       })
       .catch(() => {
@@ -113,6 +174,7 @@ export const AITab: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const seriesOverrides = rowsToOverridesMap(seriesRows);
       const next: AiSettings = {
         claudeKey: keyValue,
         models,
@@ -120,6 +182,7 @@ export const AITab: React.FC = () => {
           pov: pov.trim(),
           toneWords: linesToList(toneText),
           bannedWords: linesToList(bannedText),
+          ...(seriesOverrides ? { seriesOverrides } : {}),
         },
       };
       await window.api.ai.setSettings(next);
@@ -367,6 +430,149 @@ export const AITab: React.FC = () => {
           </div>
         </div>
       </Card>
+
+      {/* Phase M.2 — Per-series brand voice overrides */}
+      <Card title={t('ai.brandSeriesTitle')}>
+        <div className="px-5 py-5 space-y-4" data-testid="settings-ai-series-overrides">
+          <p className="text-[11px] text-zinc-500">
+            {t('ai.brandSeriesHint')}
+          </p>
+
+          {seriesRows.length === 0 && (
+            <p className="text-[11px] text-zinc-400 italic" data-testid="settings-ai-series-empty">
+              {t('ai.brandSeriesEmpty')}
+            </p>
+          )}
+
+          {seriesRows.map((row, idx) => (
+            <SeriesOverrideRow
+              key={row.id}
+              row={row}
+              onChange={(next) =>
+                setSeriesRows((prev) => prev.map((r, i) => (i === idx ? next : r)))
+              }
+              onRemove={() =>
+                setSeriesRows((prev) => prev.filter((_, i) => i !== idx))
+              }
+            />
+          ))}
+
+          <button
+            type="button"
+            data-testid="settings-ai-series-add"
+            onClick={() =>
+              setSeriesRows((prev) => [
+                ...prev,
+                {
+                  id: newRowId(),
+                  seriesName: '',
+                  pov: '',
+                  toneText: '',
+                  bannedText: '',
+                },
+              ])
+            }
+            className="
+              inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[11px] font-medium
+              border border-dashed border-zinc-300 bg-white text-zinc-700
+              hover:bg-zinc-50 transition-colors
+            "
+          >
+            <Plus size={12} /> {t('ai.brandSeriesAdd')}
+          </button>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+/**
+ * Phase M.2 — one editable per-series override block. Pure controlled
+ * component: parent owns the row array.
+ */
+const SeriesOverrideRow: React.FC<{
+  row: SeriesRow;
+  onChange: (next: SeriesRow) => void;
+  onRemove: () => void;
+}> = ({ row, onChange, onRemove }) => {
+  const { t } = useTranslation('settings');
+  return (
+    <div
+      className="border border-zinc-200 rounded-md p-3 space-y-2 bg-zinc-50/40"
+      data-testid={`settings-ai-series-row-${row.id}`}
+    >
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={row.seriesName}
+          onChange={(e) => onChange({ ...row, seriesName: e.target.value })}
+          placeholder={t('ai.brandSeriesNamePlaceholder')}
+          data-testid="settings-ai-series-name"
+          className="
+            flex-1 h-8 px-3 text-xs rounded-md
+            border border-zinc-200 bg-white text-zinc-900
+            placeholder:text-zinc-400
+            focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+          "
+        />
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={t('ai.brandSeriesRemove')}
+          data-testid="settings-ai-series-remove"
+          className="
+            h-8 w-8 inline-flex items-center justify-center rounded-md
+            text-zinc-500 hover:text-red-600 hover:bg-red-50 transition-colors
+          "
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+
+      <input
+        type="text"
+        value={row.pov}
+        onChange={(e) => onChange({ ...row, pov: e.target.value })}
+        placeholder={t('ai.brandSeriesPovPlaceholder')}
+        data-testid="settings-ai-series-pov"
+        className="
+          w-full h-8 px-3 text-xs rounded-md
+          border border-zinc-200 bg-white text-zinc-900
+          placeholder:text-zinc-400
+          focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+        "
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <textarea
+          value={row.toneText}
+          onChange={(e) => onChange({ ...row, toneText: e.target.value })}
+          placeholder={t('ai.brandSeriesTonePlaceholder')}
+          rows={3}
+          data-testid="settings-ai-series-tone"
+          className="
+            w-full px-3 py-2 text-xs rounded-md
+            border border-zinc-200 bg-white text-zinc-900
+            placeholder:text-zinc-400 font-mono leading-relaxed
+            focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+            resize-y
+          "
+        />
+        <textarea
+          value={row.bannedText}
+          onChange={(e) => onChange({ ...row, bannedText: e.target.value })}
+          placeholder={t('ai.brandSeriesBannedPlaceholder')}
+          rows={3}
+          data-testid="settings-ai-series-banned"
+          className="
+            w-full px-3 py-2 text-xs rounded-md
+            border border-zinc-200 bg-white text-zinc-900
+            placeholder:text-zinc-400 font-mono leading-relaxed
+            focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400
+            resize-y
+          "
+        />
+      </div>
     </div>
   );
 };
