@@ -20,6 +20,8 @@ import {
   Sparkles,
   PiggyBank,
   Loader2,
+  Compass,
+  Mail,
 } from 'lucide-react';
 
 // Eagerly loaded — самые посещаемые страницы (стартовый экран).
@@ -81,6 +83,18 @@ const ListingStudioPage = lazy(() =>
 const PnLPage = lazy(() =>
   import('../pages/PnLPage').then((m) => ({ default: m.PnLPage })),
 );
+// Phase M.1 — Niche Explorer / Research page (Pro tier, AI-driven). Lazy-load
+// because the page ships a manual-entry editor + Anthropic synthesis flow that
+// doesn't need to be in the initial bundle.
+const ResearchPage = lazy(() =>
+  import('../pages/ResearchPage').then((m) => ({ default: m.ResearchPage })),
+);
+// Phase M.5 Lane E — Weekly Author Briefing page (Pro tier). Tiny page; lazy
+// loaded to keep initial bundle lean and to colocate with the other Pro AI
+// surfaces that are also lazy.
+const BriefingPage = lazy(() =>
+  import('../pages/BriefingPage').then((m) => ({ default: m.BriefingPage })),
+);
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
@@ -111,6 +125,11 @@ const mainNav: NavItem[] = [
   { id: 'negatives', icon: Ban, shortcut: 'G N' },
   { id: 'reports', icon: FileText, shortcut: 'G R' },
   { id: 'comparison', icon: GitCompare, shortcut: 'G P' },
+  // Phase M.1 — Niche Explorer / Research page (Pro tier). `G R` is taken by
+  // Reports, so we use `G H` (research / hypothesis). Sidebar item shows the
+  // Pro badge when locked but navigation still works — the page renders the
+  // upgrade card itself.
+  { id: 'research', icon: Compass, shortcut: 'G H', feature: 'ai.niche_explorer' },
 ];
 
 const actionsNav: NavItem[] = [
@@ -122,6 +141,10 @@ const actionsNav: NavItem[] = [
   // when locked, but navigation still works — the page itself renders the
   // upgrade card.
   { id: 'listing_studio', icon: Sparkles, shortcut: 'G E', feature: 'ai.title_generator' },
+  // Phase M.5 Lane E — Weekly Author Briefing (Pro tier). Sidebar item shows
+  // Pro badge when locked, but navigation still works — the page itself
+  // renders the upgrade card.
+  { id: 'briefing', icon: Mail, shortcut: 'G J', feature: 'ai.weekly_briefing' },
 ];
 
 const financeNav: NavItem[] = [
@@ -163,6 +186,12 @@ const HOTKEY_MAP: Record<string, ViewId> = {
   // Phase L Lane A — Listing Studio. `G W` (Writing / listing copy writer).
   // `E` is taken by P&L (Earnings).
   w: 'listing_studio',
+  // Phase M.1 — Research / Niche Explorer. `G H` (research / hypothesis).
+  // `G R` is taken by Reports.
+  h: 'research',
+  // Phase M.5 Lane E — Weekly briefing. `G J` (journal / briefing). `G B`
+  // is taken by Books.
+  j: 'briefing',
 };
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -260,6 +289,10 @@ const Layout: React.FC = () => {
         return <ProfilePage />;
       case 'listing_studio':
         return <ListingStudioPage />;
+      case 'research':
+        return <ResearchPage />;
+      case 'briefing':
+        return <BriefingPage />;
       case 'settings':
         return <SettingsPage />;
     }

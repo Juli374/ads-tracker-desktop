@@ -25,6 +25,8 @@ import {
   Sparkles,
   Loader2,
   AlertTriangle,
+  Compass,
+  Mail,
 } from 'lucide-react';
 import { useNav, ViewId } from '../contexts/NavContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -102,6 +104,29 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
       { id: 'go-accounting', label: goLabel('accounting'), hint: 'G F', icon: Wallet, onRun: goto('accounting') },
       { id: 'go-profile', label: goLabel('profile'), hint: 'G I', icon: User, onRun: goto('profile') },
       { id: 'go-listing-studio', label: goLabel('listing_studio'), hint: 'G E', icon: Sparkles, onRun: goto('listing_studio') },
+      // Phase M.1 — Niche Explorer
+      { id: 'go-research', label: goLabel('research'), hint: 'G H', icon: Compass, onRun: goto('research') },
+      // Phase M.5 Lane E — Weekly briefing page + on-demand run command.
+      { id: 'go-briefing', label: goLabel('briefing'), hint: 'G J', icon: Mail, onRun: goto('briefing') },
+      {
+        id: 'run-briefing-now',
+        label: t('palette.runBriefingNow'),
+        icon: Sparkles,
+        onRun: async () => {
+          try {
+            const result = await window.api.briefing.runNow();
+            if (result.error) {
+              toast.error(result.error);
+            } else {
+              toast.success(t('palette.briefingGenerated'));
+              navigate('briefing');
+            }
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : String(err));
+          }
+          onClose();
+        },
+      },
       { id: 'go-settings', label: goLabel('settings'), icon: Settings, onRun: goto('settings') },
       {
         id: 'reload',

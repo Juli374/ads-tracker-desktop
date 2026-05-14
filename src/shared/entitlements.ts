@@ -23,6 +23,13 @@ export type FeatureKey =
   | 'ai.title_generator'
   | 'ai.advisor_panel'
   | 'ai.reverse_asin'
+  // Phase M.1 — Niche Explorer (Research page with keyword/ASIN sub-tabs +
+  // AI-synthesised saturation/weak-cover analysis). Pro tier.
+  | 'ai.niche_explorer'
+  // Phase M.5 Lane E — Weekly Author Briefing (Pro tier). main-process cron
+  // composes a digest of the last 7 days and runs it through Anthropic; result
+  // is stored locally + push-notified.
+  | 'ai.weekly_briefing'
   | 'analytics.hourly_dynamics'
   | 'analytics.multi_period_metrics'
   | 'analytics.search_terms_deep'
@@ -39,6 +46,8 @@ export const ALL_FEATURE_KEYS: readonly FeatureKey[] = [
   'ai.title_generator',
   'ai.advisor_panel',
   'ai.reverse_asin',
+  'ai.niche_explorer',
+  'ai.weekly_briefing',
   'analytics.hourly_dynamics',
   'analytics.multi_period_metrics',
   'analytics.search_terms_deep',
@@ -61,6 +70,8 @@ export const DEFAULT_TIER_FOR_FEATURE: Record<FeatureKey, Tier> = {
   'ai.title_generator': 'pro',
   'ai.advisor_panel': 'pro',
   'ai.reverse_asin': 'pro',
+  'ai.niche_explorer': 'pro',
+  'ai.weekly_briefing': 'pro',
   'analytics.hourly_dynamics': 'pro',
   'analytics.multi_period_metrics': 'pro',
   'analytics.search_terms_deep': 'pro',

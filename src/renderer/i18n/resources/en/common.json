@@ -218,6 +218,8 @@
         "ai.title_generator": "AI title generator",
         "ai.advisor_panel": "AI Advisor chat",
         "ai.reverse_asin": "Reverse-ASIN keyword mining",
+        "ai.niche_explorer": "Niche Explorer (research page)",
+        "ai.weekly_briefing": "Weekly Author Briefing",
         "analytics.hourly_dynamics": "Hourly dynamics chart",
         "analytics.multi_period_metrics": "Multi-period metrics",
         "analytics.search_terms_deep": "Search-terms deep analytics",

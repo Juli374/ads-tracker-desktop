@@ -22,6 +22,8 @@
     "accounting": "Accounting",
     "profile": "Profile",
     "listing_studio": "Listing Studio",
+    "research": "Research",
+    "briefing": "Briefing",
     "settings": "Settings"
   },
   "topbar": {
@@ -47,6 +49,8 @@
     "askAiAnswerLabel": "AI response",
     "askAiLoading": "Thinking…",
     "askAiError": "AI request failed",
+    "runBriefingNow": "Run new weekly briefing",
+    "briefingGenerated": "Weekly briefing generated",
     "hint": {
       "navigate": "navigate",
       "select": "select",

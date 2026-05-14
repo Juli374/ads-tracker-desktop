@@ -26,6 +26,10 @@ export type ViewId =
   | 'profile'
   // Phase L Lane A — AI-assisted listing rewrite (Pro tier).
   | 'listing_studio'
+  // Phase M.1 — Niche Explorer / Research page (Pro tier).
+  | 'research'
+  // Phase M.5 Lane E — Weekly Author Briefing page (Pro tier).
+  | 'briefing'
   | 'settings';
 
 // Filters passed during drill-down between pages.
