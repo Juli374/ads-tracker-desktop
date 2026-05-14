@@ -1,10 +1,14 @@
 import { vi } from 'vitest';
 import type {
+  AiGenerateResult,
   AiSettings,
   AiTestKeyResult,
   ApiRequestPayload,
   ApiResponse,
   AppInfo,
+  AutoNegScanResult,
+  AutoNegState,
+  AutoNegThresholds,
   DesktopApi,
   DialogOpenFileResult,
   LocalRoyaltyMonthSummary,
@@ -30,6 +34,8 @@ interface MockApiOptions {
   token?: string | null;
   aiSettings?: Partial<AiSettings>;
   aiTestKey?: AiTestKeyResult;
+  /** Phase L Lane A: pre-canned `ai.generate` response. */
+  aiGenerateResult?: AiGenerateResult;
   /** Path returned by `dialog.openFile`. `null` simulates a cancelled picker. */
   dialogPath?: string | null;
   /** Pre-canned `localRoyalty.parseFile` result. */
@@ -43,6 +49,12 @@ interface MockApiOptions {
    * существующих тестов написаны до Phase K и не должны ломаться).
    */
   entitlements?: Partial<Entitlements> & { tier?: Tier };
+  /** Phase L.2 Lane B — override autoNeg.getState() return value. */
+  autoNegState?: AutoNegState;
+  /** Phase L.2 Lane B — override autoNeg.getSettings() return value. */
+  autoNegThresholds?: AutoNegThresholds;
+  /** Phase L.2 Lane B — override autoNeg.runNow() return value. */
+  autoNegScanResult?: AutoNegScanResult;
 }
 
 export function installMockApi(options: MockApiOptions = {}): void {
@@ -241,6 +253,16 @@ export function installMockApi(options: MockApiOptions = {}): void {
       streamStart: vi.fn(async () => undefined),
       streamCancel: vi.fn(async () => undefined),
       onStreamChunk: vi.fn(() => () => undefined),
+      // Phase L Lane A: one-shot generation. Default returns a deterministic
+      // stub so tests can assert the wiring without caring about content.
+      generate: vi.fn(
+        async (): Promise<AiGenerateResult> =>
+          options.aiGenerateResult ?? {
+            text: 'Mock AI-generated copy: A Thrilling New Adventure',
+            rationale: 'Mock rationale: emphasises action and curiosity.',
+            model: 'claude-opus-4-7',
+          },
+      ),
     },
     // Phase J.4 Lane D: native open-file dialog.
     dialog: {
@@ -252,6 +274,52 @@ export function installMockApi(options: MockApiOptions = {}): void {
       get: vi.fn(async () => mockEntitlements),
       refresh: vi.fn(async () => mockEntitlements),
       onChange: vi.fn(() => () => undefined),
+    },
+    // Phase L.2 Lane B — Auto-Negativator. Default disabled, defaults for
+    // thresholds, no last-run. Tests can override via options.autoNegState /
+    // options.autoNegThresholds / options.autoNegScanResult.
+    autoNeg: {
+      getState: vi.fn(
+        async (): Promise<AutoNegState> =>
+          options.autoNegState ?? {
+            enabled: false,
+            lastRunAt: null,
+            lastRecommendationCount: 0,
+            nextRunAt: null,
+            lastError: null,
+          },
+      ),
+      toggle: vi.fn(
+        async (enabled: boolean): Promise<AutoNegState> => ({
+          enabled,
+          lastRunAt: null,
+          lastRecommendationCount: 0,
+          nextRunAt: null,
+          lastError: null,
+          ...options.autoNegState,
+        }),
+      ),
+      runNow: vi.fn(
+        async (): Promise<AutoNegScanResult> =>
+          options.autoNegScanResult ?? {
+            added: 0,
+            inspected: 0,
+            skipped: 0,
+            errors: [],
+          },
+      ),
+      getSettings: vi.fn(
+        async (): Promise<AutoNegThresholds> =>
+          options.autoNegThresholds ?? {
+            minClicks: 10,
+            minAcosMultiplier: 1.5,
+            minOrdersForAcos: 2,
+          },
+      ),
+      setSettings: vi.fn(
+        async (t: AutoNegThresholds): Promise<AutoNegThresholds> => t,
+      ),
+      onStateChange: vi.fn(() => () => undefined),
     },
   };
 }

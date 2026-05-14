@@ -23,6 +23,8 @@ export type ViewId =
   | 'operations'
   | 'accounting'
   | 'profile'
+  // Phase L Lane A — AI-assisted listing rewrite (Pro tier).
+  | 'listing_studio'
   | 'settings';
 
 // Filters passed during drill-down between pages.

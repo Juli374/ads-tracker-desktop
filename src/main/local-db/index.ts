@@ -14,8 +14,11 @@ import { app } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import { AutoNegThresholds, DEFAULT_AUTO_NEG_THRESHOLDS } from '../../shared/ipc';
 
-export const SCHEMA_VERSION = 2;
+// Schema v3 adds `auto_negativator` row (Phase L.2 Lane B). Migration from v2
+// is forward-only and additive — old uploads/ai_settings/etc остаются on disk.
+export const SCHEMA_VERSION = 3;
 
 // Phase J.3 Lane C — AI settings (Claude API key, model slots, brand voice).
 // Stored locally because the personal-use first track does not push secrets to
@@ -78,6 +81,28 @@ export interface RoyaltyRecordRow {
   currency?: string;
 }
 
+/**
+ * Phase L.2 Lane B — Auto-Negativator persisted state. Stored locally because
+ * scheduler runs in main process and needs to survive app restarts (so toggle
+ * + thresholds are sticky across boots). `lastRunAt` / `lastRecommendationCount`
+ * are diagnostics for the panel ("Last scan: 03:00 — 12 recommendations added").
+ */
+export interface AutoNegRow {
+  enabled: boolean;
+  thresholds: AutoNegThresholds;
+  lastRunAt: string | null;
+  lastRecommendationCount: number;
+  lastError: string | null;
+}
+
+export const DEFAULT_AUTO_NEG: AutoNegRow = {
+  enabled: false,
+  thresholds: DEFAULT_AUTO_NEG_THRESHOLDS,
+  lastRunAt: null,
+  lastRecommendationCount: 0,
+  lastError: null,
+};
+
 export interface LocalDbState {
   version: number;
   royalty_uploads: RoyaltyUploadRow[];
@@ -87,6 +112,8 @@ export interface LocalDbState {
   next_record_id: number;
   // Phase J.3 Lane C — AI settings (single row).
   ai_settings: AiSettingsRow;
+  // Phase L.2 Lane B — Auto-Negativator persisted state (single row).
+  auto_negativator: AutoNegRow;
 }
 
 const EMPTY_STATE: LocalDbState = {
@@ -96,6 +123,7 @@ const EMPTY_STATE: LocalDbState = {
   next_upload_id: 1,
   next_record_id: 1,
   ai_settings: DEFAULT_AI_SETTINGS,
+  auto_negativator: DEFAULT_AUTO_NEG,
 };
 
 function dbFilePath(): string {
@@ -152,6 +180,41 @@ function readState(): LocalDbState {
             },
           }
         : { ...DEFAULT_AI_SETTINGS };
+    // v2 → v3: auto_negativator. Existing installations don't have this row,
+    // so we substitute DEFAULT_AUTO_NEG with sanity-checks on each field type.
+    const autoNegRaw = (parsed as { auto_negativator?: unknown }).auto_negativator;
+    let autoNegSettings: AutoNegRow = { ...DEFAULT_AUTO_NEG };
+    if (autoNegRaw && typeof autoNegRaw === 'object') {
+      const an = autoNegRaw as Partial<AutoNegRow>;
+      const t = an.thresholds && typeof an.thresholds === 'object' ? an.thresholds : null;
+      autoNegSettings = {
+        enabled: typeof an.enabled === 'boolean' ? an.enabled : DEFAULT_AUTO_NEG.enabled,
+        thresholds: {
+          minClicks:
+            typeof t?.minClicks === 'number' && Number.isFinite(t.minClicks) && t.minClicks > 0
+              ? t.minClicks
+              : DEFAULT_AUTO_NEG.thresholds.minClicks,
+          minAcosMultiplier:
+            typeof t?.minAcosMultiplier === 'number' &&
+            Number.isFinite(t.minAcosMultiplier) &&
+            t.minAcosMultiplier > 0
+              ? t.minAcosMultiplier
+              : DEFAULT_AUTO_NEG.thresholds.minAcosMultiplier,
+          minOrdersForAcos:
+            typeof t?.minOrdersForAcos === 'number' &&
+            Number.isFinite(t.minOrdersForAcos) &&
+            t.minOrdersForAcos >= 0
+              ? t.minOrdersForAcos
+              : DEFAULT_AUTO_NEG.thresholds.minOrdersForAcos,
+        },
+        lastRunAt: typeof an.lastRunAt === 'string' ? an.lastRunAt : null,
+        lastRecommendationCount:
+          typeof an.lastRecommendationCount === 'number' && Number.isFinite(an.lastRecommendationCount)
+            ? an.lastRecommendationCount
+            : 0,
+        lastError: typeof an.lastError === 'string' ? an.lastError : null,
+      };
+    }
     return {
       version: parsed.version ?? SCHEMA_VERSION,
       royalty_uploads: Array.isArray(parsed.royalty_uploads) ? parsed.royalty_uploads : [],
@@ -159,6 +222,7 @@ function readState(): LocalDbState {
       next_upload_id: parsed.next_upload_id ?? 1,
       next_record_id: parsed.next_record_id ?? 1,
       ai_settings: aiSettings,
+      auto_negativator: autoNegSettings,
     };
   } catch (err) {
     // eslint-disable-next-line no-console

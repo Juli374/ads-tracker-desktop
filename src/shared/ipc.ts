@@ -69,12 +69,32 @@ export const IpcChannel = {
   AiStreamStart: 'ai:stream:start',
   AiStreamCancel: 'ai:stream:cancel',
   AiStreamChunk: 'ai:stream:chunk',
+  // Phase L Lane A: one-shot AI generation (non-streaming). Renderer вызывает
+  // `ai:generate` с {task, asin, currentText, guidance}, main собирает system
+  // prompt + fetches Anthropic Messages API, возвращает text + rationale.
+  // Используется Listing Studio и Command Palette "Ask AI".
+  AiGenerate: 'ai:generate',
   // Phase K: tier-gating skeleton. main фетчит /api/me/entitlements,
   // кэширует в safeStorage (`entitlements.bin`), и пушит изменения в renderer.
   // Renderer слушает onChange и пересчитывает feature gates без polling'а.
   EntitlementsGet: 'entitlements:get',
   EntitlementsRefresh: 'entitlements:refresh',
   EntitlementsChanged: 'entitlements:changed',
+  // Phase L.2 Lane B — Auto-Negativator. main process scheduler сканирует
+  // search-term reports каждую ночь (03:00 local) и POST'ит pending
+  // recommendations в /api/automation/recommendations. Renderer:
+  //   - getState() — текущее состояние scanner'а (enabled, lastRunAt, lastCount)
+  //   - toggle(enabled) — включить/выключить scheduler
+  //   - runNow() — форсированный scan-сейчас (для UI кнопки)
+  //   - getSettings() / setSettings(thresholds) — пороги для правил.
+  // Pub/sub: AutoNegStateChanged каждый раз когда scanner состояние меняется,
+  // чтобы UI ре-рендерился без polling'а.
+  AutoNegGetState: 'auto-neg:state',
+  AutoNegToggle: 'auto-neg:toggle',
+  AutoNegRunNow: 'auto-neg:runNow',
+  AutoNegSettingsGet: 'auto-neg:settings:get',
+  AutoNegSettingsSet: 'auto-neg:settings:set',
+  AutoNegStateChanged: 'auto-neg:stateChanged',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -324,6 +344,51 @@ export interface AiTestKeyResult {
   error?: string;
 }
 
+// === AI generation (Phase L Lane A) ===
+
+/**
+ * One-shot AI generation task taxonomy. Listing Studio drives the first five
+ * (`title`/`subtitle`/`description`/`bullets`/`aPlus`); Command Palette uses
+ * `ask` for the free-form "Ask AI" entry. Each task gets a distinct system
+ * prompt in the main handler.
+ */
+export type AiGenerateTask =
+  | 'title'
+  | 'subtitle'
+  | 'description'
+  | 'bullets'
+  | 'aPlus'
+  | 'ask';
+
+export interface AiGeneratePayload {
+  task: AiGenerateTask;
+  /** ASIN being optimised. Omit for `ask` task. */
+  asin?: string;
+  /** Existing text to rewrite (current title / subtitle / description / etc.). */
+  currentText?: string;
+  /** Author guidance, e.g. "focus on thriller readers, avoid clichés". */
+  guidance?: string;
+  /** Free-form prompt for `task='ask'`. Ignored otherwise. */
+  prompt?: string;
+  /**
+   * Optional context blob for `task='ask'`: page slug, active filters, etc.
+   * Surfaced into the system prompt so AI can reason about what user is viewing.
+   */
+  context?: Record<string, string | number | boolean | null | undefined>;
+}
+
+export interface AiGenerateResult {
+  /** Final AI-generated text (joined from all text content blocks). */
+  text: string;
+  /**
+   * Optional short explanation of why the AI made these choices. Some tasks
+   * (Listing Studio) emit it as a trailing `Rationale:` line and we split.
+   */
+  rationale?: string;
+  /** Model id that produced the result. */
+  model: string;
+}
+
 // === Logging (Phase I.2 Lane B) ===
 export type AppLogLevel = 'error' | 'warn' | 'info' | 'debug';
 
@@ -352,6 +417,67 @@ export interface AiStreamChunk {
   streamId: string;
   /** Parsed JSON payload from the SSE `data:` line, or { type: 'error', message } on failure. */
   data: { type: AiStreamChunkType; [k: string]: unknown };
+}
+
+// === Auto-Negativator (Phase L.2 Lane B) ===
+
+/**
+ * Per-rule thresholds for the nightly scanner. Pure numbers, persisted in
+ * local-db (NOT Railway — desktop-only feature, нет смысла гонять на server).
+ *
+ * - `minClicks`: minimum clicks for the zero-sales rule to fire.
+ *   ≥ N clicks + 0 orders → recommend pause/negative.
+ * - `minAcosMultiplier`: ACOS > targetACOS * mult → recommend pause/negative.
+ *   Используется вместе с `minOrdersForAcos` чтобы не палить shaky terms
+ *   с 1–2 orders где ACOS статистически зашумлён.
+ * - `minOrdersForAcos`: minimum orders before ACOS rule activates.
+ */
+export interface AutoNegThresholds {
+  minClicks: number;
+  minAcosMultiplier: number;
+  minOrdersForAcos: number;
+}
+
+export const DEFAULT_AUTO_NEG_THRESHOLDS: AutoNegThresholds = {
+  minClicks: 10,
+  minAcosMultiplier: 1.5,
+  minOrdersForAcos: 2,
+};
+
+/**
+ * Snapshot of scanner state, returned by `getState()` and pushed via
+ * `AutoNegStateChanged` whenever lastRunAt / lastRecommendationCount changes.
+ *
+ * - `enabled`: true когда scheduler активен (юзер включил toggle).
+ * - `lastRunAt`: ISO timestamp of the most recent scan (null if never run).
+ * - `lastRecommendationCount`: how many pending recommendations были добавлены
+ *   в последнем run'е (для KPI badge).
+ * - `nextRunAt`: ISO timestamp следующего запланированного scan'а — UI
+ *   показывает "Next scan in 4h 12m".
+ * - `lastError`: текстовая ошибка из последнего run'а если он провалился.
+ */
+export interface AutoNegState {
+  enabled: boolean;
+  lastRunAt: string | null;
+  lastRecommendationCount: number;
+  nextRunAt: string | null;
+  lastError: string | null;
+}
+
+/**
+ * Result of a single scan() call. Возвращается из `runNow()` и используется
+ * внутренне scheduler'ом для эмита state-change'ей. `errors` — список
+ * текстовых ошибок (например, search-terms API упал) — НЕ блокирующих.
+ */
+export interface AutoNegScanResult {
+  /** How many recommendations the scanner added during this run. */
+  added: number;
+  /** How many search-terms were inspected. */
+  inspected: number;
+  /** How many candidates were skipped because backend rejected POST (already exists, etc). */
+  skipped: number;
+  /** Non-blocking errors (e.g. search-terms API timeout). */
+  errors: string[];
 }
 
 // API, который выставляется в renderer через contextBridge как window.api
@@ -460,6 +586,16 @@ export interface DesktopApi {
     streamCancel(streamId: string): Promise<void>;
     /** Subscribe to chunk events. Returns unsubscribe. */
     onStreamChunk(handler: (chunk: AiStreamChunk) => void): () => void;
+    /**
+     * Phase L Lane A — one-shot AI generation (Listing Studio, Command Palette).
+     * Main composes a task-specific system prompt and (for Listing Studio tasks)
+     * fetches book metadata, then calls Anthropic. Returns text + rationale.
+     *
+     * Throws if Claude key not configured. Renderer surfaces the error verbatim
+     * ("Claude API key not configured — set in Settings → AI") so the user
+     * knows where to fix it.
+     */
+    generate(payload: AiGeneratePayload): Promise<AiGenerateResult>;
   };
   /**
    * Phase K — tier-gating skeleton. Renderer получает entitlements от main:
@@ -473,5 +609,27 @@ export interface DesktopApi {
     get(): Promise<Entitlements>;
     refresh(): Promise<Entitlements>;
     onChange(handler: (entitlements: Entitlements) => void): () => void;
+  };
+  /**
+   * Phase L.2 Lane B — Auto-Negativator. Background scanner in main process
+   * that walks search-term reports every 24h (03:00 local) and POSTs pending
+   * recommendations to /api/automation/recommendations.
+   *
+   * - `getState()` — current scanner state (enabled, lastRunAt, lastError, ...).
+   * - `toggle(enabled)` — enable/disable scheduler. Toggling on schedules the
+   *    next 03:00 run; toggling off cancels the timer.
+   * - `runNow()` — force a scan right now (UI «Run scan now» button).
+   *   Returns the scan result so the panel can show "+12 recommendations added".
+   * - `getSettings()` / `setSettings(thresholds)` — persisted thresholds.
+   * - `onStateChange(handler)` — push subscription. Main emits whenever the
+   *    scanner state changes (after a run, after a toggle, after an error).
+   */
+  autoNeg: {
+    getState(): Promise<AutoNegState>;
+    toggle(enabled: boolean): Promise<AutoNegState>;
+    runNow(): Promise<AutoNegScanResult>;
+    getSettings(): Promise<AutoNegThresholds>;
+    setSettings(thresholds: AutoNegThresholds): Promise<AutoNegThresholds>;
+    onStateChange(handler: (state: AutoNegState) => void): () => void;
   };
 }

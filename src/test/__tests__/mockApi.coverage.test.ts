@@ -46,6 +46,7 @@ const EXPECTED_API_SHAPE: {
   ai: NamespaceKeys<DesktopApi['ai']>;
   dialog: NamespaceKeys<DesktopApi['dialog']>;
   entitlements: NamespaceKeys<DesktopApi['entitlements']>;
+  autoNeg: NamespaceKeys<DesktopApi['autoNeg']>;
 } = {
   app: ['getInfo', 'getApiBaseUrl', 'getLogPath', 'getGitCommit'],
   auth: ['getToken', 'setToken', 'clearToken', 'onExpired'],
@@ -65,9 +66,11 @@ const EXPECTED_API_SHAPE: {
   ],
   update: ['getStatus', 'check', 'quitAndInstall', 'onChange'],
   log: ['error', 'warn', 'info', 'debug'],
-  ai: ['getSettings', 'setSettings', 'testKey', 'streamStart', 'streamCancel', 'onStreamChunk'],
+  ai: ['getSettings', 'setSettings', 'testKey', 'streamStart', 'streamCancel', 'onStreamChunk', 'generate'],
   dialog: ['openFile'],
   entitlements: ['get', 'refresh', 'onChange'],
+  // Phase L.2 Lane B — Auto-Negativator scheduler.
+  autoNeg: ['getState', 'toggle', 'runNow', 'getSettings', 'setSettings', 'onStateChange'],
 };
 
 // Compile-time exhaustiveness check: every top-level key of `DesktopApi` must

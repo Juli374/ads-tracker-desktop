@@ -22,6 +22,9 @@ import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { UpgradeModal } from '../components/UpgradeModal';
+import { AutoNegativatorPanel } from '../components/automation/AutoNegativatorPanel';
+
+type AutomationSubTab = 'recommendations' | 'auto-negativator';
 
 const STATUS_IDS: RecommendationStatus[] = ['pending', 'applied', 'dismissed', 'snoozed'];
 
@@ -39,6 +42,9 @@ export const AutomationPage: React.FC = () => {
   // Phase K: Business feature — route guard.
   const ent = useEntitlement('automation.rules');
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  // Phase L.2 Lane B — sub-tab switch. Default = recommendations (preserves
+  // previous behaviour for existing users / tests).
+  const [subTab, setSubTab] = useState<AutomationSubTab>('recommendations');
   const [tab, setTab] = useState<RecommendationStatus>('pending');
   const [items, setItems] = useState<Recommendation[] | null>(null);
   const [stats, setStats] = useState<{
@@ -55,6 +61,12 @@ export const AutomationPage: React.FC = () => {
     () => async () => {
       // Skip fetch когда фича закрыта — экономим вызов backend'а.
       if (!ent.on) {
+        setLoading(false);
+        return;
+      }
+      // Auto-Negativator sub-tab has its own dedicated panel/loader; main
+      // recommendations list тут не нужен.
+      if (subTab !== 'recommendations') {
         setLoading(false);
         return;
       }
@@ -84,7 +96,7 @@ export const AutomationPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [tab, toast, ent.on],
+    [tab, toast, ent.on, subTab, t],
   );
 
   useEffect(() => {
@@ -157,7 +169,9 @@ export const AutomationPage: React.FC = () => {
       <PageHeader
         title={t('title')}
         subtitle={
-          unsupported
+          subTab === 'auto-negativator'
+            ? t('autoNeg.subtitle')
+            : unsupported
             ? t('subtitle.unsupported')
             : items != null
             ? t('subtitle.recCount', { count: items.length })
@@ -165,9 +179,35 @@ export const AutomationPage: React.FC = () => {
         }
       />
 
-      {unsupported && <ErrorBanner message={t('errors.unsupportedBanner')} />}
+      {/* Sub-tab switcher (Phase L.2 Lane B). Switches between Recommendations
+          и Auto-Negativator panel. Mirrors existing inner tab styling so it
+          looks like part of the same page. */}
+      <div role="tablist" className="flex items-center gap-1 border-b border-zinc-200">
+        <SubTabButton
+          id="recommendations"
+          label={t('subTabs.recommendations')}
+          active={subTab === 'recommendations'}
+          onClick={() => setSubTab('recommendations')}
+        />
+        <SubTabButton
+          id="auto-negativator"
+          label={t('subTabs.autoNegativator')}
+          active={subTab === 'auto-negativator'}
+          onClick={() => setSubTab('auto-negativator')}
+        />
+      </div>
 
-      {!unsupported && (
+      {subTab === 'auto-negativator' && (
+        <div data-testid="automation-sub-auto-negativator">
+          <AutoNegativatorPanel />
+        </div>
+      )}
+
+      {subTab === 'recommendations' && unsupported && (
+        <ErrorBanner message={t('errors.unsupportedBanner')} />
+      )}
+
+      {subTab === 'recommendations' && !unsupported && (
         <>
           <div className="grid grid-cols-4 gap-3">
             <Kpi label={t('kpi.pending')} value={fmtNumber(stats?.pending)} loading={loading && !stats} />
@@ -332,3 +372,27 @@ const RecommendationRow: React.FC<{
     </li>
   );
 };
+
+// Phase L.2 Lane B — sub-tab switcher button (Recommendations / Auto-Negativator).
+const SubTabButton: React.FC<{
+  id: AutomationSubTab;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}> = ({ id, label, active, onClick }) => (
+  <button
+    role="tab"
+    type="button"
+    aria-selected={active}
+    data-testid={`automation-subtab-${id}`}
+    onClick={onClick}
+    className={`
+      h-9 px-3 text-xs font-medium border-b-2 -mb-px transition-colors
+      ${active
+        ? 'border-zinc-900 text-zinc-900'
+        : 'border-transparent text-zinc-500 hover:text-zinc-900'}
+    `}
+  >
+    {label}
+  </button>
+);

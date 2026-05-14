@@ -18,6 +18,11 @@ import type {
   AiTestKeyResult,
   AiStreamStartPayload,
   AiStreamChunk,
+  AiGeneratePayload,
+  AiGenerateResult,
+  AutoNegState,
+  AutoNegThresholds,
+  AutoNegScanResult,
 } from './shared/ipc';
 import type { Entitlements } from './shared/entitlements';
 
@@ -127,6 +132,9 @@ const api: DesktopApi = {
       ipcRenderer.on(IpcChannel.AiStreamChunk, wrapped);
       return () => ipcRenderer.off(IpcChannel.AiStreamChunk, wrapped);
     },
+    // Phase L Lane A — one-shot AI generation (Listing Studio, CmdK "Ask AI").
+    generate: (payload: AiGeneratePayload) =>
+      ipcRenderer.invoke(IpcChannel.AiGenerate, payload) as Promise<AiGenerateResult>,
   },
   // Phase K — entitlements (tier-gating skeleton). get() — sync read from
   // main's in-memory cache (заполняется на startup + login). onChange() —
@@ -140,6 +148,26 @@ const api: DesktopApi = {
       const wrapped = (_e: IpcRendererEvent, e: Entitlements) => handler(e);
       ipcRenderer.on(IpcChannel.EntitlementsChanged, wrapped);
       return () => ipcRenderer.off(IpcChannel.EntitlementsChanged, wrapped);
+    },
+  },
+  // Phase L.2 Lane B — Auto-Negativator. Renderer вызывает getState() на mount
+  // AutomationPage и подписывается на push'и через onStateChange — UI обновляется
+  // когда главный процесс заканчивает scan().
+  autoNeg: {
+    getState: () =>
+      ipcRenderer.invoke(IpcChannel.AutoNegGetState) as Promise<AutoNegState>,
+    toggle: (enabled: boolean) =>
+      ipcRenderer.invoke(IpcChannel.AutoNegToggle, enabled) as Promise<AutoNegState>,
+    runNow: () =>
+      ipcRenderer.invoke(IpcChannel.AutoNegRunNow) as Promise<AutoNegScanResult>,
+    getSettings: () =>
+      ipcRenderer.invoke(IpcChannel.AutoNegSettingsGet) as Promise<AutoNegThresholds>,
+    setSettings: (thresholds: AutoNegThresholds) =>
+      ipcRenderer.invoke(IpcChannel.AutoNegSettingsSet, thresholds) as Promise<AutoNegThresholds>,
+    onStateChange: (handler) => {
+      const wrapped = (_e: IpcRendererEvent, state: AutoNegState) => handler(state);
+      ipcRenderer.on(IpcChannel.AutoNegStateChanged, wrapped);
+      return () => ipcRenderer.off(IpcChannel.AutoNegStateChanged, wrapped);
     },
   },
 };

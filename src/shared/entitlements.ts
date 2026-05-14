@@ -22,6 +22,7 @@ export type Tier = 'start' | 'pro' | 'business';
 export type FeatureKey =
   | 'ai.title_generator'
   | 'ai.advisor_panel'
+  | 'ai.reverse_asin'
   | 'analytics.hourly_dynamics'
   | 'analytics.multi_period_metrics'
   | 'analytics.search_terms_deep'
@@ -37,6 +38,7 @@ export type FeatureKey =
 export const ALL_FEATURE_KEYS: readonly FeatureKey[] = [
   'ai.title_generator',
   'ai.advisor_panel',
+  'ai.reverse_asin',
   'analytics.hourly_dynamics',
   'analytics.multi_period_metrics',
   'analytics.search_terms_deep',
@@ -58,6 +60,7 @@ export const ALL_FEATURE_KEYS: readonly FeatureKey[] = [
 export const DEFAULT_TIER_FOR_FEATURE: Record<FeatureKey, Tier> = {
   'ai.title_generator': 'pro',
   'ai.advisor_panel': 'pro',
+  'ai.reverse_asin': 'pro',
   'analytics.hourly_dynamics': 'pro',
   'analytics.multi_period_metrics': 'pro',
   'analytics.search_terms_deep': 'pro',

@@ -18,6 +18,12 @@ import {
   AiTestKeyResult,
   AiStreamStartPayload,
   AiStreamChunk,
+  AiGeneratePayload,
+  AiGenerateResult,
+  AiGenerateTask,
+  AutoNegState,
+  AutoNegThresholds,
+  AutoNegScanResult,
 } from '../shared/ipc';
 import {
   clearToken,
@@ -31,12 +37,14 @@ import { localStore, DEFAULT_AI_SETTINGS, AiSettingsRow } from './local-db';
 import { localRoyalty, RoyaltyParseError } from './local-db/royalty';
 import { getStatus as getUpdateStatus, checkForUpdates, quitAndInstall as updaterQuitAndInstall } from './updater';
 import { logger, getLogFilePath, scrubSecrets, scrubValue } from './logger';
+import { generate as anthropicGenerate } from './ai/anthropic';
 import {
   clearOnLogout as clearEntitlementsOnLogout,
   getCurrent as getCurrentEntitlements,
   refresh as refreshEntitlements,
 } from './entitlements';
 import type { Entitlements } from '../shared/entitlements';
+import { getAutoNegativator } from './automation';
 
 // 10 MB cap for any single file going through media:upload. The Railway
 // backend has its own 16MB body limit, but we want a clear UX-side error
@@ -78,6 +86,145 @@ function validateUploadPath(path: unknown): string {
 
 // In-flight AI streams: map streamId -> AbortController for cancellation.
 const aiStreams = new Map<string, AbortController>();
+
+// ===== Phase L Lane A — AI prompt composition helpers =====
+//
+// Kept inline here (vs. a separate module) because the prompt taxonomy is the
+// IPC handler's responsibility — it's how we map "task=title" to a deterministic
+// system prompt without exposing any user-controlled content to the system slot.
+
+/** Returns a one-line brand voice hint, or empty when unconfigured. */
+function describeBrandVoice(settings: AiSettingsRow): string {
+  const bv = settings.brandVoice;
+  if (!bv) return '';
+  const parts: string[] = [];
+  if (bv.pov && bv.pov.trim().length > 0) parts.push(`POV: ${bv.pov.trim()}`);
+  if (Array.isArray(bv.toneWords) && bv.toneWords.length > 0) {
+    parts.push(`Tone: ${bv.toneWords.slice(0, 6).join(', ')}`);
+  }
+  if (Array.isArray(bv.bannedWords) && bv.bannedWords.length > 0) {
+    parts.push(`Avoid: ${bv.bannedWords.slice(0, 12).join(', ')}`);
+  }
+  return parts.join(' | ');
+}
+
+/** Compose the system prompt for a given task. Stable across calls (caches well). */
+function buildSystemPrompt(task: AiGenerateTask, brandVoiceHint: string): string {
+  const voiceLine = brandVoiceHint ? `\nBrand voice — ${brandVoiceHint}` : '';
+  const disclosureLine =
+    task === 'ask'
+      ? ''
+      : '\nRemember: Amazon requires authors to disclose AI-assisted content. Treat output as a starting point, not final copy.';
+  switch (task) {
+    case 'title':
+      return (
+        'You are a KDP listing copywriter. Generate one new book title that is concise, evocative, and keyword-rich. ' +
+        'Avoid generic clichés. Use Title Case. End your reply with one final line: "Rationale: <one sentence>".' +
+        voiceLine +
+        disclosureLine
+      );
+    case 'subtitle':
+      return (
+        'You are a KDP listing copywriter. Generate one new subtitle that complements the title with a benefit-driven hook and 2-3 long-tail keywords. ' +
+        'Keep it under ~120 chars. End your reply with one final line: "Rationale: <one sentence>".' +
+        voiceLine +
+        disclosureLine
+      );
+    case 'description':
+      return (
+        'You are a KDP listing copywriter. Rewrite the book description as a high-converting Amazon book detail page. ' +
+        'Lead with a hook, weave in 5-7 relevant keywords naturally, use short paragraphs and one bullet group. ' +
+        'Output plain text (no markdown). End your reply with one final line: "Rationale: <one sentence>".' +
+        voiceLine +
+        disclosureLine
+      );
+    case 'bullets':
+      return (
+        'You are a KDP listing copywriter. Produce 5 bullet points for the book detail page. ' +
+        'Each bullet should be benefit-led, scannable, and under ~140 chars. Output as a numbered list "1." through "5.". ' +
+        'End your reply with one final line: "Rationale: <one sentence>".' +
+        voiceLine +
+        disclosureLine
+      );
+    case 'aPlus':
+      return (
+        'You are a KDP A+ Content strategist. Propose 3-4 distinct A+ module angles for this book, each with a heading and a 2-3 sentence body. ' +
+        'Vary the angles (e.g. social proof, sample chapter teaser, author bio, comparison). ' +
+        'End your reply with one final line: "Rationale: <one sentence>".' +
+        voiceLine +
+        disclosureLine
+      );
+    case 'ask':
+      return (
+        'You are a KDP author assistant inside the Ads Tracker desktop app. Answer the user concisely (≤120 words). ' +
+        'Be specific to KDP advertising, royalties, search-term mining, and listing optimisation. ' +
+        'If you do not know, say so plainly. Never invent metrics.' +
+        voiceLine
+      );
+    default: {
+      // exhaustive check — TS will flag if a task is added without handler.
+      const exhaustive: never = task;
+      throw new Error(`ai:generate: unhandled task ${exhaustive as string}`);
+    }
+  }
+}
+
+/** Compose the user-turn message — actual book / page context lives here. */
+function buildUserMessage(task: AiGenerateTask, p: Partial<AiGeneratePayload>): string {
+  if (task === 'ask') {
+    const lines: string[] = [];
+    const prompt = p.prompt?.trim() ?? '';
+    lines.push(prompt || '(empty prompt)');
+    if (p.context && Object.keys(p.context).length > 0) {
+      lines.push('');
+      lines.push('App context:');
+      for (const [k, v] of Object.entries(p.context)) {
+        if (v === undefined || v === null) continue;
+        lines.push(`- ${k}: ${String(v).slice(0, 200)}`);
+      }
+    }
+    return lines.join('\n');
+  }
+  // Listing Studio tasks share the same context shape.
+  const lines: string[] = [];
+  lines.push(`Task: rewrite the book's ${task}.`);
+  if (p.asin) lines.push(`ASIN: ${p.asin}`);
+  if (p.currentText && p.currentText.trim().length > 0) {
+    lines.push('');
+    lines.push('Current text:');
+    lines.push(p.currentText.trim());
+  }
+  if (p.guidance && p.guidance.trim().length > 0) {
+    lines.push('');
+    lines.push(`Author guidance: ${p.guidance.trim()}`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * If the model ends with a single `Rationale: ...` line, lift it out into the
+ * separate `rationale` field. Otherwise return the original text unchanged.
+ *
+ * Matches case-insensitively and anchors on the last occurrence so a model
+ * that mentions "rationale" earlier in the body doesn't trigger a split.
+ */
+function splitRationale(text: string): { primary: string; rationale?: string } {
+  if (!text) return { primary: '' };
+  // Look for the last line that starts with "Rationale" (case-insensitive).
+  const lines = text.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    const match = line.match(/^rationale\s*[:\-—]\s*(.+)$/i);
+    if (match) {
+      const rationale = match[1].trim();
+      const primary = lines.slice(0, i).join('\n').trim();
+      if (primary.length > 0 && rationale.length > 0) {
+        return { primary, rationale };
+      }
+    }
+  }
+  return { primary: text.trim() };
+}
 
 function emitAiChunk(chunk: AiStreamChunk): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -779,6 +926,87 @@ export function registerIpcHandlers(): void {
     }
   });
 
+  // ====== Phase L Lane A: AI one-shot generation ======
+  // Renderer dispatches `ai:generate` with {task, asin, currentText, guidance}.
+  // We compose a task-specific system prompt, optionally fetch the book's
+  // metadata (title/subtitle/author/language) so the AI has context, then
+  // call Anthropic via the wrapper. Throws verbatim error messages
+  // ("Claude API key not configured — set in Settings → AI") so the renderer
+  // can show them inline without re-mapping.
+  ipcMain.handle(
+    IpcChannel.AiGenerate,
+    async (_evt, payload: unknown): Promise<AiGenerateResult> => {
+      // --- Strict shape validation: compromised renderer must not be able to
+      //     inject arbitrary prompts that ignore our task taxonomy. ---
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('ai:generate expects an object');
+      }
+      const p = payload as Partial<AiGeneratePayload>;
+      const validTasks: ReadonlySet<AiGenerateTask> = new Set([
+        'title', 'subtitle', 'description', 'bullets', 'aPlus', 'ask',
+      ]);
+      if (typeof p.task !== 'string' || !validTasks.has(p.task as AiGenerateTask)) {
+        throw new Error(`ai:generate: task must be one of ${[...validTasks].join('|')}`);
+      }
+      // ASIN: optional, but if provided must look ASIN-ish (B0... — letters/digits).
+      // Loose check to avoid breaking on legitimate edge cases; main isn't an
+      // ASIN validator. Length cap protects against megabyte-string DoS.
+      if (p.asin !== undefined) {
+        if (typeof p.asin !== 'string' || p.asin.length > 32) {
+          throw new Error('ai:generate: asin must be a string ≤ 32 chars');
+        }
+      }
+      if (p.currentText !== undefined) {
+        if (typeof p.currentText !== 'string' || p.currentText.length > 16_000) {
+          throw new Error('ai:generate: currentText must be a string ≤ 16000 chars');
+        }
+      }
+      if (p.guidance !== undefined) {
+        if (typeof p.guidance !== 'string' || p.guidance.length > 4_000) {
+          throw new Error('ai:generate: guidance must be a string ≤ 4000 chars');
+        }
+      }
+      if (p.prompt !== undefined) {
+        if (typeof p.prompt !== 'string' || p.prompt.length > 8_000) {
+          throw new Error('ai:generate: prompt must be a string ≤ 8000 chars');
+        }
+      }
+      if (p.context !== undefined) {
+        if (p.context === null || typeof p.context !== 'object' || Array.isArray(p.context)) {
+          throw new Error('ai:generate: context must be a plain object');
+        }
+      }
+
+      const task = p.task as AiGenerateTask;
+      const aiSettings: AiSettingsRow = localStore.read().ai_settings ?? DEFAULT_AI_SETTINGS;
+      const model = aiSettings.models.completion || DEFAULT_AI_SETTINGS.models.completion;
+
+      // --- Compose the task-specific system prompt. Keep them small and
+      //     deterministic — large prompts pile up cost; specifics live in the
+      //     user message below. ---
+      const brandVoiceHint = describeBrandVoice(aiSettings);
+      const system = buildSystemPrompt(task, brandVoiceHint);
+      const userMessage = buildUserMessage(task, p);
+
+      // --- Hit the Anthropic API. Errors propagate verbatim (incl. the
+      //     "key not configured" sentinel from the wrapper). ---
+      const text = await anthropicGenerate({
+        model,
+        system,
+        messages: [{ role: 'user', content: userMessage }],
+        maxTokens: task === 'description' || task === 'aPlus' ? 2048 : 1024,
+        // Cache the system prompt: task-specific text is reused across regenerates.
+        cacheSystem: true,
+      });
+
+      // --- Optional rationale split: Listing Studio tasks ask the model to
+      //     end with a single-line `Rationale: ...`. If we find it, we lift
+      //     the line into `result.rationale` so the UI can render it apart. ---
+      const { primary, rationale } = splitRationale(text);
+      return { text: primary, rationale, model };
+    },
+  );
+
   // ====== Phase K: Tier-gating skeleton ======
   // Renderer тянет entitlements синхронно через get() (на mount), и подписывается
   // на push EntitlementsChanged через onChange(). refresh() форсит fetch — это
@@ -792,4 +1020,64 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.EntitlementsRefresh, async (): Promise<Entitlements> => {
     return refreshEntitlements();
   });
+
+  // ====== Phase L.2 Lane B: Auto-Negativator scheduler ======
+  // Renderer'у нужны 5 IPC-каналов: get state, toggle on/off, run-now, get/set
+  // thresholds. Все вызовы маршрутизируются в синглтон main/automation/index.ts,
+  // который сам ведёт state в local-db.
+
+  ipcMain.handle(IpcChannel.AutoNegGetState, async (): Promise<AutoNegState> => {
+    return getAutoNegativator().getState();
+  });
+
+  ipcMain.handle(
+    IpcChannel.AutoNegToggle,
+    async (_evt, enabled: unknown): Promise<AutoNegState> => {
+      if (typeof enabled !== 'boolean') {
+        throw new Error('auto-neg:toggle expects boolean');
+      }
+      return getAutoNegativator().toggle(enabled);
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.AutoNegRunNow,
+    async (): Promise<AutoNegScanResult> => {
+      return getAutoNegativator().runNow();
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.AutoNegSettingsGet,
+    async (): Promise<AutoNegThresholds> => {
+      return getAutoNegativator().getThresholds();
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.AutoNegSettingsSet,
+    async (_evt, payload: unknown): Promise<AutoNegThresholds> => {
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('auto-neg:settings:set expects object');
+      }
+      const p = payload as Partial<AutoNegThresholds>;
+      // Тип-валидация: scanner.setThresholds дополнительно clamp'ит значения
+      // в безопасный диапазон. Здесь — только базовая защита от crap-shape.
+      const next: AutoNegThresholds = {
+        minClicks:
+          typeof p.minClicks === 'number' && Number.isFinite(p.minClicks)
+            ? p.minClicks
+            : 10,
+        minAcosMultiplier:
+          typeof p.minAcosMultiplier === 'number' && Number.isFinite(p.minAcosMultiplier)
+            ? p.minAcosMultiplier
+            : 1.5,
+        minOrdersForAcos:
+          typeof p.minOrdersForAcos === 'number' && Number.isFinite(p.minOrdersForAcos)
+            ? p.minOrdersForAcos
+            : 2,
+      };
+      return getAutoNegativator().setThresholds(next);
+    },
+  );
 }

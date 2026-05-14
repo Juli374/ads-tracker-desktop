@@ -3,7 +3,8 @@ import path from 'path';
 import { initLogger } from './main/logger';
 import { registerIpcHandlers } from './main/ipc-handlers';
 import { initAutoUpdater } from './main/updater';
-import { startEntitlementsTracking } from './main/entitlements';
+import { startEntitlementsTracking, subscribe as subscribeEntitlements } from './main/entitlements';
+import { getAutoNegativator } from './main/automation';
 import { IpcChannel, DeepLinkEvent } from './shared/ipc';
 
 // Initialise the file logger before any other module that might want to log.
@@ -294,6 +295,36 @@ app.on('ready', () => {
     // eslint-disable-next-line no-console
     console.warn('[main] startEntitlementsTracking failed:', err);
   });
+
+  // Phase L.2 Lane B: Auto-Negativator. Запускаем только если все три условия:
+  //   1. app.isPackaged (skip dev — иначе спам recommendations при каждом старте)
+  //   2. entitlements.tier === 'pro' | 'business' (фича за automation.rules — Business)
+  //   3. user раньше включил toggle (sticky enabled flag в local-db)
+  //
+  // (2) проверяем дважды: на старте + по подписке на entitlements changes
+  // (юзер может апгрейднуть подписку в браузере → entitlements push → стартуем).
+  if (app.isPackaged) {
+    const negativator = getAutoNegativator();
+    const maybeStart = (tier: 'start' | 'pro' | 'business') => {
+      if (tier === 'pro' || tier === 'business') {
+        // .start() сам респектит persisted enabled flag — если юзер toggle-off,
+        // ничего не произойдёт. Идемпотентно.
+        negativator.start();
+      } else {
+        // Подписка истекла / даунгрейд — гасим scheduler сразу.
+        negativator.stop();
+      }
+    };
+    // Initial — на основании текущего snapshot (может быть EMPTY до первого fetch'а).
+    void startEntitlementsTracking().then(() => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const ent = require('./main/entitlements') as typeof import('./main/entitlements');
+      maybeStart(ent.getCurrent().tier);
+    });
+    subscribeEntitlements((e) => {
+      maybeStart(e.tier);
+    });
+  }
 });
 
 app.on('window-all-closed', () => {

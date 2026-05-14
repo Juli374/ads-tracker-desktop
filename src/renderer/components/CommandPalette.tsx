@@ -21,10 +21,15 @@ import {
   Copy,
   Search,
   User,
+  Sparkles,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useNav, ViewId } from '../contexts/NavContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useEntitlement } from '../hooks/useEntitlement';
+import { aiApi } from '../api/ai';
 
 interface PaletteItem {
   id: string;
@@ -39,13 +44,28 @@ interface Props {
   onClose: () => void;
 }
 
+/** Phase L Lane E — quick AI verbs surfaced as palette entries. */
+type AiVerb = 'ask' | 'rewrite-blurb' | 'explain-spike' | 'suggest-negatives';
+
+interface AiVerbDef {
+  id: AiVerb;
+  label: string;
+  prompt(query: string): string;
+}
+
 export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
   const { t } = useTranslation('nav');
-  const { navigate } = useNav();
+  const { navigate, page } = useNav();
   const { signOut } = useAuth();
   const toast = useToast();
+  const aiEnt = useEntitlement('ai.title_generator');
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
+  // Phase L.5 — Ask AI panel state. Lives on the Palette so closing the
+  // modal resets it; we don't persist AI answers between opens.
+  const [askLoading, setAskLoading] = useState(false);
+  const [askAnswer, setAskAnswer] = useState<string | null>(null);
+  const [askError, setAskError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -79,6 +99,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
       { id: 'go-royalties', label: goLabel('royalties'), hint: 'G Y', icon: Coins, onRun: goto('royalties') },
       { id: 'go-accounting', label: goLabel('accounting'), hint: 'G F', icon: Wallet, onRun: goto('accounting') },
       { id: 'go-profile', label: goLabel('profile'), hint: 'G I', icon: User, onRun: goto('profile') },
+      { id: 'go-listing-studio', label: goLabel('listing_studio'), hint: 'G E', icon: Sparkles, onRun: goto('listing_studio') },
       { id: 'go-settings', label: goLabel('settings'), icon: Settings, onRun: goto('settings') },
       {
         id: 'reload',
@@ -122,11 +143,89 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
     return items.filter((it) => it.label.toLowerCase().includes(q));
   }, [query, items]);
 
+  // Phase L.5 — strip a leading "?" or "ask " prefix to decide whether
+  // to surface the Ask AI entry. We also surface it whenever there are NO
+  // matching commands, so unknown queries always have an actionable fallback.
+  const askPrompt = useMemo(() => {
+    const raw = query.trim();
+    if (raw.length === 0) return '';
+    if (raw.startsWith('?')) return raw.slice(1).trim();
+    const lower = raw.toLowerCase();
+    if (lower.startsWith('ask ')) return raw.slice(4).trim();
+    return raw;
+  }, [query]);
+
+  const showAskAi = useMemo(() => {
+    if (!query.trim()) return false;
+    if (query.trim().startsWith('?')) return true;
+    if (query.trim().toLowerCase().startsWith('ask ')) return true;
+    // Fallback: no command matches user's query → surface Ask AI as the
+    // primary action so the palette is never a dead-end.
+    return filtered.length === 0;
+  }, [query, filtered]);
+
+  // Phase L.5 — AI verbs (cached). Each verb composes a context-aware prompt
+  // out of the current page; the query becomes the noun.
+  const aiVerbs: readonly AiVerbDef[] = useMemo(
+    () => [
+      {
+        id: 'rewrite-blurb',
+        label: 'AI: rewrite book blurb',
+        prompt: (q) => `Rewrite this book blurb to be punchier and more conversion-focused. Keep it under ~250 words.\n\n${q}`,
+      },
+      {
+        id: 'explain-spike',
+        label: 'AI: explain ACOS / spend spike',
+        prompt: (q) =>
+          `I'm seeing an unexpected spike on a campaign. Walk me through likely causes (audience, bid changes, competitor activity, day-of-week effects). Context: ${q || '(no extra details)'}.`,
+      },
+      {
+        id: 'suggest-negatives',
+        label: 'AI: suggest negative keywords',
+        prompt: (q) =>
+          `Suggest 8-12 negative keywords I should add for this niche / theme. Briefly justify each.\n\nContext: ${q || '(no extra details)'}.`,
+      },
+    ],
+    [],
+  );
+
+  /** Hit the IPC + render result inline. Never closes the palette on success. */
+  const runAsk = useCallback(
+    async (prompt: string) => {
+      if (!aiEnt.on) {
+        setAskError(
+          'AI quick actions require Pro tier. Upgrade in Settings → Subscription.',
+        );
+        return;
+      }
+      if (!prompt.trim()) return;
+      setAskLoading(true);
+      setAskError(null);
+      setAskAnswer(null);
+      try {
+        const result = await aiApi.generate({
+          task: 'ask',
+          prompt,
+          context: { page, source: 'command-palette' },
+        });
+        setAskAnswer(result.text);
+      } catch (err) {
+        setAskError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setAskLoading(false);
+      }
+    },
+    [aiEnt.on, page],
+  );
+
   // Reset state on open / re-open
   useEffect(() => {
     if (open) {
       setQuery('');
       setActiveIdx(0);
+      setAskAnswer(null);
+      setAskError(null);
+      setAskLoading(false);
       // Focus после рендера
       setTimeout(() => inputRef.current?.focus(), 0);
       document.body.dataset.modalOpen = 'true';
@@ -172,8 +271,18 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
     }
     if (e.key === 'Enter') {
       e.preventDefault();
+      // Phase L.5 — when Ask AI is surfaced and no command match is highlighted,
+      // Enter triggers the AI request inline. Otherwise standard run.
+      if (showAskAi && (filtered.length === 0 || activeIdx === 0 && filtered.length === 0)) {
+        void runAsk(askPrompt);
+        return;
+      }
       const item = filtered[activeIdx];
       if (item) item.onRun();
+      // Even with a matched command, if user prefixed "?" they probably want AI.
+      else if (showAskAi) {
+        void runAsk(askPrompt);
+      }
       return;
     }
   };
@@ -208,11 +317,87 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
         </div>
 
         <div ref={listRef} className="max-h-[320px] overflow-y-auto py-1">
-          {filtered.length === 0 ? (
+          {/* Phase L.5 — Ask AI entry surfaces when query has no match or starts with "?". */}
+          {showAskAi && askAnswer === null && (
+            <button
+              type="button"
+              data-testid="palette-ask-ai"
+              onClick={() => void runAsk(askPrompt)}
+              disabled={askLoading || !askPrompt}
+              className={`
+                flex items-center gap-2.5 w-full px-3 mx-1 h-8 rounded-md text-left
+                text-sm transition-colors
+                ${askLoading ? 'bg-violet-50 text-violet-700' : 'text-violet-700 hover:bg-violet-50'}
+                disabled:opacity-50
+              `}
+            >
+              {askLoading ? (
+                <Loader2 size={14} className="animate-spin flex-shrink-0" />
+              ) : (
+                <Sparkles size={14} className="flex-shrink-0" />
+              )}
+              <span className="flex-1 truncate">
+                {askLoading
+                  ? t('palette.askAiLoading')
+                  : t('palette.askAi', { query: askPrompt || '…' })}
+              </span>
+              <span className="text-[10px] font-mono text-zinc-400 tracking-wider">↵</span>
+            </button>
+          )}
+
+          {/* Phase L.5 — AI quick verbs: visible only when user typed something. */}
+          {showAskAi && askPrompt && askAnswer === null && !askLoading && (
+            <div className="px-2 pt-1">
+              <div className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider px-1 pb-0.5">
+                Quick AI actions
+              </div>
+              {aiVerbs.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  data-testid={`palette-ai-verb-${v.id}`}
+                  onClick={() => void runAsk(v.prompt(askPrompt))}
+                  className="
+                    flex items-center gap-2.5 w-full px-2.5 h-7 rounded-md text-left
+                    text-xs text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-colors
+                  "
+                >
+                  <Sparkles size={11} className="text-violet-500 flex-shrink-0" />
+                  <span className="flex-1 truncate">{v.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* AI answer panel — replaces command list while we have a response. */}
+          {askAnswer !== null && (
+            <div className="px-3 py-2 space-y-1" data-testid="palette-ask-ai-answer">
+              <div className="text-[10px] font-semibold text-violet-700 uppercase tracking-wider">
+                {t('palette.askAiAnswerLabel')}
+              </div>
+              <pre className="text-xs text-zinc-800 whitespace-pre-wrap font-sans max-h-[200px] overflow-y-auto">
+                {askAnswer}
+              </pre>
+            </div>
+          )}
+
+          {/* AI error inline. */}
+          {askError && (
+            <div
+              data-testid="palette-ask-ai-error"
+              className="mx-2 my-1 px-2.5 py-1.5 rounded-md border border-amber-300 bg-amber-50 text-[11px] text-amber-900 inline-flex items-start gap-1.5"
+            >
+              <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" />
+              <span>{askError}</span>
+            </div>
+          )}
+
+          {filtered.length === 0 && askAnswer === null && !showAskAi ? (
             <div className="px-4 py-6 text-center text-xs text-zinc-400">
               {t('palette.empty')}
             </div>
           ) : (
+            askAnswer === null &&
             filtered.map((item, idx) => {
               const Icon = item.icon;
               const active = idx === activeIdx;

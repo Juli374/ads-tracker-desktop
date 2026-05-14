@@ -20,6 +20,7 @@
     "royalties": "Royalty",
     "accounting": "Accounting",
     "profile": "Profile",
+    "listing_studio": "Listing Studio",
     "settings": "Settings"
   },
   "topbar": {
@@ -40,6 +41,11 @@
     "copiedToast": "Copied: {url}",
     "copyFailed": "Failed to copy",
     "signOut": "Sign out",
+    "askAi": "Ask AI: \"{query}\"",
+    "askAiHint": "Press Enter to ask Claude",
+    "askAiAnswerLabel": "AI response",
+    "askAiLoading": "Thinking…",
+    "askAiError": "AI request failed",
     "hint": {
       "navigate": "navigate",
       "select": "select",

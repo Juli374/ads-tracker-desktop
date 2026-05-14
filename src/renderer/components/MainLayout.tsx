@@ -17,6 +17,7 @@ import {
   Wallet,
   ClipboardList,
   Coins,
+  Sparkles,
   Loader2,
 } from 'lucide-react';
 
@@ -70,6 +71,11 @@ const NegativesPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('../pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
+// Phase L Lane A — Listing Studio is a heavy AI page; lazy-load it so the
+// initial bundle doesn't ship the variant-history code path until requested.
+const ListingStudioPage = lazy(() =>
+  import('../pages/ListingStudioPage').then((m) => ({ default: m.ListingStudioPage })),
+);
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
@@ -107,6 +113,10 @@ const actionsNav: NavItem[] = [
   { id: 'automation', icon: Zap, shortcut: 'G U', feature: 'automation.rules' },
   { id: 'alerts', icon: Activity, shortcut: 'G L' },
   { id: 'operations', icon: ClipboardList, shortcut: 'G T', feature: 'automation.rules' },
+  // Phase L Lane A — Listing Studio (Pro tier). Sidebar item shows Pro badge
+  // when locked, but navigation still works — the page itself renders the
+  // upgrade card.
+  { id: 'listing_studio', icon: Sparkles, shortcut: 'G E', feature: 'ai.title_generator' },
 ];
 
 const financeNav: NavItem[] = [
@@ -143,6 +153,9 @@ const HOTKEY_MAP: Record<string, ViewId> = {
   y: 'royalties',
   f: 'accounting',
   i: 'profile',
+  // Phase L Lane A — Listing Studio. `G E` (Editor / listing editor) — picked
+  // because `L` is Alerts and `I` is Profile.
+  e: 'listing_studio',
 };
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -236,6 +249,8 @@ const Layout: React.FC = () => {
         return <NegativesPage />;
       case 'profile':
         return <ProfilePage />;
+      case 'listing_studio':
+        return <ListingStudioPage />;
       case 'settings':
         return <SettingsPage />;
     }

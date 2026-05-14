@@ -5,6 +5,52 @@
     "unsupported": "Endpoint unavailable",
     "recCount": "{count, plural, one {# recommendation} other {# recommendations}} in this tab"
   },
+  "subTabs": {
+    "recommendations": "Recommendations",
+    "autoNegativator": "Auto-Negativator"
+  },
+  "autoNeg": {
+    "title": "Auto-Negativator",
+    "subtitle": "Nightly scan of search-term reports adds negative-keyword recommendations automatically.",
+    "loading": "Loading scanner state…",
+    "on": "ON",
+    "off": "OFF",
+    "toggleOnAria": "Enable Auto-Negativator",
+    "toggleOffAria": "Disable Auto-Negativator",
+    "enabled": "Auto-Negativator enabled",
+    "disabled": "Auto-Negativator disabled",
+    "runNow": "Run scan now",
+    "scanning": "Scanning…",
+    "saving": "Saving…",
+    "saveSettings": "Save thresholds",
+    "settingsSaved": "Thresholds saved",
+    "runSuccess": "{count, plural, =0 {No recommendations added} one {# recommendation added} other {# recommendations added}} ({inspected} search terms inspected)",
+    "runWithErrors": "{count, plural, =0 {No recommendations} one {# recommendation} other {# recommendations}} added, {errors, plural, one {# error} other {# errors}}",
+    "scanSummary": "Added {added}, skipped {skipped}, inspected {inspected}.",
+    "lastErrorLabel": "Last error",
+    "status": {
+      "lastRun": "Last run",
+      "lastCount": "Last added",
+      "nextRun": "Next run",
+      "never": "Never",
+      "notScheduled": "Not scheduled"
+    },
+    "thresholds": {
+      "title": "Thresholds",
+      "minClicks": "Min clicks (zero-sale rule)",
+      "minClicksHint": "Recommend negative when clicks ≥ N and orders = 0.",
+      "minAcosMultiplier": "ACOS multiplier",
+      "minAcosMultiplierHint": "Recommend negative when ACOS exceeds target × this multiplier.",
+      "minOrdersForAcos": "Min orders (ACOS rule)",
+      "minOrdersForAcosHint": "Don't fire the ACOS rule until the term has at least N orders (avoid statistical noise)."
+    },
+    "errors": {
+      "loadFailed": "Failed to load Auto-Negativator state",
+      "toggleFailed": "Failed to update Auto-Negativator state",
+      "runFailed": "Scan failed",
+      "saveSettingsFailed": "Failed to save thresholds"
+    }
+  },
   "errors": {
     "load": "Failed to load recommendations",
     "unsupportedBanner": "Endpoint /api/automation/recommendations returned 401/403/404.",
