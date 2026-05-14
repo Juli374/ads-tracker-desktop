@@ -119,6 +119,46 @@
         "unavailableTitle": "Unavailable",
         "noKey": "Configure your Claude API key in Settings → AI to start chatting.",
         "noKeyTitle": "API key required"
+      },
+      "modeChat": "Chat",
+      "modeCoPilot": "Co-pilot",
+      "modeToggleAria": "Switch advisor mode",
+      "coPilot": {
+        "intro": "Auto-analyse this campaign's targets and recommend bid adjustments.",
+        "analyze": "Analyse targets",
+        "analyzing": "Analysing…",
+        "noTargets": "No targets to analyse.",
+        "noAdvice": "No advice — campaign looks healthy.",
+        "selectAllAria": "Select all advice rows",
+        "selectAria": "Select advice for {target}",
+        "applySelected": "Apply {count}",
+        "applying": "Applying…",
+        "applied": "Applied {count} changes",
+        "confirmTitle": "Apply {count} changes?",
+        "confirmBody": "This will update bids and pause targets on the live campaign. Proceed?",
+        "confirmApply": "Apply",
+        "confirmCancel": "Cancel",
+        "lockedTitle": "Bid Co-pilot requires Pro",
+        "lockedBody": "Upgrade to Pro to unlock AI-driven bulk bid recommendations.",
+        "th": {
+          "select": "Select",
+          "target": "Target",
+          "currentBid": "Bid",
+          "action": "Action",
+          "newBid": "New bid",
+          "reason": "Reason"
+        },
+        "action": {
+          "lower": "Lower",
+          "raise": "Raise",
+          "pause": "Pause"
+        },
+        "errors": {
+          "loadTargets": "Failed to load targets",
+          "parse": "AI returned malformed advice — try again.",
+          "generic": "Co-pilot request failed",
+          "apply": "Some changes failed to apply"
+        }
       }
     },
     "targets": {

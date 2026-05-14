@@ -30,6 +30,10 @@ export type FeatureKey =
   // composes a digest of the last 7 days and runs it through Anthropic; result
   // is stored locally + push-notified.
   | 'ai.weekly_briefing'
+  // Phase M.3 — Bid Co-pilot. Pro tier. Extends AIAdvisorPanel with a bulk-apply
+  // table: «Lower bid 12% on these 8 keywords» → one click BULK PATCH через
+  // existing targets API (Phase J.2).
+  | 'ai.bid_copilot'
   | 'analytics.hourly_dynamics'
   | 'analytics.multi_period_metrics'
   | 'analytics.search_terms_deep'
@@ -48,6 +52,7 @@ export const ALL_FEATURE_KEYS: readonly FeatureKey[] = [
   'ai.reverse_asin',
   'ai.niche_explorer',
   'ai.weekly_briefing',
+  'ai.bid_copilot',
   'analytics.hourly_dynamics',
   'analytics.multi_period_metrics',
   'analytics.search_terms_deep',
@@ -72,6 +77,7 @@ export const DEFAULT_TIER_FOR_FEATURE: Record<FeatureKey, Tier> = {
   'ai.reverse_asin': 'pro',
   'ai.niche_explorer': 'pro',
   'ai.weekly_briefing': 'pro',
+  'ai.bid_copilot': 'pro',
   'analytics.hourly_dynamics': 'pro',
   'analytics.multi_period_metrics': 'pro',
   'analytics.search_terms_deep': 'pro',
