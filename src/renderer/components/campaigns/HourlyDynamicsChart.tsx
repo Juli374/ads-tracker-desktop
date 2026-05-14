@@ -11,10 +11,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { Lock, Sparkles } from 'lucide-react';
 import { Card, ChartTooltip, type ChartTooltipRow, LoadingRow } from '../ui';
 import { metricsApi, type HourlyResponse } from '../../api/metrics';
 import { fmtMoney, fmtNumber } from '../../lib/format';
 import { useApiQuery } from '../../lib/useApiQuery';
+import { useEntitlement } from '../../hooks/useEntitlement';
+import { UpgradeModal } from '../UpgradeModal';
 
 type HourlyMetricId = 'all' | 'impressions' | 'clicks' | 'spend';
 
@@ -41,15 +44,25 @@ export const HourlyDynamicsChart: React.FC<Props> = ({
   attribution = '7d',
 }) => {
   const { t } = useTranslation('campaigns');
+  const { t: tCommon } = useTranslation('common');
   const [metric, setMetric] = useState<HourlyMetricId>('all');
+  // Phase K: Pro feature. На start — рисуем skeleton placeholder с upgrade-CTA.
+  const ent = useEntitlement('analytics.hourly_dynamics');
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const { data, loading, error } = useApiQuery<HourlyResponse>(
     () => metricsApi.campaignHourly(amazonCampaignId, { from, to, attribution }),
     [amazonCampaignId, from, to, attribution],
-    { silentStatuses: [404], enabled: !!amazonCampaignId },
+    {
+      silentStatuses: [404],
+      // Не дёргаем сеть когда фича locked — экономим вызов backend'а.
+      enabled: !!amazonCampaignId && ent.on,
+    },
   );
 
   const hourly = data?.hourly ?? [];
+  // useMemo вызывается ВСЕГДА — нельзя класть его после раннего return'а,
+  // иначе React ругается "Rendered more hooks than during the previous render".
   const chartData = useMemo(
     () =>
       hourly.map((row) => ({
@@ -60,6 +73,52 @@ export const HourlyDynamicsChart: React.FC<Props> = ({
       })),
     [hourly],
   );
+
+  if (!ent.on) {
+    return (
+      <Card
+        title={t('details.hourly.title')}
+        bodyClassName="px-5 py-4"
+        rightSlot={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-violet-100 text-violet-700">
+            <Lock size={10} />
+            {ent.tierRequired === 'business'
+              ? tCommon('entitlements.lockedBadgeBusiness')
+              : tCommon('entitlements.lockedBadge')}
+          </span>
+        }
+      >
+        <div
+          data-testid="hourly-dynamics-locked"
+          className="h-72 flex flex-col items-center justify-center gap-3 text-sm bg-gradient-to-b from-violet-50/40 to-transparent rounded-md"
+        >
+          <Sparkles size={20} className="text-violet-500" />
+          <div className="text-center max-w-sm">
+            <div className="text-zinc-900 font-medium mb-1">
+              {tCommon('entitlements.nudge.title')}
+            </div>
+            <div className="text-xs text-zinc-600">
+              {t('details.hourly.title')}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setUpgradeOpen(true)}
+            data-testid="hourly-dynamics-upgrade-cta"
+            className="h-8 px-3 rounded-md text-xs font-medium bg-violet-600 text-white hover:bg-violet-700"
+          >
+            {tCommon('entitlements.nudge.cta')}
+          </button>
+        </div>
+        <UpgradeModal
+          open={upgradeOpen}
+          onClose={() => setUpgradeOpen(false)}
+          triggeredBy="analytics.hourly_dynamics"
+          recommendedTier={ent.tierRequired}
+        />
+      </Card>
+    );
+  }
 
   const showImpressions = metric === 'all' || metric === 'impressions';
   const showClicks = metric === 'all' || metric === 'clicks';

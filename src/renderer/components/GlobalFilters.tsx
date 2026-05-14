@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Filter, X, BookOpen, User, Globe } from 'lucide-react';
+import { Filter, X, BookOpen, User, Globe, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 import { useMarketplaces } from '../contexts/MarketplacesContext';
 import { useBooks } from '../contexts/BooksContext';
+import { useEntitlement } from '../hooks/useEntitlement';
+import { UpgradeModal } from './UpgradeModal';
+import { useToast } from '../contexts/ToastContext';
 
 export const GlobalFilters: React.FC = () => {
   const { t } = useTranslation('common');
@@ -162,6 +165,35 @@ const MarketplaceFilter: React.FC = () => {
   const { filters, toggleMarketplace, setMarketplaces } = useGlobalFilters();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+  // Phase K: marketplace.multi — feature gate. start=1 marketplace, pro=3,
+  // business=unlimited. Превышение лимита → toast + UpgradeModal.
+  const multiEnt = useEntitlement('marketplace.multi');
+  const toast = useToast();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  // Computed limit: на основе tier и текущего entitlement state.
+  const marketplaceLimit = useMemo(() => {
+    // Если фича marketplace.multi включена → unlimited (business).
+    if (multiEnt.on) return Infinity;
+    // pro по плану позволяет до 3 (фича всё ещё `off`, но dampened).
+    // Backend пока этого не различает; для UX используем mapping через
+    // entitlements.tier — компонент Provider'а делает это видимым.
+    return 1; // start
+  }, [multiEnt.on]);
+
+  // Перехватчик toggle: на старт-плане при попытке добавить 2-й marketplace
+  // — toast + open UpgradeModal вместо изменения state.
+  const guardedToggle = (code: string) => {
+    const isAdding = !filters.marketplaces.includes(code);
+    if (isAdding && filters.marketplaces.length >= marketplaceLimit) {
+      toast.error(
+        t('entitlements.marketplaceLimit.subtitleStart' as 'entitlements.marketplaceLimit.subtitleStart'),
+      );
+      setUpgradeOpen(true);
+      return;
+    }
+    toggleMarketplace(code);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -226,6 +258,15 @@ const MarketplaceFilter: React.FC = () => {
             )}
           </div>
           <div className="max-h-[280px] overflow-y-auto py-1">
+            {!multiEnt.on && (
+              <div
+                data-testid="marketplace-tier-hint"
+                className="mx-3 my-2 px-2 py-1.5 rounded text-[10px] text-violet-700 bg-violet-50 border border-violet-100 inline-flex items-center gap-1.5"
+              >
+                <Lock size={9} />
+                {t('entitlements.marketplaceLimit.subtitleStart')}
+              </div>
+            )}
             {marketplaces.length === 0 ? (
               <div className="px-3 py-2 text-xs text-zinc-400">{t('globalFilters.marketplaces.loading')}</div>
             ) : (
@@ -234,7 +275,7 @@ const MarketplaceFilter: React.FC = () => {
                 return (
                   <button
                     key={code}
-                    onClick={() => toggleMarketplace(code)}
+                    onClick={() => guardedToggle(code)}
                     className="w-full flex items-center gap-2.5 px-3 h-8 text-sm text-left hover:bg-zinc-50 transition-colors"
                   >
                     <Checkbox selected={selected} />
@@ -246,6 +287,12 @@ const MarketplaceFilter: React.FC = () => {
           </div>
         </div>
       )}
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        triggeredBy="marketplace.multi"
+        recommendedTier={multiEnt.tierRequired}
+      />
     </div>
   );
 };

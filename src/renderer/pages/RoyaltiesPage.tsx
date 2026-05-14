@@ -7,6 +7,8 @@ import { royaltiesApi } from '../api/royalties';
 import { localRoyaltyApi } from '../api/localRoyalty';
 import { downloadExcel, type ExportColumn } from '../lib/export';
 import { useToast } from '../contexts/ToastContext';
+import { useEntitlement } from '../hooks/useEntitlement';
+import { UpgradeModal } from '../components/UpgradeModal';
 
 type Source = 'cloud' | 'local';
 
@@ -33,8 +35,18 @@ export const RoyaltiesPage: React.FC = () => {
   const { t } = useTranslation('royalties');
   const toast = useToast();
   const [exporting, setExporting] = useState(false);
+  // Phase K: advanced breakdown / unlimited export — Pro feature. На start
+  // план — export menu становится upgrade-trigger'ом. Sample-export всё ещё
+  // доступен (если есть отдельный path) — для personal-use first достаточно
+  // показать gate, фактический parse local-данных юзер использовать может.
+  const ent = useEntitlement('royalties.advanced_breakdown');
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const handleExport = async () => {
+    if (!ent.on) {
+      setUpgradeOpen(true);
+      return;
+    }
     if (exporting) return;
     setExporting(true);
     try {
@@ -101,6 +113,12 @@ export const RoyaltiesPage: React.FC = () => {
         }
       />
       <RoyaltiesTab />
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        triggeredBy="royalties.advanced_breakdown"
+        recommendedTier={ent.tierRequired}
+      />
     </div>
   );
 };

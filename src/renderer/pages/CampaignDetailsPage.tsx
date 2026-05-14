@@ -49,6 +49,8 @@ import { HourlyDynamicsChart } from '../components/campaigns/HourlyDynamicsChart
 import { CampaignSearchTermsEmbed } from '../components/campaigns/CampaignSearchTermsEmbed';
 import { CampaignHistoryTab } from '../components/campaigns/CampaignHistoryTab';
 import { AIAdvisorPanel } from '../components/campaigns/AIAdvisorPanel';
+import { useEntitlement } from '../hooks/useEntitlement';
+import { UpgradeModal } from '../components/UpgradeModal';
 
 type TabId = 'ad_groups' | 'targets' | 'search_terms' | 'negatives' | 'history';
 
@@ -77,6 +79,10 @@ export const CampaignDetailsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [advisorOpen, setAdvisorOpen] = useState(false);
+  // Phase K: AI Advisor — Pro feature. Если tier='start' — клик по кнопке
+  // открывает UpgradeModal вместо панели.
+  const advisorEnt = useEntitlement('ai.advisor_panel');
+  const [advisorUpgradeOpen, setAdvisorUpgradeOpen] = useState(false);
   const [stateBusy, setStateBusy] = useState(false);
   const [strategy, setStrategy] = useState<BiddingStrategy | ''>('');
   const [budget, setBudget] = useState<number | null>(null);
@@ -274,13 +280,24 @@ export const CampaignDetailsPage: React.FC = () => {
             {campaign && (
               <button
                 type="button"
-                onClick={() => setAdvisorOpen(true)}
+                onClick={() =>
+                  advisorEnt.on ? setAdvisorOpen(true) : setAdvisorUpgradeOpen(true)
+                }
                 title={t('details.advisor.buttonTitle')}
                 data-testid="ai-advisor-button"
+                data-locked={!advisorEnt.on ? 'true' : undefined}
                 className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium text-violet-700 border border-violet-200 bg-violet-50 hover:bg-violet-100 transition-colors"
               >
                 <Sparkles size={12} />
                 {t('details.advisor.buttonLabel')}
+                {!advisorEnt.on && (
+                  <span
+                    data-testid="ai-advisor-locked-badge"
+                    className="ml-1 text-[9px] font-semibold uppercase tracking-wide px-1 py-0.5 rounded bg-violet-200 text-violet-800"
+                  >
+                    {advisorEnt.tierRequired === 'business' ? 'Business' : 'Pro'}
+                  </span>
+                )}
               </button>
             )}
             {campaign && (
@@ -405,9 +422,17 @@ export const CampaignDetailsPage: React.FC = () => {
         />
       )}
 
-      {advisorOpen && campaign && (
+      {advisorOpen && campaign && advisorEnt.on && (
         <AIAdvisorPanel campaign={campaign} onClose={() => setAdvisorOpen(false)} />
       )}
+
+      {/* Phase K: locked-state alternative — tier upgrade modal вместо panel'и. */}
+      <UpgradeModal
+        open={advisorUpgradeOpen}
+        onClose={() => setAdvisorUpgradeOpen(false)}
+        triggeredBy="ai.advisor_panel"
+        recommendedTier={advisorEnt.tierRequired}
+      />
     </div>
   );
 };

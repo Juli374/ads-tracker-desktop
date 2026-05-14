@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, X, Zap } from 'lucide-react';
+import { Check, Lock, Sparkles, X, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
@@ -20,6 +20,8 @@ import {
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
+import { useEntitlement } from '../hooks/useEntitlement';
+import { UpgradeModal } from '../components/UpgradeModal';
 
 const STATUS_IDS: RecommendationStatus[] = ['pending', 'applied', 'dismissed', 'snoozed'];
 
@@ -31,8 +33,12 @@ const usePriorityLabel = () => {
 
 export const AutomationPage: React.FC = () => {
   const { t } = useTranslation('automation');
+  const { t: tCommon } = useTranslation('common');
   const toast = useToast();
   const { navigate } = useNav();
+  // Phase K: Business feature — route guard.
+  const ent = useEntitlement('automation.rules');
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [tab, setTab] = useState<RecommendationStatus>('pending');
   const [items, setItems] = useState<Recommendation[] | null>(null);
   const [stats, setStats] = useState<{
@@ -47,6 +53,11 @@ export const AutomationPage: React.FC = () => {
 
   const load = useMemo(
     () => async () => {
+      // Skip fetch когда фича закрыта — экономим вызов backend'а.
+      if (!ent.on) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setUnsupported(false);
       try {
@@ -73,7 +84,7 @@ export const AutomationPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [tab, toast],
+    [tab, toast, ent.on],
   );
 
   useEffect(() => {
@@ -101,6 +112,45 @@ export const AutomationPage: React.FC = () => {
       toast.error(err instanceof ApiError ? err.message : t('errors.dismissFailed'));
     }
   };
+
+  // Phase K: full-page upgrade card when locked. Не рендерим основной UI.
+  if (!ent.on) {
+    return (
+      <div className="space-y-6" data-testid="automation-page-locked">
+        <PageHeader title={t('title')} />
+        <Card>
+          <div className="flex flex-col items-center justify-center gap-4 py-12 px-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center">
+              <Sparkles size={20} className="text-violet-600" />
+            </div>
+            <div>
+              <div className="text-base font-semibold text-zinc-900 mb-1 inline-flex items-center gap-2">
+                <Lock size={14} className="text-violet-600" />
+                {tCommon('entitlements.automationLocked.title')}
+              </div>
+              <div className="text-sm text-zinc-600 max-w-md mx-auto">
+                {tCommon('entitlements.automationLocked.subtitle')}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setUpgradeOpen(true)}
+              data-testid="automation-upgrade-cta"
+              className="h-9 px-4 rounded-md text-sm font-medium bg-violet-600 text-white hover:bg-violet-700"
+            >
+              {tCommon('entitlements.automationLocked.cta')}
+            </button>
+          </div>
+        </Card>
+        <UpgradeModal
+          open={upgradeOpen}
+          onClose={() => setUpgradeOpen(false)}
+          triggeredBy="automation.rules"
+          recommendedTier={ent.tierRequired}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" data-testid="automation-page">
