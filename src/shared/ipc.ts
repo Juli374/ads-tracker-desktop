@@ -24,6 +24,8 @@ export const IpcChannel = {
   // Auto-update placeholder: renderer запрашивает статус, main отдаёт 'idle' до подключения electron-updater.
   UpdateGetStatus: 'update:getStatus',
   UpdateCheck: 'update:check',
+  // Cover QA (Phase M.4) — анализ обложек книг через sharp в main process.
+  CoverQACheck: 'cover-qa:check',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -138,6 +140,46 @@ export interface LocalRoyaltyImportPayload {
   }>;
 }
 
+// === Cover QA (Phase M.4) ===
+
+export type CoverQASeverity = 'error' | 'warning' | 'info';
+
+export interface CoverQACheck {
+  id: string;
+  passed: boolean;
+  severity: CoverQASeverity;
+  message: string;
+  suggestion?: string;
+}
+
+export interface CoverQAReport {
+  width: number;
+  height: number;
+  /** Computed as width / height with 3 decimal places. */
+  aspectRatio: number;
+  /** 0 when the image format does not record a density (e.g. screen PNG). */
+  dpi: number;
+  format: string;
+  colorSpace: string;
+  fileSize: number;
+  checks: CoverQACheck[];
+}
+
+/**
+ * Caller may pass either:
+ *  - an absolute filesystem path (main reads via fs.promises.readFile), OR
+ *  - the raw image bytes encoded as base64 (handy when the renderer already
+ *    has a `File` object loaded into memory).
+ *
+ * `target` is optional; defaults to "ebook". The path/base64 fields are
+ * mutually exclusive.
+ */
+export interface CoverQAPayload {
+  path?: string;
+  base64?: string;
+  target?: 'ebook' | 'print';
+}
+
 // === Auto-update ===
 export type UpdateState =
   | 'idle'
@@ -190,5 +232,9 @@ export interface DesktopApi {
   update: {
     getStatus(): Promise<UpdateStatus>;
     check(): Promise<UpdateStatus>;
+  };
+  coverQa: {
+    /** Analyse a cover image. Pass either `path` or `base64` (not both). */
+    check(payload: CoverQAPayload): Promise<CoverQAReport>;
   };
 }
