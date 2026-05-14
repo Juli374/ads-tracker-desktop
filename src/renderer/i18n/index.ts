@@ -19,6 +19,7 @@ import enAccounting from './resources/en/accounting.json';
 import enRoyalties from './resources/en/royalties.json';
 import enSettings from './resources/en/settings.json';
 import enAuth from './resources/en/auth.json';
+import enPnl from './resources/en/pnl.json';
 
 void i18next
   .use(ICU)
@@ -27,7 +28,7 @@ void i18next
     lng: 'en',
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['common', 'nav', 'dashboard', 'campaigns', 'books', 'searchTerms', 'keywords', 'negatives', 'reports', 'comparison', 'alerts', 'operations', 'automation', 'accounting', 'royalties', 'settings', 'auth'],
+    ns: ['common', 'nav', 'dashboard', 'campaigns', 'books', 'searchTerms', 'keywords', 'negatives', 'reports', 'comparison', 'alerts', 'operations', 'automation', 'accounting', 'royalties', 'settings', 'auth', 'pnl'],
     resources: {
       en: {
         common: enCommon,
@@ -47,6 +48,7 @@ void i18next
         royalties: enRoyalties,
         settings: enSettings,
         auth: enAuth,
+        pnl: enPnl,
       },
     },
     interpolation: { escapeValue: false },

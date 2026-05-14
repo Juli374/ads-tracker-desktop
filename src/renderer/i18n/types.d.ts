@@ -16,6 +16,7 @@ import type enAccounting from './resources/en/accounting.json';
 import type enRoyalties from './resources/en/royalties.json';
 import type enSettings from './resources/en/settings.json';
 import type enAuth from './resources/en/auth.json';
+import type enPnl from './resources/en/pnl.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -38,6 +39,7 @@ declare module 'i18next' {
       royalties: typeof enRoyalties;
       settings: typeof enSettings;
       auth: typeof enAuth;
+      pnl: typeof enPnl;
     };
     returnNull: false;
   }

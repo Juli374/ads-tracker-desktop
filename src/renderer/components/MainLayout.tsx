@@ -18,6 +18,7 @@ import {
   ClipboardList,
   Coins,
   Sparkles,
+  PiggyBank,
   Loader2,
 } from 'lucide-react';
 
@@ -76,6 +77,10 @@ const ProfilePage = lazy(() =>
 const ListingStudioPage = lazy(() =>
   import('../pages/ListingStudioPage').then((m) => ({ default: m.ListingStudioPage })),
 );
+// Phase L.3 — P&L page
+const PnLPage = lazy(() =>
+  import('../pages/PnLPage').then((m) => ({ default: m.PnLPage })),
+);
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
@@ -121,6 +126,7 @@ const actionsNav: NavItem[] = [
 
 const financeNav: NavItem[] = [
   { id: 'royalties', icon: Coins, shortcut: 'G Y' },
+  { id: 'pnl', icon: PiggyBank, shortcut: 'G E' },
   { id: 'accounting', icon: Wallet, shortcut: 'G F' },
 ];
 
@@ -151,11 +157,12 @@ const HOTKEY_MAP: Record<string, ViewId> = {
   l: 'alerts',
   t: 'operations',
   y: 'royalties',
+  e: 'pnl',
   f: 'accounting',
   i: 'profile',
-  // Phase L Lane A — Listing Studio. `G E` (Editor / listing editor) — picked
-  // because `L` is Alerts and `I` is Profile.
-  e: 'listing_studio',
+  // Phase L Lane A — Listing Studio. `G W` (Writing / listing copy writer).
+  // `E` is taken by P&L (Earnings).
+  w: 'listing_studio',
 };
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -239,6 +246,8 @@ const Layout: React.FC = () => {
         return <ComparisonPage />;
       case 'royalties':
         return <RoyaltiesPage />;
+      case 'pnl':
+        return <PnLPage />;
       case 'operations':
         return <OperationsCenterPage />;
       case 'accounting':
