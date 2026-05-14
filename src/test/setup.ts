@@ -45,12 +45,13 @@ if (!('clipboard' in navigator)) {
   });
 }
 
-// jsdom не реализует Element.prototype.scrollIntoView — компоненты типа
-// AIAdvisorPanel (Phase J.7) дёргают его на каждое новое сообщение через
-// `messagesEndRef.current?.scrollIntoView(...)`. Без stub'а — TypeError на
-// первом render'е, тест валится.
-if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
-  Element.prototype.scrollIntoView = vi.fn();
+// jsdom не реализует Element.prototype.scrollIntoView. Некоторые компоненты
+// (e.g. AIAdvisorPanel) дёргают его опционально через `?.`, что в норме спасает.
+// Стабалим как no-op для тех тестов, где optional-chaining не помогает (RTL
+// автоматически call'ит scrollIntoView внутри focus-helpers'ов).
+if (typeof window !== 'undefined' && window.HTMLElement && !window.HTMLElement.prototype.scrollIntoView) {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  window.HTMLElement.prototype.scrollIntoView = function (): void {};
 }
 
 if (!('createObjectURL' in URL)) {
