@@ -186,9 +186,7 @@ const MarketplaceFilter: React.FC = () => {
   const guardedToggle = (code: string) => {
     const isAdding = !filters.marketplaces.includes(code);
     if (isAdding && filters.marketplaces.length >= marketplaceLimit) {
-      toast.error(
-        t('entitlements.marketplaceLimit.subtitleStart' as 'entitlements.marketplaceLimit.subtitleStart'),
-      );
+      toast.error(t('entitlements.marketplaceLimit.subtitleStart'));
       setUpgradeOpen(true);
       return;
     }
