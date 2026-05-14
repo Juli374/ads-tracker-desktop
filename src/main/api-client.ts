@@ -94,6 +94,39 @@ function statusToErrorCode(status: number): ApiErrorCode {
 }
 
 /**
+ * Phase K: лениво триггерит refresh entitlements'а, когда сервер сообщает,
+ * что фича закрыта (HTTP 403 + body `{reason:'tier_required',...}`).
+ * Не дожидаемся, не пропускаем основной error envelope — это side-effect, не
+ * blocker. Renderer уже получит TIER_REQUIRED код и сможет открыть UpgradeModal,
+ * а свежие entitlements придут push-ом через EntitlementsChanged event.
+ *
+ * Lazy-require: чтобы избежать circular import entitlements.ts ↔ api-client.ts
+ * (entitlements уже импортит performApiRequest сверху).
+ */
+function triggerEntitlementsRefresh(): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const ent = require('./entitlements') as typeof import('./entitlements');
+    void ent.refresh().catch(() => {
+      // ignore: refresh уже логирует свои ошибки
+    });
+  } catch {
+    // ignore: модуль может быть не загружен в тестах
+  }
+}
+
+/**
+ * Распознать tier_required-ответ: 403 + body содержит `reason:'tier_required'`.
+ * Тело может прийти как parsed object (когда server вернул JSON) или строкой
+ * (когда вернул plain text). Только object-shape — настоящий tier-block.
+ */
+function isTierRequiredBody(parsed: unknown): boolean {
+  if (!parsed || typeof parsed !== 'object') return false;
+  const obj = parsed as { reason?: unknown };
+  return obj.reason === 'tier_required';
+}
+
+/**
  * Распознаём AbortError по DOMException (Electron / web fetch) и по Node-style
  * `err.name === 'AbortError'`. AbortSignal.timeout() в Node 20+ кидает
  * `DOMException: signal timed out` с name='TimeoutError'.
@@ -160,6 +193,17 @@ export async function performApiRequest<T = unknown>(
       emitAuthExpired({ reason: 'token_invalid', path: payload.path });
     }
 
+    // === 403 tier_required interceptor (Phase K) ===
+    // Сервер закрыл фичу: `{reason:'tier_required',feature:'ai.advisor_panel'}`.
+    // Триггерим non-blocking refresh entitlements (renderer мог иметь stale-cached),
+    // и возвращаем typed code='TIER_REQUIRED'. Renderer ловит код по ApiError'у
+    // и открывает UpgradeModal.
+    const isTierRequired =
+      response.status === 403 && isTierRequiredBody(parsed);
+    if (isTierRequired) {
+      triggerEntitlementsRefresh();
+    }
+
     const errMessage =
       typeof parsed === 'object' && parsed !== null && 'error' in parsed
         ? String((parsed as { error: unknown }).error)
@@ -171,7 +215,7 @@ export async function performApiRequest<T = unknown>(
       ok: false,
       data: null,
       error: errMessage,
-      code: statusToErrorCode(response.status),
+      code: isTierRequired ? 'TIER_REQUIRED' : statusToErrorCode(response.status),
     };
   } catch (err) {
     // Таймаут от AbortSignal.timeout — отдельная категория для UX

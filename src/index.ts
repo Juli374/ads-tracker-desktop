@@ -3,6 +3,7 @@ import path from 'path';
 import { initLogger } from './main/logger';
 import { registerIpcHandlers } from './main/ipc-handlers';
 import { initAutoUpdater } from './main/updater';
+import { startEntitlementsTracking } from './main/entitlements';
 import { IpcChannel, DeepLinkEvent } from './shared/ipc';
 
 // Initialise the file logger before any other module that might want to log.
@@ -283,6 +284,16 @@ app.on('ready', () => {
   if (initialDeepLink) pendingDeepLinks.push(initialDeepLink);
 
   createWindow();
+
+  // Phase K: запускаем трекинг entitlements ПОСЛЕ createWindow(), чтобы первый
+  // push EntitlementsChanged (если refresh завершится после ready) точно попал
+  // в существующее окно. Сам startEntitlementsTracking — async и не блокирует
+  // ready-handler; если backend медленный, окно отрисуется сначала на cached
+  // (или EMPTY) entitlements.
+  void startEntitlementsTracking().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.warn('[main] startEntitlementsTracking failed:', err);
+  });
 });
 
 app.on('window-all-closed', () => {

@@ -19,6 +19,7 @@ import type {
   AiStreamStartPayload,
   AiStreamChunk,
 } from './shared/ipc';
+import type { Entitlements } from './shared/entitlements';
 
 const api: DesktopApi = {
   app: {
@@ -125,6 +126,20 @@ const api: DesktopApi = {
       const wrapped = (_e: IpcRendererEvent, chunk: AiStreamChunk) => handler(chunk);
       ipcRenderer.on(IpcChannel.AiStreamChunk, wrapped);
       return () => ipcRenderer.off(IpcChannel.AiStreamChunk, wrapped);
+    },
+  },
+  // Phase K — entitlements (tier-gating skeleton). get() — sync read from
+  // main's in-memory cache (заполняется на startup + login). onChange() —
+  // push-event при каждом refresh из main, renderer ре-рендерит без polling'а.
+  entitlements: {
+    get: () =>
+      ipcRenderer.invoke(IpcChannel.EntitlementsGet) as Promise<Entitlements>,
+    refresh: () =>
+      ipcRenderer.invoke(IpcChannel.EntitlementsRefresh) as Promise<Entitlements>,
+    onChange: (handler) => {
+      const wrapped = (_e: IpcRendererEvent, e: Entitlements) => handler(e);
+      ipcRenderer.on(IpcChannel.EntitlementsChanged, wrapped);
+      return () => ipcRenderer.off(IpcChannel.EntitlementsChanged, wrapped);
     },
   },
 };

@@ -15,6 +15,13 @@ import type {
   MediaUploadResponse,
   UpdateStatus,
 } from '../shared/ipc';
+import {
+  ALL_FEATURE_KEYS,
+  type Entitlements,
+  type FeatureKey,
+  type FeatureState,
+  type Tier,
+} from '../shared/entitlements';
 
 interface MockApiOptions {
   responses?: Record<string, unknown>;
@@ -29,6 +36,13 @@ interface MockApiOptions {
   parseResult?: LocalRoyaltyParseResult;
   /** Pre-canned `mediaUpload` response (defaults to a 200 success). */
   mediaUploadResponse?: MediaUploadResponse;
+  /**
+   * Phase K: pre-canned entitlements. Tests могут передать `{ tier: 'start' }`
+   * чтобы протестить locked-state, или `{ tier: 'pro' }` для unlocked.
+   * Если не передано — default tier='pro', все features `on` (большинство
+   * существующих тестов написаны до Phase K и не должны ломаться).
+   */
+  entitlements?: Partial<Entitlements> & { tier?: Tier };
 }
 
 export function installMockApi(options: MockApiOptions = {}): void {
@@ -114,6 +128,35 @@ export function installMockApi(options: MockApiOptions = {}): void {
     source_path: dialogPath ?? '/mock/path/report.xlsx',
   };
   const parseResult = options.parseResult ?? defaultParseResult;
+
+  // Phase K: build mock entitlements. Default = tier='pro' with all features ON,
+  // чтобы существующие тесты, которые не знают про tier-gating, продолжали
+  // видеть фичи без блокировок.
+  const mockTier: Tier = options.entitlements?.tier ?? 'pro';
+  const allFeaturesOn = mockTier !== 'start';
+  const baseFeatures = Object.fromEntries(
+    ALL_FEATURE_KEYS.map((k: FeatureKey) => [
+      k,
+      allFeaturesOn
+        ? ({ state: 'on' } as FeatureState)
+        : ({ state: 'off', reason: 'tier' } as FeatureState),
+    ]),
+  ) as Record<FeatureKey, FeatureState>;
+  const mockEntitlements: Entitlements = {
+    v: 1,
+    issued_at: '2026-05-14T00:00:00Z',
+    expires_at: '2026-05-14T01:00:00Z',
+    user_id: 1,
+    tier: mockTier,
+    subscription: { status: mockTier === 'start' ? 'none' : 'active' },
+    features: baseFeatures,
+    sig: 'mock-sig',
+    ...options.entitlements,
+    // Объединяем features из options поверх baseFeatures если есть
+    ...(options.entitlements?.features
+      ? { features: { ...baseFeatures, ...options.entitlements.features } }
+      : {}),
+  };
 
   (window as unknown as { api: DesktopApi }).api = {
     app: {
@@ -202,6 +245,13 @@ export function installMockApi(options: MockApiOptions = {}): void {
     // Phase J.4 Lane D: native open-file dialog.
     dialog: {
       openFile: vi.fn(async (): Promise<DialogOpenFileResult> => ({ path: dialogPath })),
+    },
+    // Phase K: entitlements skeleton. Default tier='pro' all-on (см. выше).
+    // Tests могут переопределить через `installMockApi({ entitlements: { tier: 'start' } })`.
+    entitlements: {
+      get: vi.fn(async () => mockEntitlements),
+      refresh: vi.fn(async () => mockEntitlements),
+      onChange: vi.fn(() => () => undefined),
     },
   };
 }

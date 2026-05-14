@@ -31,6 +31,12 @@ import { localStore, DEFAULT_AI_SETTINGS, AiSettingsRow } from './local-db';
 import { localRoyalty, RoyaltyParseError } from './local-db/royalty';
 import { getStatus as getUpdateStatus, checkForUpdates, quitAndInstall as updaterQuitAndInstall } from './updater';
 import { logger, getLogFilePath, scrubSecrets, scrubValue } from './logger';
+import {
+  clearOnLogout as clearEntitlementsOnLogout,
+  getCurrent as getCurrentEntitlements,
+  refresh as refreshEntitlements,
+} from './entitlements';
+import type { Entitlements } from '../shared/entitlements';
 
 // 10 MB cap for any single file going through media:upload. The Railway
 // backend has its own 16MB body limit, but we want a clear UX-side error
@@ -110,11 +116,20 @@ export function registerIpcHandlers(): void {
         throw new Error('auth:setToken expects a non-empty string');
       }
       await writeToken(token);
+      // Phase K: после login — сразу освежаем entitlements (fire-and-forget,
+      // renderer всё равно получит пуш через EntitlementsChanged).
+      void refreshEntitlements().catch(() => {
+        // ignore: refresh сам логирует ошибки
+      });
     },
   );
 
   ipcMain.handle(IpcChannel.AuthClearToken, async (): Promise<void> => {
     await clearToken();
+    // Phase K: на logout стираем кэш + сбрасываем state на EMPTY.
+    await clearEntitlementsOnLogout().catch(() => {
+      // ignore
+    });
   });
 
   ipcMain.handle(
@@ -762,5 +777,19 @@ export function registerIpcHandlers(): void {
       controller.abort();
       aiStreams.delete(streamId);
     }
+  });
+
+  // ====== Phase K: Tier-gating skeleton ======
+  // Renderer тянет entitlements синхронно через get() (на mount), и подписывается
+  // на push EntitlementsChanged через onChange(). refresh() форсит fetch — это
+  // нужно, например, после обновления подписки в внешнем браузере (renderer
+  // не знает когда юзер вернулся с success-страницы биллинга).
+
+  ipcMain.handle(IpcChannel.EntitlementsGet, async (): Promise<Entitlements> => {
+    return getCurrentEntitlements();
+  });
+
+  ipcMain.handle(IpcChannel.EntitlementsRefresh, async (): Promise<Entitlements> => {
+    return refreshEntitlements();
   });
 }

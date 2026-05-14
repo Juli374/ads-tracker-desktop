@@ -1,6 +1,8 @@
 // IPC контракт между main и renderer.
 // Один источник правды для имён каналов и payload-типов.
 
+import type { Entitlements } from './entitlements';
+
 export const IpcChannel = {
   AppGetVersion: 'app:getVersion',
   AppGetApiBaseUrl: 'app:getApiBaseUrl',
@@ -67,6 +69,12 @@ export const IpcChannel = {
   AiStreamStart: 'ai:stream:start',
   AiStreamCancel: 'ai:stream:cancel',
   AiStreamChunk: 'ai:stream:chunk',
+  // Phase K: tier-gating skeleton. main фетчит /api/me/entitlements,
+  // кэширует в safeStorage (`entitlements.bin`), и пушит изменения в renderer.
+  // Renderer слушает onChange и пересчитывает feature gates без polling'а.
+  EntitlementsGet: 'entitlements:get',
+  EntitlementsRefresh: 'entitlements:refresh',
+  EntitlementsChanged: 'entitlements:changed',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -452,5 +460,18 @@ export interface DesktopApi {
     streamCancel(streamId: string): Promise<void>;
     /** Subscribe to chunk events. Returns unsubscribe. */
     onStreamChunk(handler: (chunk: AiStreamChunk) => void): () => void;
+  };
+  /**
+   * Phase K — tier-gating skeleton. Renderer получает entitlements от main:
+   * initial — через `get()`, последующие изменения — через `onChange()` push.
+   * `refresh()` форсит немедленный GET /api/me/entitlements (например после
+   * login). Если backend ещё не выкатан /api/me/entitlements (404) — main
+   * вернёт `EMPTY_ENTITLEMENTS`. Через env `ADS_TRACKER_FORCE_TIER=pro|business`
+   * — main игнорит сервер и подсовывает synthetic snapshot (dev / QA).
+   */
+  entitlements: {
+    get(): Promise<Entitlements>;
+    refresh(): Promise<Entitlements>;
+    onChange(handler: (entitlements: Entitlements) => void): () => void;
   };
 }
