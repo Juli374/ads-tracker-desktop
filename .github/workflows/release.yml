@@ -80,10 +80,18 @@ jobs:
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      # PublisherGithub reads GH_TOKEN. Fall back to the built-in GITHUB_TOKEN
+      # so the publish step works without manual secret setup — the workflow
+      # already declares `contents: write` permissions for it. Owners who
+      # want to publish from a fork or with extra scopes set GH_TOKEN
+      # explicitly and that takes precedence.
+      GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
       APPLE_CERT_BASE64_PRESENT: ${{ secrets.APPLE_CERT_BASE64 != '' }}
       WIN_CSC_LINK_PRESENT: ${{ secrets.WIN_CSC_LINK != '' }}
-      GH_TOKEN_PRESENT: ${{ secrets.GH_TOKEN != '' }}
+      # Always true now thanks to the GITHUB_TOKEN fallback above. Kept as
+      # an env marker so the `if:` on the publish step reads consistently
+      # with the APPLE/WIN presence checks; the real gate is the tag prefix.
+      GH_TOKEN_PRESENT: 'true'
 
     steps:
       - name: Checkout
