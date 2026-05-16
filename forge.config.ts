@@ -9,6 +9,15 @@ import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-nati
 import { WebpackPlugin } from '@electron-forge/plugin-webpack';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+// Phase M.4 — sharp packaging fix. @electron-forge/plugin-webpack only ships
+// the webpack output into the asar; native modules like sharp need their full
+// node_modules tree (including transitive deps: detect-libc, color, semver,
+// @img/sharp-<platform>, @img/sharp-libvips-<platform>) copied alongside.
+// Cherry-picking deps in a hook is fragile — this plugin walks the dep graph
+// of every "external" listed and copies the whole subtree. Pair with
+// `externals: { sharp: 'commonjs sharp' }` in webpack.main.config.ts.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ForgeExternalsPlugin = require('@timfish/forge-externals-plugin');
 
 import { mainConfig } from './webpack.main.config';
 import { rendererConfig } from './webpack.renderer.config';
@@ -158,6 +167,19 @@ const config: ForgeConfig = {
         ],
       },
     }),
+    // Phase M.4 — copy `sharp` (+ all transitive deps: detect-libc, color,
+    // semver, @img/sharp-<platform>, @img/sharp-libvips-<platform>) into the
+    // packaged app. MUST come AFTER WebpackPlugin per upstream docs — it
+    // walks the staged app's node_modules tree. Externals listed here MUST
+    // also be marked as commonjs externals in webpack.main.config.ts;
+    // otherwise webpack inlines them and the plugin has nothing to copy.
+    //
+    // Cast: the plugin's `.d.ts` lags its CommonJS export shape — TS sees it
+    // as a non-newable namespace, but the runtime export IS a class.
+    new (ForgeExternalsPlugin as unknown as new (opts: { externals: string[]; includeDeps: boolean }) => unknown)({
+      externals: ['sharp'],
+      includeDeps: true,
+    }) as unknown as InstanceType<typeof AutoUnpackNativesPlugin>,
     // Fuses are used to enable/disable various Electron functionality
     // at package time, before code signing the application
     new FusesPlugin({
