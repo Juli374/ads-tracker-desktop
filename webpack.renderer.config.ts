@@ -39,6 +39,15 @@ const mode: 'production' | 'development' =
 
 export const rendererConfig: Configuration = {
   mode,
+  // Dev: webpack's default devtool ('eval' / 'eval-source-map') runs source
+  // through `new Function(...)` / `eval()` which trips the production CSP
+  // (`script-src 'self'`) and leaves the renderer with a blank window in
+  // `npm start`. `cheap-module-source-map` keeps line-accurate stack traces
+  // without using eval, so source mapping still works in DevTools while the
+  // strict CSP stays untouched.
+  // Production: undefined → webpack's default for mode='production' is `false`
+  // (no source maps shipped to users).
+  devtool: mode === 'development' ? 'cheap-module-source-map' : false,
   module: {
     rules,
   },
