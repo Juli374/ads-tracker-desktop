@@ -17,11 +17,10 @@
 // task. Switching either resets the proposed pane but preserves history.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Sparkles, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { Card, PageHeader, ErrorBanner } from '../components/ui';
+import { Card, LockedFeatureCard, PageHeader, ErrorBanner } from '../components/ui';
 import { Button } from '../components/ui/Button';
-import { LockedFeature } from '../components/LockedFeature';
+import { UpgradeModal } from '../components/UpgradeModal';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { useBooks } from '../contexts/BooksContext';
 import { useToast } from '../contexts/ToastContext';
@@ -69,35 +68,31 @@ function asinOf(book: Book): string | undefined {
 }
 
 export const ListingStudioPage: React.FC = () => {
-  const { on: featureOn } = useEntitlement('ai.title_generator');
+  const { on: featureOn, tierRequired } = useEntitlement('ai.title_generator');
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   if (!featureOn) {
+    // Phase Q.1: migrated to <LockedFeatureCard> primitive.
     return (
       <div data-testid="listing-studio-page-locked" className="space-y-4">
         <PageHeader
           title="Listing Studio"
           subtitle="Rewrite your book's listing copy with AI assistance."
         />
-        <Card>
-          <div className="p-8 text-center space-y-3">
-            <Sparkles className="mx-auto text-violet-500" size={28} />
-            <h3 className="text-lg font-semibold text-zinc-900">
-              Listing Studio is a Pro feature
-            </h3>
-            <p className="text-sm text-zinc-500 max-w-md mx-auto">
-              Generate optimized titles, subtitles, descriptions, bullets, and A+ angles
-              for your KDP books in one click.
-            </p>
-            <LockedFeature feature="ai.title_generator" mode="dim">
-              <Button
-                variant="primary"
-                size="md"
-                data-testid="listing-studio-upgrade-cta"
-              >
-                Upgrade to Pro
-              </Button>
-            </LockedFeature>
-          </div>
-        </Card>
+        <LockedFeatureCard
+          data-testid="listing-studio-upgrade-cta"
+          icon={<Sparkles />}
+          title="Listing Studio is a Pro feature"
+          description="Generate optimized titles, subtitles, descriptions, bullets, and A+ angles for your KDP books in one click."
+          tier={tierRequired === 'business' ? 'business' : 'pro'}
+          onUpgrade={() => setUpgradeOpen(true)}
+          ctaLabel="Upgrade to Pro"
+        />
+        <UpgradeModal
+          open={upgradeOpen}
+          onClose={() => setUpgradeOpen(false)}
+          triggeredBy="ai.title_generator"
+          recommendedTier={tierRequired}
+        />
       </div>
     );
   }
@@ -105,7 +100,6 @@ export const ListingStudioPage: React.FC = () => {
 };
 
 const ListingStudioInner: React.FC = () => {
-  const { t: _t } = useTranslation('books');
   const toast = useToast();
   const { list: books, loading: booksLoading, error: booksError } = useBooks();
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);

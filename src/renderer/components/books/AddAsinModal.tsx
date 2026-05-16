@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { asinApi } from '../../api/books';
 import { ApiError } from '../../api/client';
 import { useToast } from '../../contexts/ToastContext';
-import { useEscapeClose } from '../../lib/useEscapeClose';
+import { Modal, ModalBody, ModalFooter } from '../ui';
 
 const MARKETPLACES = ['USA', 'UK', 'CA', 'AU', 'DE', 'FR', 'ES', 'IT', 'JP', 'MX', 'IN'];
 
@@ -20,10 +20,6 @@ export const AddAsinModal: React.FC<Props> = ({ bookId, onClose, onSaved }) => {
   const [submitting, setSubmitting] = useState(false);
   const [marketplace, setMarketplace] = useState('');
   const [asin, setAsin] = useState('');
-
-  useEscapeClose(() => {
-    if (!submitting) onClose();
-  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,32 +41,18 @@ export const AddAsinModal: React.FC<Props> = ({ bookId, onClose, onSaved }) => {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-zinc-900/20 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('modals.addAsin.title')}
+    <Modal
+      open
+      onClose={() => !submitting && onClose()}
+      size="sm"
+      title={t('modals.addAsin.title')}
+      ariaLabel={t('modals.addAsin.title')}
+      closeOnEsc={!submitting}
+      closeOnOverlay={!submitting}
       data-testid="book-add-asin-modal"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
-      }}
     >
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden"
-      >
-        <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-zinc-900">{t('modals.addAsin.title')}</h2>
-          <button
-            type="button"
-            onClick={() => !submitting && onClose()}
-            className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label={t('modals.addAsin.cancel')}
-          >
-            <X size={16} />
-          </button>
-        </div>
-        <div className="px-5 py-4 space-y-3">
+      <form onSubmit={handleSubmit}>
+        <ModalBody className="px-5 py-4 space-y-3">
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-zinc-700">
               {t('modals.addAsin.marketplace')}
@@ -103,8 +85,8 @@ export const AddAsinModal: React.FC<Props> = ({ bookId, onClose, onSaved }) => {
               required
             />
           </div>
-        </div>
-        <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-end gap-2">
+        </ModalBody>
+        <ModalFooter>
           <button
             type="button"
             onClick={onClose}
@@ -121,8 +103,8 @@ export const AddAsinModal: React.FC<Props> = ({ bookId, onClose, onSaved }) => {
             {submitting && <Loader2 size={12} className="animate-spin" />}
             {t('modals.addAsin.save')}
           </button>
-        </div>
+        </ModalFooter>
       </form>
-    </div>
+    </Modal>
   );
 };

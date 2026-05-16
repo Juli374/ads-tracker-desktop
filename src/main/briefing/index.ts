@@ -68,7 +68,7 @@ export function getWeeklyBriefer(): WeeklyBriefer {
         }
         const body = briefing.content
           ? briefing.content.slice(0, 240) + (briefing.content.length > 240 ? '…' : '')
-          : 'Open Ads Tracker to read your briefing.';
+          : 'Open KDPBook to read your briefing.';
         const n = new Notification({
           title: 'Your weekly briefing',
           body,

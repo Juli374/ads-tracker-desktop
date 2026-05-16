@@ -11,7 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { DailySummaryMetric } from '../../api/metrics';
-import { ChartTooltip, type ChartTooltipRow } from '../ui';
+import { ChartTooltip, GradientArea, type ChartTooltipRow } from '../ui';
 import { fmtMoney, fmtNumber, fmtPct } from '../../lib/format';
 
 type MetricId =
@@ -80,6 +80,44 @@ function fmtForKind(kind: FmtKind, n: number | null | undefined): string {
   if (kind === 'money') return fmtMoney(n);
   if (kind === 'percent') return fmtPct(n);
   return fmtNumber(n);
+}
+
+// Phase Q.4 perf fix: HeroTooltip used to be redefined on every render of HeroChart
+// (creating a new component identity each time, suppressing Recharts memoization).
+// Hoisted to module scope; closes over METRICS which is also module-scoped.
+const HeroTooltip: React.FC<{
+  active?: boolean;
+  payload?: ReadonlyArray<{ payload: Record<string, number>; dataKey?: string | number; color?: string }>;
+  label?: string;
+}> = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const rows: ChartTooltipRow[] = payload.map((p) => {
+    const id = String(p.dataKey) as MetricId;
+    const spec = METRICS.find((m) => m.id === id);
+    const value = (p.payload[id] ?? 0) as number;
+    return {
+      label: spec?.label ?? id,
+      value: fmtForKind(spec?.fmt ?? 'count', value),
+      color: p.color ?? spec?.color,
+    };
+  });
+  return <ChartTooltip active title={label} rows={rows} />;
+};
+
+// Aggregates the per-day metric series into a single hero-mode headline value.
+// Sum for cumulative metrics (money/count), average for ratios (percent).
+function aggregateForHero(
+  kind: FmtKind,
+  data: ReadonlyArray<Record<MetricId, number>>,
+  id: MetricId,
+): number | null {
+  if (data.length === 0) return null;
+  if (kind === 'percent') {
+    const vals = data.map((d) => d[id]).filter((v): v is number => Number.isFinite(v));
+    if (vals.length === 0) return null;
+    return vals.reduce((acc, v) => acc + v, 0) / vals.length;
+  }
+  return data.reduce((acc, d) => acc + (Number.isFinite(d[id]) ? d[id] : 0), 0);
 }
 
 interface HeroChartProps {
@@ -167,24 +205,14 @@ export const HeroChart: React.FC<HeroChartProps> = ({
     [data],
   );
 
-  const HeroTooltip: React.FC<{
-    active?: boolean;
-    payload?: ReadonlyArray<{ payload: Record<string, number>; dataKey?: string | number; color?: string }>;
-    label?: string;
-  }> = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
-    const rows: ChartTooltipRow[] = payload.map((p) => {
-      const id = String(p.dataKey) as MetricId;
-      const spec = METRICS.find((m) => m.id === id);
-      const value = (p.payload[id] ?? 0) as number;
-      return {
-        label: spec?.label ?? id,
-        value: fmtForKind(spec?.fmt ?? 'count', value),
-        color: p.color ?? spec?.color,
-      };
-    });
-    return <ChartTooltip active title={label} rows={rows} />;
-  };
+  // Phase Q.2.5 — single-metric hero mode. When only one metric is active, render
+  // <GradientArea> with an editorial headline overlay (Playfair display).
+  // Keep multi-metric LineChart for power-users.
+  const heroSpec = activeSpecs.length === 1 ? activeSpecs[0] : null;
+  const heroHeadline =
+    heroSpec && chartData.length > 0
+      ? fmtForKind(heroSpec.fmt, aggregateForHero(heroSpec.fmt, chartData as ReadonlyArray<Record<MetricId, number>>, heroSpec.id))
+      : null;
 
   return (
     <div className="space-y-3">
@@ -220,6 +248,20 @@ export const HeroChart: React.FC<HeroChartProps> = ({
           <div className="h-full flex items-center justify-center text-sm text-zinc-400">
             {loading ? t('hero.loading') : t('hero.noData')}
           </div>
+        ) : heroSpec ? (
+          <GradientArea
+            data={chartData}
+            xKey="date"
+            yKey={heroSpec.id}
+            color={heroSpec.color}
+            height={288}
+            tickFormatY={(v) => fmtForKind(heroSpec.fmt, Number(v))}
+            tooltipFormatValue={(v) => fmtForKind(heroSpec.fmt, Number(v))}
+            tooltipLabel={heroSpec.label}
+            headlineLabel={heroSpec.label}
+            headlineValue={heroHeadline ?? '—'}
+            data-testid="hero-chart-single"
+          />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>

@@ -10,9 +10,9 @@
 // so unit tests can assert the gate.
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Loader2, Sparkles, AlertTriangle, ChevronRight } from 'lucide-react';
-import { Card, PageHeader } from '../components/ui';
-import { LockedFeature } from '../components/LockedFeature';
+import { Loader2, Mail, Sparkles, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Card, LockedFeatureCard, PageHeader } from '../components/ui';
+import { UpgradeModal } from '../components/UpgradeModal';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { useToast } from '../contexts/ToastContext';
 import type { WeeklyBriefing } from '../../shared/ipc';
@@ -91,6 +91,7 @@ export const BriefingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -141,6 +142,7 @@ export const BriefingPage: React.FC = () => {
   }, [running, toast, fetchAll]);
 
   // Locked → upgrade card.
+  // Phase Q.1: migrated to <LockedFeatureCard> primitive.
   if (!on) {
     return (
       <div data-testid="briefing-page-locked" className="space-y-4">
@@ -148,31 +150,21 @@ export const BriefingPage: React.FC = () => {
           title="Weekly briefing"
           subtitle="A 250-word digest of your KDP ads performance, every Sunday."
         />
-        <Card>
-          <div className="p-8 text-center space-y-3">
-            <Sparkles className="mx-auto text-violet-500" size={28} />
-            <h3 className="text-lg font-semibold text-zinc-900">
-              Weekly briefing is a Pro feature
-            </h3>
-            <p className="text-sm text-zinc-500 max-w-md mx-auto">
-              Every Sunday morning, Claude reviews your last 7 days of ads
-              data and emails you a focused 250-word briefing — top movers,
-              underperformers, and five concrete next steps.
-            </p>
-            <LockedFeature feature="ai.weekly_briefing" mode="dim">
-              <button
-                type="button"
-                data-testid="briefing-page-upgrade-cta"
-                className="
-                  inline-flex items-center gap-1.5 px-4 h-9 rounded-md
-                  text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700
-                "
-              >
-                Upgrade to {tierRequired === 'business' ? 'Business' : 'Pro'}
-              </button>
-            </LockedFeature>
-          </div>
-        </Card>
+        <LockedFeatureCard
+          data-testid="briefing-page-upgrade-cta"
+          icon={<Mail />}
+          title="Weekly briefing is a Pro feature"
+          description="Every Sunday morning, Claude reviews your last 7 days of ads data and emails you a focused 250-word briefing — top movers, underperformers, and five concrete next steps."
+          tier={tierRequired === 'business' ? 'business' : 'pro'}
+          onUpgrade={() => setUpgradeOpen(true)}
+          ctaLabel={`Upgrade to ${tierRequired === 'business' ? 'Business' : 'Pro'}`}
+        />
+        <UpgradeModal
+          open={upgradeOpen}
+          onClose={() => setUpgradeOpen(false)}
+          triggeredBy="ai.weekly_briefing"
+          recommendedTier={tierRequired}
+        />
       </div>
     );
   }

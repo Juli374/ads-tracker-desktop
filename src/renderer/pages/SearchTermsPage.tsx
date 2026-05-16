@@ -22,6 +22,7 @@ import {
   Pagination,
   ActiveFiltersBar,
   ActiveFilterChip,
+  SegmentedControl,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
@@ -387,7 +388,7 @@ export const SearchTermsPage: React.FC = () => {
         ]}
       />
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
         <Kpi
           label={t('kpi.terms')}
           value={totals ? fmtNumber(totals.termsCount) : '—'}
@@ -788,44 +789,44 @@ const TermRow: React.FC<{
         />
       </td>
       <td className="px-3 py-2.5 max-w-[260px]">
-        <div className="text-xs text-zinc-900 truncate" title={item.searchTerm}>
+        <div className="text-sm text-zinc-900 truncate" title={item.searchTerm}>
           {item.searchTerm}
         </div>
         {item.keywordText && item.keywordText !== item.searchTerm && (
-          <div className="text-[10px] text-zinc-400 mt-0.5 truncate">
+          <div className="text-xs text-zinc-400 mt-0.5 truncate">
             ↳ {item.keywordText} · {item.matchType}
           </div>
         )}
       </td>
       <td className="px-3 py-2.5 max-w-[180px]">
-        <div className="text-xs text-zinc-600 truncate" title={item.campaignName}>
+        <div className="text-sm text-zinc-600 truncate" title={item.campaignName}>
           {item.campaignName || '—'}
         </div>
         {item.bookTitle && (
-          <div className="text-[10px] text-zinc-400 mt-0.5 truncate">
+          <div className="text-xs text-zinc-400 mt-0.5 truncate">
             {item.bookTitle}
           </div>
         )}
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase">
+      <td className="px-3 py-2.5 text-sm text-zinc-600 uppercase">
         {item.marketplace || '—'}
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
         {fmtNumber(item.impressions)}
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
         {fmtNumber(item.clicks)}
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
         {fmtMoney(item.cost, item.currency)}
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
         {fmtMoney(item.sales, item.currency)}
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
         {item.orders}
       </td>
-      <td className="px-3 py-2.5 text-xs text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-right tabular-nums">
         <span className={item.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
           {item.acos > 0 ? fmtPct(item.acos) : '—'}
         </span>
@@ -987,29 +988,18 @@ const TypeToggle: React.FC<{
   onChange: (v: 'all' | 'keywords' | 'asins') => void;
 }> = ({ value, onChange }) => {
   const { t } = useTranslation('searchTerms');
-  const options: { value: 'all' | 'keywords' | 'asins'; label: string }[] = [
-    { value: 'all', label: t('filters.type.all') },
-    { value: 'keywords', label: t('filters.type.keywords') },
-    { value: 'asins', label: t('filters.type.asins') },
-  ];
   return (
-    <div className="inline-flex items-center bg-white border border-zinc-200 rounded-md p-0.5">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          className={`
-            px-2 h-6 text-[11px] font-medium rounded
-            transition-colors
-            ${value === o.value
-              ? 'bg-zinc-100 text-zinc-900'
-              : 'text-zinc-500 hover:text-zinc-900'}
-          `}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
+    <SegmentedControl<'all' | 'keywords' | 'asins'>
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: 'all', label: t('filters.type.all') },
+        { value: 'keywords', label: t('filters.type.keywords') },
+        { value: 'asins', label: t('filters.type.asins') },
+      ]}
+      size="sm"
+      aria-label={t('filters.type.all')}
+    />
   );
 };
 

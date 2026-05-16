@@ -215,7 +215,7 @@ function sanitiseSeriesOverrides(
 }
 
 function dbFilePath(): string {
-  // app.getPath('userData') обычно ~/Library/Application Support/Ads Tracker.
+  // app.getPath('userData') обычно ~/Library/Application Support/KDPBook (derived from productName).
   // Для тестов / случаев когда app не доступен — fallback на os.tmpdir().
   let base: string;
   try {

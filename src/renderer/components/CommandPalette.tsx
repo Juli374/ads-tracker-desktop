@@ -31,8 +31,11 @@ import {
 import { useNav, ViewId } from '../contexts/NavContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { aiApi } from '../api/ai';
+import { Sun, Filter } from 'lucide-react';
 
 interface PaletteItem {
   id: string;
@@ -61,6 +64,8 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
   const { navigate, page } = useNav();
   const { signOut } = useAuth();
   const toast = useToast();
+  const theme = useTheme();
+  const globalFilters = useGlobalFilters();
   const aiEnt = useEntitlement('ai.title_generator');
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
@@ -103,7 +108,8 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
       { id: 'go-pnl', label: goLabel('pnl'), hint: 'G E', icon: PiggyBank, onRun: goto('pnl') },
       { id: 'go-accounting', label: goLabel('accounting'), hint: 'G F', icon: Wallet, onRun: goto('accounting') },
       { id: 'go-profile', label: goLabel('profile'), hint: 'G I', icon: User, onRun: goto('profile') },
-      { id: 'go-listing-studio', label: goLabel('listing_studio'), hint: 'G E', icon: Sparkles, onRun: goto('listing_studio') },
+      // Phase Q.4.2 — hint corrected from stale `G E` (taken by P&L) to actual `G W`.
+      { id: 'go-listing-studio', label: goLabel('listing_studio'), hint: 'G W', icon: Sparkles, onRun: goto('listing_studio') },
       // Phase M.1 — Niche Explorer
       { id: 'go-research', label: goLabel('research'), hint: 'G H', icon: Compass, onRun: goto('research') },
       // Phase M.5 Lane E — Weekly briefing page + on-demand run command.
@@ -151,6 +157,42 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
           onClose();
         },
       },
+      // Phase Q.4.4 — 3 utility actions surfaced via ⌘K so keyboard users can run
+      // them without opening UserMenu / topbar / Settings tabs.
+      {
+        id: 'toggle-theme',
+        label: t('palette.toggleTheme', {
+          defaultValue: 'Toggle theme (light / dark / system)',
+        }),
+        icon: Sun,
+        onRun: () => {
+          theme.cycle();
+          onClose();
+        },
+      },
+      {
+        id: 'reset-filters',
+        label: t('palette.resetFilters', { defaultValue: 'Reset global filters' }),
+        icon: Filter,
+        onRun: () => {
+          globalFilters.reset();
+          toast.success(
+            t('palette.filtersReset', { defaultValue: 'Filters cleared.' }),
+          );
+          onClose();
+        },
+      },
+      {
+        id: 'open-full-sync',
+        label: t('palette.openFullSync', {
+          defaultValue: 'Open Settings → Full Sync',
+        }),
+        icon: RefreshCw,
+        onRun: () => {
+          navigate('settings');
+          onClose();
+        },
+      },
       {
         id: 'sign-out',
         label: t('palette.signOut'),
@@ -161,7 +203,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
         },
       },
     ],
-    [t, goLabel, goto, signOut, toast, onClose],
+    [t, goLabel, goto, signOut, toast, onClose, theme, globalFilters, navigate],
   );
 
   const filtered = useMemo(() => {

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { ApiError } from '../api/client';
 import { calendarApi } from '../api/calendar';
 import { useToast } from '../contexts/ToastContext';
+import { Modal, ModalBody, ModalFooter } from './ui';
 
 interface Props {
   /** Optional default date (YYYY-MM-DD). */
@@ -23,21 +24,6 @@ export const AddEventModal: React.FC<Props> = ({ defaultDate, onClose, onCreated
   const [description, setDescription] = useState('');
   const [importance, setImportance] = useState<'low' | 'medium' | 'high'>('medium');
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    document.body.dataset.modalOpen = 'true';
-    return () => {
-      delete document.body.dataset.modalOpen;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !submitting) onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [submitting, onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,34 +56,17 @@ export const AddEventModal: React.FC<Props> = ({ defaultDate, onClose, onCreated
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/30 backdrop-blur-sm px-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
-      }}
+    <Modal
+      open
+      onClose={() => !submitting && onClose()}
+      size="md"
+      title={t('addEvent.title')}
+      closeOnEsc={!submitting}
+      closeOnOverlay={!submitting}
       data-testid="add-event-modal"
     >
-      <form
-        onSubmit={handleSubmit}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('addEvent.title')}
-        className="w-full max-w-md bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden"
-      >
-        <div className="flex items-center justify-between px-4 h-11 border-b border-zinc-100">
-          <span className="text-sm font-medium text-zinc-900">{t('addEvent.title')}</span>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="text-zinc-400 hover:text-zinc-700 disabled:opacity-50"
-            aria-label={t('addEvent.closeAria')}
-          >
-            <X size={14} />
-          </button>
-        </div>
-
-        <div className="p-4 space-y-3">
+      <form onSubmit={handleSubmit}>
+        <ModalBody className="p-4 space-y-3">
           <Field label={t('addEvent.fields.title')}>
             <input
               data-testid="add-event-title"
@@ -151,9 +120,9 @@ export const AddEventModal: React.FC<Props> = ({ defaultDate, onClose, onCreated
               className="w-full px-3 py-2 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400 resize-none"
             />
           </Field>
-        </div>
+        </ModalBody>
 
-        <div className="px-4 py-3 border-t border-zinc-100 flex items-center justify-end gap-2">
+        <ModalFooter>
           <button
             type="button"
             onClick={onClose}
@@ -171,9 +140,9 @@ export const AddEventModal: React.FC<Props> = ({ defaultDate, onClose, onCreated
             {submitting && <Loader2 size={12} className="animate-spin" />}
             {t('addEvent.submit')}
           </button>
-        </div>
+        </ModalFooter>
       </form>
-    </div>
+    </Modal>
   );
 };
 

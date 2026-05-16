@@ -2,14 +2,49 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
+
+// Phase Q.4.1 — attribution lifted from per-page PnLPage state to a global
+// toggle in the topbar. Previously hardcoded `"14d"` on Dashboard / Reports /
+// Comparison / Books drill (CampaignWeeklyMetrics). See parity_audit_2026-05-16
+// and design-audit-2026-05-16/05-navigation.md §Discoverability findings.
+export type AttributionWindow = '1d' | '7d' | '14d' | '30d';
+
+export const ATTRIBUTION_WINDOWS: ReadonlyArray<AttributionWindow> = [
+  '1d',
+  '7d',
+  '14d',
+  '30d',
+];
+
+const ATTRIBUTION_STORAGE_KEY = 'global:attribution';
+const DEFAULT_ATTRIBUTION: AttributionWindow = '14d';
+
+function isAttributionWindow(v: unknown): v is AttributionWindow {
+  return v === '1d' || v === '7d' || v === '14d' || v === '30d';
+}
+
+function loadAttribution(): AttributionWindow {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return DEFAULT_ATTRIBUTION;
+  }
+  try {
+    const raw = window.localStorage.getItem(ATTRIBUTION_STORAGE_KEY);
+    if (isAttributionWindow(raw)) return raw;
+  } catch {
+    // Ignore — fall through to default.
+  }
+  return DEFAULT_ATTRIBUTION;
+}
 
 export interface GlobalFilters {
   marketplaces: string[];
   bookId?: number;
   accounts: string[];
+  attribution: AttributionWindow;
 }
 
 interface GlobalFiltersContextValue {
@@ -19,18 +54,27 @@ interface GlobalFiltersContextValue {
   setBookId(id: number | undefined): void;
   setAccounts(accounts: string[]): void;
   toggleAccount(account: string): void;
+  setAttribution(window: AttributionWindow): void;
   reset(): void;
   hasAny: boolean;
 }
 
 const GlobalFiltersContext = createContext<GlobalFiltersContextValue | null>(null);
 
-const EMPTY: GlobalFilters = { marketplaces: [], bookId: undefined, accounts: [] };
+const EMPTY: GlobalFilters = {
+  marketplaces: [],
+  bookId: undefined,
+  accounts: [],
+  attribution: DEFAULT_ATTRIBUTION,
+};
 
 export const GlobalFiltersProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [filters, setFilters] = useState<GlobalFilters>(EMPTY);
+  const [filters, setFilters] = useState<GlobalFilters>(() => ({
+    ...EMPTY,
+    attribution: loadAttribution(),
+  }));
 
   const setMarketplaces = useCallback((codes: string[]) => {
     setFilters((f) => ({ ...f, marketplaces: codes }));
@@ -68,7 +112,30 @@ export const GlobalFiltersProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, []);
 
-  const reset = useCallback(() => setFilters(EMPTY), []);
+  const setAttribution = useCallback((window: AttributionWindow) => {
+    setFilters((f) => ({ ...f, attribution: window }));
+  }, []);
+
+  // Persist attribution to localStorage so a refresh keeps the selection.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+      window.localStorage.setItem(ATTRIBUTION_STORAGE_KEY, filters.attribution);
+    } catch {
+      // Ignore quota / disabled storage.
+    }
+  }, [filters.attribution]);
+
+  // `reset` keeps the attribution preference (it's a long-lived user pref,
+  // not a query filter). Only marketplaces / books / accounts get cleared.
+  const reset = useCallback(
+    () =>
+      setFilters((f) => ({
+        ...EMPTY,
+        attribution: f.attribution,
+      })),
+    [],
+  );
 
   const hasAny =
     filters.marketplaces.length > 0 ||
@@ -83,6 +150,7 @@ export const GlobalFiltersProvider: React.FC<{ children: React.ReactNode }> = ({
       setBookId,
       setAccounts,
       toggleAccount,
+      setAttribution,
       reset,
       hasAny,
     }),
@@ -93,6 +161,7 @@ export const GlobalFiltersProvider: React.FC<{ children: React.ReactNode }> = ({
       setBookId,
       setAccounts,
       toggleAccount,
+      setAttribution,
       reset,
       hasAny,
     ],

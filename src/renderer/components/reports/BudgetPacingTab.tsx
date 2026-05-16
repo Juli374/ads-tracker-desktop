@@ -104,7 +104,7 @@ const Sparkline: React.FC<{ data: number[]; status: PacingRow['status'] }> = ({ 
     })
     .join(' ');
   const stroke =
-    status === 'over' ? '#dc2626' : status === 'under' ? '#a1a1aa' : '#6E56CF';
+    status === 'over' ? '#dc2626' : status === 'under' ? '#a1a1aa' : '#3b82f6';
   return (
     <svg width={w} height={h} className="inline-block align-middle">
       <path d={path} fill="none" stroke={stroke} strokeWidth={1.25} />

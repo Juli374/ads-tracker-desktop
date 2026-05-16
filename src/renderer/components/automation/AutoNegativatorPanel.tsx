@@ -161,8 +161,8 @@ export const AutoNegativatorPanel: React.FC = () => {
           {/* Header + toggle */}
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-md bg-violet-50 flex items-center justify-center flex-shrink-0">
-                <Sparkles size={16} className="text-violet-600" />
+              <div className="w-9 h-9 rounded-md bg-amber-50 flex items-center justify-center flex-shrink-0">
+                <Sparkles size={16} className="text-amber-600" />
               </div>
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-zinc-900">
@@ -185,7 +185,7 @@ export const AutoNegativatorPanel: React.FC = () => {
                 inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium
                 transition-colors
                 ${state.enabled
-                  ? 'bg-violet-600 text-white hover:bg-violet-700'
+                  ? 'bg-emerald-500 text-white hover:bg-emerald-600'
                   : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}
               `}
             >
@@ -359,7 +359,7 @@ const ThresholdSlider: React.FC<{
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full mt-1.5 accent-violet-600"
+        className="w-full mt-1.5 accent-amber-600"
       />
       <div className="text-[10px] text-zinc-500 mt-1">{hint}</div>
     </div>

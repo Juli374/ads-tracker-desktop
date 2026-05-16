@@ -6,6 +6,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ApiError } from '../api/client';
 import { tasksApi, normalizeTasks, type Task, type TaskStatus } from '../api/tasks';
 import {
+  ActiveFiltersBar,
   Card,
   ErrorBanner,
   LoadingRow,
@@ -13,6 +14,8 @@ import {
 } from '../components/ui';
 import { EditTaskModal } from '../components/operations/EditTaskModal';
 import { useToast } from '../contexts/ToastContext';
+import { useGlobalFilterChips } from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 const COLUMN_IDS: Array<{ id: TaskStatus; tone: string }> = [
   { id: 'todo', tone: 'bg-zinc-100 text-zinc-700' },
@@ -31,6 +34,8 @@ interface TaskDragItem {
 export const OperationsCenterPage: React.FC = () => {
   const { t } = useTranslation('operations');
   const toast = useToast();
+  const { list: booksList } = useBooks();
+  const chips = useGlobalFilterChips(booksList);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [unsupported, setUnsupported] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -156,8 +161,10 @@ export const OperationsCenterPage: React.FC = () => {
           }
         />
 
+        <ActiveFiltersBar chips={chips} />
+
         {!unsupported && tasks && (
-          <div className="grid grid-cols-4 gap-3" data-testid="operations-kpi">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4" data-testid="operations-kpi">
             <KpiTile label={t('kanban.kpi.total')} value={kpi.total} />
             <KpiTile label={t('kanban.kpi.open')} value={kpi.open} />
             <KpiTile label={t('kanban.kpi.blocked')} value={kpi.blocked} tone="amber" />

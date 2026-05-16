@@ -153,7 +153,7 @@ function buildSystemPrompt(task: AiGenerateTask, brandVoiceHint: string): string
       );
     case 'ask':
       return (
-        'You are a KDP author assistant inside the Ads Tracker desktop app. Answer the user concisely (≤120 words). ' +
+        'You are a KDP author assistant inside the KDPBook desktop app. Answer the user concisely (≤120 words). ' +
         'Be specific to KDP advertising, royalties, search-term mining, and listing optimisation. ' +
         'If you do not know, say so plainly. Never invent metrics.' +
         voiceLine

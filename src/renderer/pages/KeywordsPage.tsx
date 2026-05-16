@@ -48,7 +48,7 @@ const SORT_KEYS: SortKey[] = ['cost', 'sales', 'orders', 'acos', 'clicks', 'bid'
 // Phase J.5 Lane E: virtualization. We size each row at ~40px and let the
 // virtualizer overscan to keep scrolling smooth. With 5k rows the table
 // renders only ~30 row elements at a time vs all 5000.
-const ROW_HEIGHT = 40;
+const ROW_HEIGHT = 44;
 const ROW_OVERSCAN = 8;
 
 // Noise filter defaults — match frontend/src/components/pages/KeywordsPage.tsx:104-107
@@ -771,7 +771,7 @@ const KeywordRow: React.FC<{
       }}
       data-testid={`keyword-row-${k.keyword_id}`}
     >
-      <td className="px-3 py-2 text-xs flex items-center" style={{ width: '36px' }}>
+      <td className="px-3 py-2 text-sm flex items-center" style={{ width: '36px' }}>
         {k.target_id != null ? (
           <input
             type="checkbox"
@@ -783,19 +783,19 @@ const KeywordRow: React.FC<{
           />
         ) : null}
       </td>
-      <td className="px-2 py-2 text-xs flex-1 min-w-0">
+      <td className="px-2 py-2 text-sm flex-1 min-w-0">
         <div className="text-zinc-900 font-mono truncate">
           {k.keyword_text || '—'}
         </div>
-        <div className="text-[10px] text-zinc-400 truncate">{k.book_title}</div>
+        <div className="text-xs text-zinc-400 truncate">{k.book_title}</div>
       </td>
       <td
-        className="px-2 py-2 text-[11px] text-zinc-600 flex items-center"
+        className="px-2 py-2 text-sm text-zinc-600 flex items-center"
         style={{ width: '90px' }}
       >
         {k.match_type || '—'}
       </td>
-      <td className="px-2 py-2 text-xs flex-1 min-w-0 flex items-center">
+      <td className="px-2 py-2 text-sm flex-1 min-w-0 flex items-center">
         <button
           type="button"
           onClick={onCampaignClick}
@@ -806,12 +806,12 @@ const KeywordRow: React.FC<{
         </button>
       </td>
       <td
-        className="px-2 py-2 text-[11px] text-zinc-600 uppercase flex items-center"
+        className="px-2 py-2 text-sm text-zinc-600 uppercase flex items-center"
         style={{ width: '60px' }}
       >
         {k.marketplace}
       </td>
-      <td className="px-2 py-2 text-xs text-right flex items-center justify-end" style={{ width: '90px' }}>
+      <td className="px-2 py-2 text-sm text-right flex items-center justify-end" style={{ width: '90px' }}>
         {k.bid != null && k.target_id != null ? (
           <EditableNumber
             value={k.bid}
@@ -825,19 +825,19 @@ const KeywordRow: React.FC<{
           <span className="text-zinc-400">—</span>
         )}
       </td>
-      <td className="px-2 py-2 text-xs text-zinc-900 text-right tabular-nums flex items-center justify-end" style={{ width: '90px' }}>
+      <td className="px-2 py-2 text-sm text-zinc-900 text-right tabular-nums flex items-center justify-end" style={{ width: '90px' }}>
         {fmtMoney(k.cost, k.currency)}
       </td>
-      <td className="px-2 py-2 text-xs text-zinc-900 text-right tabular-nums flex items-center justify-end" style={{ width: '90px' }}>
+      <td className="px-2 py-2 text-sm text-zinc-900 text-right tabular-nums flex items-center justify-end" style={{ width: '90px' }}>
         {fmtMoney(k.sales, k.currency)}
       </td>
-      <td className="px-2 py-2 text-xs text-zinc-700 text-right tabular-nums flex items-center justify-end" style={{ width: '70px' }}>
+      <td className="px-2 py-2 text-sm text-zinc-700 text-right tabular-nums flex items-center justify-end" style={{ width: '70px' }}>
         {k.orders}
       </td>
-      <td className="px-2 py-2 text-xs text-zinc-600 text-right tabular-nums flex items-center justify-end" style={{ width: '70px' }}>
+      <td className="px-2 py-2 text-sm text-zinc-600 text-right tabular-nums flex items-center justify-end" style={{ width: '70px' }}>
         {k.ctr > 0 ? fmtPct(k.ctr, 2) : '—'}
       </td>
-      <td className="px-3 py-2 text-xs text-right tabular-nums flex items-center justify-end" style={{ width: '80px' }}>
+      <td className="px-3 py-2 text-sm text-right tabular-nums flex items-center justify-end" style={{ width: '80px' }}>
         <span className={k.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
           {k.acos > 0 ? fmtPct(k.acos) : '—'}
         </span>

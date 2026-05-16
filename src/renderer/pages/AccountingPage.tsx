@@ -8,6 +8,7 @@ import {
   type Transaction,
 } from '../api/accounting';
 import {
+  ActiveFiltersBar,
   Card,
   EmptyState,
   ErrorBanner,
@@ -17,10 +18,14 @@ import {
 } from '../components/ui';
 import { fmtMoney, fmtNumber } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
+import { useGlobalFilterChips } from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 export const AccountingPage: React.FC = () => {
   const { t } = useTranslation('accounting');
   const toast = useToast();
+  const { list: booksList } = useBooks();
+  const chips = useGlobalFilterChips(booksList);
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [tx, setTx] = useState<Transaction[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +83,8 @@ export const AccountingPage: React.FC = () => {
         subtitle={unsupported ? t('subtitle.unsupported') : t('subtitle.default')}
       />
 
+      <ActiveFiltersBar chips={chips} />
+
       {unsupported && <ErrorBanner message={t('errors.unsupportedBanner')} />}
 
       {!unsupported && (
@@ -119,9 +126,9 @@ export const AccountingPage: React.FC = () => {
                 <tbody>
                   {accounts.map((a) => (
                     <tr key={a.id} className="border-t border-zinc-100 hover:bg-zinc-50/60">
-                      <td className="px-5 py-2.5 text-xs text-zinc-900 font-medium">{a.name}</td>
-                      <td className="px-3 py-2.5 text-[11px] text-zinc-600">{a.type ?? '—'}</td>
-                      <td className="px-3 py-2.5 text-xs text-right tabular-nums">
+                      <td className="px-5 py-2.5 text-sm text-zinc-900 font-medium">{a.name}</td>
+                      <td className="px-3 py-2.5 text-sm text-zinc-600">{a.type ?? '—'}</td>
+                      <td className="px-3 py-2.5 text-sm text-right tabular-nums">
                         <span
                           className={
                             (a.current_balance ?? 0) < 0 ? 'text-red-600' : 'text-zinc-900'
@@ -130,7 +137,7 @@ export const AccountingPage: React.FC = () => {
                           {fmtMoney(a.current_balance, a.currency)}
                         </span>
                       </td>
-                      <td className="px-5 py-2.5 text-[11px] text-zinc-500 text-right uppercase">
+                      <td className="px-5 py-2.5 text-sm text-zinc-500 text-right uppercase">
                         {a.currency ?? '—'}
                       </td>
                     </tr>
@@ -159,19 +166,19 @@ export const AccountingPage: React.FC = () => {
                 <tbody>
                   {tx.map((tr) => (
                     <tr key={tr.id} className="border-t border-zinc-100 hover:bg-zinc-50/60">
-                      <td className="px-5 py-2.5 text-[11px] text-zinc-500 tabular-nums">
+                      <td className="px-5 py-2.5 text-sm text-zinc-500 tabular-nums">
                         {(tr.date ?? '').slice(0, 10)}
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-zinc-700">
+                      <td className="px-3 py-2.5 text-sm text-zinc-700">
                         {tr.account_name ?? `#${tr.account_id}`}
                       </td>
-                      <td className="px-3 py-2.5 text-[11px] text-zinc-600">
+                      <td className="px-3 py-2.5 text-sm text-zinc-600">
                         {tr.category_name ?? '—'}
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-zinc-700 truncate max-w-md">
+                      <td className="px-3 py-2.5 text-sm text-zinc-700 truncate max-w-md">
                         {tr.description ?? '—'}
                       </td>
-                      <td className="px-5 py-2.5 text-xs text-right tabular-nums">
+                      <td className="px-5 py-2.5 text-sm text-right tabular-nums">
                         <span
                           className={
                             tr.type === 'expense'

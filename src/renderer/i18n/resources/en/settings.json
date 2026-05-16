@@ -21,7 +21,7 @@
   },
   "privacy": {
     "title": "Privacy & telemetry",
-    "intro": "Ads Tracker runs entirely on your machine. The only data that leaves your computer goes to Amazon Advertising, Anthropic (only when you use AI features), and our optional crash/usage telemetry — which is OFF by default.",
+    "intro": "KDPBook runs entirely on your machine. The only data that leaves your computer goes to Amazon Advertising, Anthropic (only when you use AI features), and our optional crash/usage telemetry — which is OFF by default.",
     "consentLabel": "Send anonymous usage and crash reports",
     "consentHint": "Helps us catch crashes and prioritise features. Never includes book titles, ad copy, API keys, or any account identifiers. Toggle off at any time.",
     "statusLabel": "Status",
@@ -225,7 +225,7 @@
   "about": {
     "cardTitle": "About",
     "appName": "App",
-    "appNameValue": "Ads Tracker",
+    "appNameValue": "KDPBook",
     "version": "Version",
     "commit": "Commit",
     "license": "License",

@@ -108,7 +108,7 @@ export const CoPilotTable: React.FC<Props> = ({
               <tr
                 key={advice.target_id}
                 data-testid={`copilot-row-${advice.target_id}`}
-                className={`border-t border-zinc-100 ${selected ? 'bg-violet-50/50' : ''}`}
+                className={`border-t border-zinc-100 ${selected ? 'bg-amber-50/50' : ''}`}
               >
                 <td className="px-2 py-1.5">
                   <input

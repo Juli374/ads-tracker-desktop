@@ -425,23 +425,23 @@ const CampaignRow: React.FC<{
       title={t('list.row.openSearchTerms')}
     >
       <td className="px-5 py-2.5 max-w-[280px]">
-        <div className="text-xs text-zinc-900 truncate" title={c.campaign_name}>
+        <div className="text-sm text-zinc-900 truncate" title={c.campaign_name}>
           {c.campaign_name}
         </div>
-        <div className="text-[10px] text-zinc-400 mt-0.5">
+        <div className="text-xs text-zinc-400 mt-0.5">
           {c.targeting_type}
         </div>
       </td>
       <td className="px-3 py-2.5 max-w-[160px]">
-        <div className="text-xs text-zinc-700 truncate" title={c.book_title}>
+        <div className="text-sm text-zinc-700 truncate" title={c.book_title}>
           {c.book_title || '—'}
         </div>
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase whitespace-nowrap">
+      <td className="px-3 py-2.5 text-sm text-zinc-600 uppercase whitespace-nowrap">
         {flag ? <span className="mr-1">{flag}</span> : null}
         {c.marketplace || '—'}
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase">
+      <td className="px-3 py-2.5 text-sm text-zinc-600 uppercase">
         {c.campaign_type}
       </td>
       <td className="px-3 py-2.5">
@@ -471,19 +471,19 @@ const CampaignRow: React.FC<{
           {isPaused ? 'Paused' : 'Active'}
         </button>
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
         {fmtMoney(c.cost, c.currency)}
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
         {fmtMoney(c.sales, c.currency)}
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
         {c.orders}
       </td>
-      <td className="px-3 py-2.5 text-xs text-zinc-600 text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-zinc-600 text-right tabular-nums">
         {c.ctr > 0 ? fmtPct(c.ctr, 2) : '—'}
       </td>
-      <td className="px-3 py-2.5 text-xs text-right tabular-nums">
+      <td className="px-3 py-2.5 text-sm text-right tabular-nums">
         <span className={c.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
           {c.acos > 0 ? fmtPct(c.acos) : '—'}
         </span>

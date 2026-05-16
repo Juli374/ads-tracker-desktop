@@ -184,7 +184,7 @@ export const DashboardPage: React.FC = () => {
 
       <ActiveFiltersBar chips={chips} />
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
         <KpiDelta
           label={t('kpi.profit')}
           value={fmtMoney(cur?.profit)}
@@ -279,7 +279,7 @@ export const DashboardPage: React.FC = () => {
             <AlertsWidget
               from={from}
               to={to}
-              attribution="14d"
+              attribution={globalFilters.attribution}
               marketplaces={filterParams.marketplaces}
               bookIds={filterParams.bookIds}
               accounts={filterParams.accounts}
@@ -297,7 +297,7 @@ export const DashboardPage: React.FC = () => {
       <OrganicPaidBlock
         from={from}
         to={to}
-        attribution="14d"
+        attribution={globalFilters.attribution}
         marketplaces={filterParams.marketplaces}
         bookIds={filterParams.bookIds}
         accounts={filterParams.accounts}
@@ -363,10 +363,10 @@ const BookRow: React.FC<{ book: BookMetric }> = ({ book }) => (
         ) : (
           <div className="w-7 h-9 rounded-sm bg-zinc-100 border border-zinc-200 flex-shrink-0" />
         )}
-        <div className="text-xs text-zinc-900 truncate max-w-md">{book.title}</div>
+        <div className="text-sm text-zinc-900 truncate max-w-md">{book.title}</div>
       </div>
     </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase whitespace-nowrap">
+    <td className="px-3 py-2.5 text-sm text-zinc-600 uppercase whitespace-nowrap">
       {book.marketplace ? (
         <>
           {flagFor(book.marketplace) ? (
@@ -378,21 +378,21 @@ const BookRow: React.FC<{ book: BookMetric }> = ({ book }) => (
         '—'
       )}
     </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+    <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
       {fmtMoney(book.cost, book.currency)}
     </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+    <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
       {fmtMoney(book.sales, book.currency)}
     </td>
-    <td className="px-3 py-2.5 text-xs text-right tabular-nums">
+    <td className="px-3 py-2.5 text-sm text-right tabular-nums">
       <span className={book.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
         {book.acos > 0 ? fmtPct(book.acos) : '—'}
       </span>
     </td>
-    <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+    <td className="px-3 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
       {fmtNumber(book.orders)}
     </td>
-    <td className="px-5 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+    <td className="px-5 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
       {book.tacos != null && book.tacos > 0 ? fmtPct(book.tacos) : '—'}
     </td>
   </tr>

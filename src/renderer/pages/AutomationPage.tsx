@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Lock, Sparkles, X, Zap } from 'lucide-react';
+import { Check, Sparkles, X, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
@@ -10,11 +10,13 @@ import {
   type RecommendationStatus,
 } from '../api/automation';
 import {
+  ActiveFiltersBar,
   Card,
   EmptyState,
   ErrorBanner,
   Kpi,
   LoadingRow,
+  LockedFeatureCard,
   PageHeader,
 } from '../components/ui';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
@@ -23,6 +25,8 @@ import { useNav } from '../contexts/NavContext';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { UpgradeModal } from '../components/UpgradeModal';
 import { AutoNegativatorPanel } from '../components/automation/AutoNegativatorPanel';
+import { useGlobalFilterChips } from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 type AutomationSubTab = 'recommendations' | 'auto-negativator';
 
@@ -39,6 +43,8 @@ export const AutomationPage: React.FC = () => {
   const { t: tCommon } = useTranslation('common');
   const toast = useToast();
   const { navigate } = useNav();
+  const { list: booksList } = useBooks();
+  const chips = useGlobalFilterChips(booksList);
   // Phase K: Business feature — route guard.
   const ent = useEntitlement('automation.rules');
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -126,34 +132,20 @@ export const AutomationPage: React.FC = () => {
   };
 
   // Phase K: full-page upgrade card when locked. Не рендерим основной UI.
+  // Phase Q.1: migrated to <LockedFeatureCard> primitive.
   if (!ent.on) {
     return (
       <div className="space-y-6" data-testid="automation-page-locked">
         <PageHeader title={t('title')} />
-        <Card>
-          <div className="flex flex-col items-center justify-center gap-4 py-12 px-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center">
-              <Sparkles size={20} className="text-violet-600" />
-            </div>
-            <div>
-              <div className="text-base font-semibold text-zinc-900 mb-1 inline-flex items-center gap-2">
-                <Lock size={14} className="text-violet-600" />
-                {tCommon('entitlements.automationLocked.title')}
-              </div>
-              <div className="text-sm text-zinc-600 max-w-md mx-auto">
-                {tCommon('entitlements.automationLocked.subtitle')}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setUpgradeOpen(true)}
-              data-testid="automation-upgrade-cta"
-              className="h-9 px-4 rounded-md text-sm font-medium bg-violet-600 text-white hover:bg-violet-700"
-            >
-              {tCommon('entitlements.automationLocked.cta')}
-            </button>
-          </div>
-        </Card>
+        <LockedFeatureCard
+          data-testid="automation-upgrade-cta"
+          icon={<Sparkles />}
+          title={tCommon('entitlements.automationLocked.title')}
+          description={tCommon('entitlements.automationLocked.subtitle')}
+          tier={ent.tierRequired === 'business' ? 'business' : 'pro'}
+          onUpgrade={() => setUpgradeOpen(true)}
+          ctaLabel={tCommon('entitlements.automationLocked.cta')}
+        />
         <UpgradeModal
           open={upgradeOpen}
           onClose={() => setUpgradeOpen(false)}
@@ -178,6 +170,8 @@ export const AutomationPage: React.FC = () => {
             : t('loading')
         }
       />
+
+      <ActiveFiltersBar chips={chips} />
 
       {/* Sub-tab switcher (Phase L.2 Lane B). Switches between Recommendations
           и Auto-Negativator panel. Mirrors existing inner tab styling so it
@@ -209,7 +203,7 @@ export const AutomationPage: React.FC = () => {
 
       {subTab === 'recommendations' && !unsupported && (
         <>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             <Kpi label={t('kpi.pending')} value={fmtNumber(stats?.pending)} loading={loading && !stats} />
             <Kpi label={t('kpi.applied')} value={fmtNumber(stats?.applied)} loading={loading && !stats} />
             <Kpi label={t('kpi.dismissed')} value={fmtNumber(stats?.dismissed)} loading={loading && !stats} />

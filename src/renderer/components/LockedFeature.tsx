@@ -83,9 +83,9 @@ export const LockedFeature: React.FC<Props> = ({
               <span
                 className="
                   inline-flex items-center gap-1.5 px-2 py-1
-                  rounded-md bg-white/95 border border-violet-200 shadow-sm
-                  text-[11px] font-semibold text-violet-700 uppercase tracking-wide
-                  hover:bg-violet-50 transition-colors
+                  rounded-md bg-white/95 border border-amber-200 shadow-sm
+                  text-[11px] font-semibold text-amber-700 uppercase tracking-wide
+                  hover:bg-amber-50 transition-colors
                 "
               >
                 <Lock size={11} />
@@ -106,7 +106,7 @@ export const LockedFeature: React.FC<Props> = ({
                 absolute top-1 right-1 z-10
                 inline-flex items-center gap-1 px-1.5 py-0.5
                 rounded text-[9px] font-semibold uppercase tracking-wider
-                bg-violet-600 text-white hover:bg-violet-700 transition-colors
+                bg-amber-500 text-white hover:bg-amber-600 transition-colors
               "
             >
               <Lock size={8} />

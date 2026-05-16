@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, AlertTriangle, CheckCircle2, Loader2, X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import type { CoverQAReport } from '../../../shared/ipc';
 import { uploadFile } from '../../api/upload';
 import { analyzeCoverFile } from '../../api/coverQa';
 import { useToast } from '../../contexts/ToastContext';
-import { useEscapeClose } from '../../lib/useEscapeClose';
+import { Modal, ModalBody, ModalFooter } from '../ui';
 
 interface Props {
   bookId: number;
@@ -23,10 +23,6 @@ export const UploadCoverModal: React.FC<Props> = ({ bookId, onClose, onUploaded 
   const [file, setFile] = useState<File | null>(null);
   const [report, setReport] = useState<CoverQAReport | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEscapeClose(() => {
-    if (!submitting) onClose();
-  });
 
   const handlePick = (picked: File | null) => {
     if (!picked) {
@@ -91,32 +87,18 @@ export const UploadCoverModal: React.FC<Props> = ({ bookId, onClose, onUploaded 
   const submitDisabled = submitting || !file;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-zinc-900/20 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('modals.uploadCover.title')}
+    <Modal
+      open
+      onClose={() => !submitting && onClose()}
+      size="md"
+      title={t('modals.uploadCover.title')}
+      ariaLabel={t('modals.uploadCover.title')}
+      closeOnEsc={!submitting}
+      closeOnOverlay={!submitting}
       data-testid="book-upload-cover-modal"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
-      }}
     >
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden flex flex-col max-h-[90vh]"
-      >
-        <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-zinc-900">{t('modals.uploadCover.title')}</h2>
-          <button
-            type="button"
-            onClick={() => !submitting && onClose()}
-            className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label={t('modals.uploadCover.cancel')}
-          >
-            <X size={16} />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+      <form onSubmit={handleSubmit}>
+        <ModalBody className="flex-1 overflow-y-auto px-5 py-4 space-y-3 max-h-[70vh]">
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -179,8 +161,8 @@ export const UploadCoverModal: React.FC<Props> = ({ bookId, onClose, onUploaded 
               </ul>
             </div>
           )}
-        </div>
-        <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-end gap-2">
+        </ModalBody>
+        <ModalFooter>
           <button
             type="button"
             onClick={onClose}
@@ -204,8 +186,8 @@ export const UploadCoverModal: React.FC<Props> = ({ bookId, onClose, onUploaded 
               ? t('modals.uploadCover.uploadWithWarnings')
               : t('modals.uploadCover.save')}
           </button>
-        </div>
+        </ModalFooter>
       </form>
-    </div>
+    </Modal>
   );
 };

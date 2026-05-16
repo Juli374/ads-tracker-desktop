@@ -102,7 +102,7 @@ export const NicheAiSynthesis: React.FC<Props> = ({ rows, initial, onResult, min
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-zinc-900 inline-flex items-center gap-1.5">
-              <Sparkles size={14} className="text-violet-500" />
+              <Sparkles size={14} className="text-amber-500" />
               {t('synthesis.title')}
             </h3>
             <p className="text-xs text-zinc-500 mt-0.5">{t('synthesis.subtitle')}</p>

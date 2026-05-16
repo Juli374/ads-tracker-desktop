@@ -65,7 +65,7 @@ export const UpdatePill: React.FC = () => {
         onClick={onRestart}
         disabled={busy}
         data-testid="update-pill-restart"
-        title="Restart Ads Tracker to apply the downloaded update"
+        title="Restart KDPBook to apply the downloaded update"
         className="
           inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium
           text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-700

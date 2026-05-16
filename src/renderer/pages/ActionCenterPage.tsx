@@ -9,10 +9,19 @@ import {
   type ActionLog,
   type MetricsSnapshot,
 } from '../api/actionCenter';
-import { Card, EmptyState, ErrorBanner, LoadingRow, PageHeader } from '../components/ui';
+import {
+  ActiveFiltersBar,
+  Card,
+  EmptyState,
+  ErrorBanner,
+  LoadingRow,
+  PageHeader,
+} from '../components/ui';
 import { fmtMoney, fmtNumber, fmtPct } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
+import { useGlobalFilterChips } from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 const useActionTypeLabel = () => {
   const { t } = useTranslation('operations');
@@ -31,6 +40,8 @@ export const ActionCenterPage: React.FC = () => {
   const toast = useToast();
   const { navigate } = useNav();
   const actionTypeLabel = useActionTypeLabel();
+  const { list: booksList } = useBooks();
+  const chips = useGlobalFilterChips(booksList);
   const [actions, setActions] = useState<ActionLog[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [unsupported, setUnsupported] = useState(false);
@@ -101,6 +112,8 @@ export const ActionCenterPage: React.FC = () => {
             : t('loading')
         }
       />
+
+      <ActiveFiltersBar chips={chips} />
 
       {unsupported && <ErrorBanner message={t('errors.unsupportedBanner')} />}
 

@@ -197,9 +197,8 @@ describe('ListingStudioPage', () => {
       expect(screen.getByTestId('listing-studio-page-locked')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('listing-studio-page')).toBeNull();
-    // CTA is wrapped in <LockedFeature> — the locked-feature CTA testid exists.
-    expect(
-      screen.getByTestId('locked-feature-cta-ai.title_generator'),
-    ).toBeInTheDocument();
+    // Phase Q.1: migrated to <LockedFeatureCard> primitive — testid sits on
+    // the primitive container; CTA is its built-in button.
+    expect(screen.getByTestId('listing-studio-upgrade-cta')).toBeInTheDocument();
   });
 });

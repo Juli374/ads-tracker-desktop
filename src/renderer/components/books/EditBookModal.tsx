@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { booksApi, Book, BookUpdate } from '../../api/books';
 import { ApiError } from '../../api/client';
 import { useToast } from '../../contexts/ToastContext';
-import { useEscapeClose } from '../../lib/useEscapeClose';
+import { Modal, ModalBody, ModalFooter } from '../ui';
 
 interface Props {
   book: Book;
@@ -28,10 +28,6 @@ export const EditBookModal: React.FC<Props> = ({ book, onClose, onSaved }) => {
   const [organicBaseline, setOrganicBaseline] = useState(
     book.organic_baseline != null ? String(book.organic_baseline) : '',
   );
-
-  useEscapeClose(() => {
-    if (!submitting) onClose();
-  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,32 +63,18 @@ export const EditBookModal: React.FC<Props> = ({ book, onClose, onSaved }) => {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-zinc-900/20 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('modals.edit.title')}
+    <Modal
+      open
+      onClose={() => !submitting && onClose()}
+      size="lg"
+      title={t('modals.edit.title')}
+      ariaLabel={t('modals.edit.title')}
+      closeOnEsc={!submitting}
+      closeOnOverlay={!submitting}
       data-testid="book-edit-modal"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
-      }}
     >
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-lg bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden"
-      >
-        <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-zinc-900">{t('modals.edit.title')}</h2>
-          <button
-            type="button"
-            onClick={() => !submitting && onClose()}
-            className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label={t('modals.edit.cancel')}
-          >
-            <X size={16} />
-          </button>
-        </div>
-        <div className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+      <form onSubmit={handleSubmit}>
+        <ModalBody className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
           <Field label={t('modals.edit.fields.title')}>
             <input
               type="text"
@@ -169,8 +151,8 @@ export const EditBookModal: React.FC<Props> = ({ book, onClose, onSaved }) => {
               />
             </Field>
           </div>
-        </div>
-        <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-end gap-2">
+        </ModalBody>
+        <ModalFooter>
           <button
             type="button"
             onClick={onClose}
@@ -187,9 +169,9 @@ export const EditBookModal: React.FC<Props> = ({ book, onClose, onSaved }) => {
             {submitting && <Loader2 size={12} className="animate-spin" />}
             {t('modals.edit.save')}
           </button>
-        </div>
+        </ModalFooter>
       </form>
-    </div>
+    </Modal>
   );
 };
 

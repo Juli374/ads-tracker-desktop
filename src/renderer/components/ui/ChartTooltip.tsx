@@ -31,7 +31,7 @@ export const ChartTooltip: React.FC<Props> = ({ active, title, rows }) => {
               )}
               {r.label}
             </div>
-            <div className="text-[11px] font-medium text-zinc-900 tabular-nums">
+            <div className="text-[11px] font-medium font-mono text-zinc-900 tabular-nums">
               {r.value}
             </div>
           </div>

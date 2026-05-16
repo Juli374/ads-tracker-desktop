@@ -20,7 +20,7 @@ declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 // uploadToServer:false → minidumps пишутся локально (в `app.getPath('crashDumps')`),
 // никуда не отправляются. Когда появится backend для приёма — добавить submitURL.
 crashReporter.start({
-  productName: 'Ads Tracker',
+  productName: 'KDPBook',
   companyName: 'Juli374',
   submitURL: '',
   uploadToServer: false,
@@ -35,7 +35,7 @@ process.on('uncaughtException', (err) => {
   console.error('[main] uncaughtException:', err);
   try {
     dialog.showErrorBox(
-      'Ads Tracker — внутренняя ошибка',
+      'KDPBook — внутренняя ошибка',
       `Произошла непредвиденная ошибка в основном процессе.\n\n${err?.stack ?? String(err)}`,
     );
   } catch {
@@ -63,14 +63,14 @@ if (process.platform === 'win32') {
 // menu bar, Dock tooltip, native About panel, and any default window titles.
 // Must run before BrowserWindow creation; package.json's `productName` is the
 // build-time source of truth, this duplicates it for runtime read.
-app.setName('Ads Tracker');
+app.setName('KDPBook');
 
-// macOS native About panel (Cmd+, > Ads Tracker > About Ads Tracker, or the
+// macOS native About panel (Cmd+, > KDPBook > About KDPBook, or the
 // Apple menu's auto-generated About item). Other platforms ignore this call.
 // The version field is read from `app.getVersion()` (package.json `version`)
 // so it stays in sync with whatever Forge built.
 app.setAboutPanelOptions({
-  applicationName: 'Ads Tracker',
+  applicationName: 'KDPBook',
   applicationVersion: app.getVersion(),
   copyright: '© 2026 Juli374',
   authors: ['Juli374'],
@@ -172,7 +172,7 @@ const createWindow = (): void => {
     minWidth: 1024,
     minHeight: 700,
     backgroundColor: '#f2f3f3',
-    title: 'Ads Tracker',
+    title: 'KDPBook',
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
       contextIsolation: true,
@@ -210,7 +210,7 @@ const createWindow = (): void => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     const choice = dialog.showMessageBoxSync(mainWindow, {
       type: 'error',
-      title: 'Ads Tracker — окно перестало отвечать',
+      title: 'KDPBook — окно перестало отвечать',
       message: 'Renderer-процесс завершился неожиданно.',
       detail: `Причина: ${details.reason}.\n\nПерезагрузить окно?`,
       buttons: ['Перезагрузить', 'Закрыть'],

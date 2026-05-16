@@ -422,7 +422,7 @@ export const AIAdvisorPanel: React.FC<Props> = ({ campaign, onClose }) => {
       >
         <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-200 flex-shrink-0">
           <div className="inline-flex items-center gap-2">
-            <Sparkles size={14} className="text-violet-600" />
+            <Sparkles size={14} className="text-amber-600" />
             <span className="text-sm font-medium text-zinc-900">
               {t('details.advisor.panelTitle')}
             </span>
@@ -522,11 +522,11 @@ export const AIAdvisorPanel: React.FC<Props> = ({ campaign, onClose }) => {
 
               {isNoKey && (
                 <div
-                  className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2.5 text-xs text-violet-900"
+                  className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900"
                   data-testid="ai-advisor-no-key"
                 >
                   <div className="font-medium mb-1">{t('details.advisor.errors.noKeyTitle')}</div>
-                  <div className="text-violet-800">{t('details.advisor.errors.noKey')}</div>
+                  <div className="text-amber-800">{t('details.advisor.errors.noKey')}</div>
                 </div>
               )}
 
@@ -560,13 +560,13 @@ export const AIAdvisorPanel: React.FC<Props> = ({ campaign, onClose }) => {
                 data-testid="ai-advisor-input"
                 placeholder={t('details.advisor.placeholder')}
                 rows={2}
-                className="flex-1 resize-none px-3 py-1.5 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 disabled:bg-zinc-50 disabled:text-zinc-400"
+                className="flex-1 resize-none px-3 py-1.5 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-300 disabled:bg-zinc-50 disabled:text-zinc-400"
               />
               <button
                 type="submit"
                 disabled={isUnavailable || isStreaming || !draft.trim()}
                 data-testid="ai-advisor-send"
-                className="h-9 w-9 rounded-md bg-violet-600 hover:bg-violet-700 text-white inline-flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-9 w-9 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white inline-flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label={t('details.advisor.sendAria')}
               >
                 {isStreaming ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
@@ -639,11 +639,11 @@ const CoPilotBody: React.FC<CoPilotBodyProps> = ({
   if (locked) {
     return (
       <div className="flex-1 overflow-y-auto px-4 py-6" data-testid="copilot-locked">
-        <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-3 text-xs text-violet-900">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-900">
           <div className="font-medium mb-1">
             {t('details.advisor.coPilot.lockedTitle')}
           </div>
-          <div className="text-violet-800">
+          <div className="text-amber-800">
             {t('details.advisor.coPilot.lockedBody')}
           </div>
         </div>
@@ -672,7 +672,7 @@ const CoPilotBody: React.FC<CoPilotBodyProps> = ({
           onClick={onAnalyze}
           disabled={!canAnalyze}
           data-testid="copilot-analyze"
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {analyzing ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
           {analyzing
@@ -803,7 +803,7 @@ const Bubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
       >
         {message.content || (message.pending ? '…' : '')}
         {message.pending && message.content && (
-          <span className="inline-block ml-1 w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
+          <span className="inline-block ml-1 w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
         )}
       </div>
     </div>

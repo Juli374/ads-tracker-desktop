@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { ApiError } from '../../api/client';
 import { tasksApi, type Task, type TaskStatus, type TaskPriority } from '../../api/tasks';
 import { useToast } from '../../contexts/ToastContext';
+import { Modal, ModalBody, ModalFooter } from '../ui';
 
 const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'blocked', 'done'];
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
@@ -26,21 +27,6 @@ export const EditTaskModal: React.FC<Props> = ({ task, onClose, onSaved, onDelet
   const [dueDate, setDueDate] = useState((task.due_date ?? '').slice(0, 10));
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    document.body.dataset.modalOpen = 'true';
-    return () => {
-      delete document.body.dataset.modalOpen;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !submitting && !deleting) onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [submitting, deleting, onClose]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,34 +79,17 @@ export const EditTaskModal: React.FC<Props> = ({ task, onClose, onSaved, onDelet
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/30 backdrop-blur-sm px-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !submitting && !deleting) onClose();
-      }}
+    <Modal
+      open
+      onClose={() => !submitting && !deleting && onClose()}
+      size="md"
+      title={t('edit.title')}
+      closeOnEsc={!submitting && !deleting}
+      closeOnOverlay={!submitting && !deleting}
       data-testid="edit-task-modal"
     >
-      <form
-        onSubmit={handleSave}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('edit.title')}
-        className="w-full max-w-md bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden"
-      >
-        <div className="flex items-center justify-between px-4 h-11 border-b border-zinc-100">
-          <span className="text-sm font-medium text-zinc-900">{t('edit.title')}</span>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting || deleting}
-            className="text-zinc-400 hover:text-zinc-700 disabled:opacity-50"
-            aria-label={t('edit.closeAria')}
-          >
-            <X size={14} />
-          </button>
-        </div>
-
-        <div className="p-4 space-y-3">
+      <form onSubmit={handleSave}>
+        <ModalBody className="p-4 space-y-3">
           <Field label={t('edit.fields.title')}>
             <input
               data-testid="edit-task-title"
@@ -178,9 +147,9 @@ export const EditTaskModal: React.FC<Props> = ({ task, onClose, onSaved, onDelet
               className="w-full h-9 px-3 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400"
             />
           </Field>
-        </div>
+        </ModalBody>
 
-        <div className="px-4 py-3 border-t border-zinc-100 flex items-center justify-between">
+        <ModalFooter justify="between">
           {onDeleted ? (
             <button
               type="button"
@@ -211,9 +180,9 @@ export const EditTaskModal: React.FC<Props> = ({ task, onClose, onSaved, onDelet
               {t('edit.save')}
             </button>
           </div>
-        </div>
+        </ModalFooter>
       </form>
-    </div>
+    </Modal>
   );
 };
 

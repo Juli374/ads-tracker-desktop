@@ -113,7 +113,7 @@ const config: ForgeConfig = {
     // electron-installer-debian (MakerDeb) hard-codes a lookup for the binary
     // at <out>/<appName>-<platform>-<arch>/<executableName>. Without this,
     // executableName falls back to package.json `name` (ads-tracker-desktop)
-    // while the binary actually ships as the productName ("Ads Tracker") —
+    // while the binary actually ships as the productName ("KDPBook") —
     // Linux build fails with "could not find the Electron app binary".
     // Setting both productName and executableName explicitly here keeps the
     // app brand readable in app menus while making Linux packaging happy.
@@ -128,7 +128,7 @@ const config: ForgeConfig = {
     // Кастомный protocol regstered at install-time (macOS plist).
     protocols: [
       {
-        name: 'Ads Tracker',
+        name: 'KDPBook',
         schemes: ['ads-tracker-desktop'],
       },
     ],
@@ -144,7 +144,7 @@ const config: ForgeConfig = {
     // запускать на Windows runner'е (GitHub Actions matrix).
     new MakerSquirrel(squirrelOptions, ['win32']),
     // MakerZIP для win32 — portable .zip, не требует Wine на macOS host'е.
-    // Юзер распаковывает архив и запускает Ads Tracker.exe внутри.
+    // Юзер распаковывает архив и запускает KDPBook.exe внутри.
     new MakerZIP({}, ['darwin', 'win32']),
     new MakerDMG({ icon: 'assets/icon.icns' }, ['darwin']),
     new MakerRpm({}, ['linux']),

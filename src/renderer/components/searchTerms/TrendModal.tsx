@@ -26,10 +26,10 @@ type Days = 14 | 30 | 60;
 type Metric = 'clicks' | 'spend' | 'orders' | 'sales';
 
 const COLORS: Record<Metric, string> = {
-  clicks: '#6E56CF',
-  spend: '#ef4444',
+  clicks: '#3b82f6',
+  spend: '#10b981',
   orders: '#10b981',
-  sales: '#3b82f6',
+  sales: '#f43f5e',
 };
 
 /**

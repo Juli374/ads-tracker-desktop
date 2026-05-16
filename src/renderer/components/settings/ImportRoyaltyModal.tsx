@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, FileSpreadsheet, Loader2, Upload, X } from 'lucide-react';
+import { AlertTriangle, FileSpreadsheet, Loader2, Upload } from 'lucide-react';
 import { localRoyaltyApi, type LocalRoyaltyParseResult } from '../../api/localRoyalty';
 import { useToast } from '../../contexts/ToastContext';
-import { useEscapeClose } from '../../lib/useEscapeClose';
 import { fmtMoney, fmtNumber } from '../../lib/format';
+import { Modal, ModalBody, ModalFooter, ModalHeader } from '../ui';
 
 interface Props {
   /** Pre-selected month (YYYY-MM) — defaults to current. */
@@ -36,10 +36,6 @@ export const ImportRoyaltyModal: React.FC<Props> = ({
   const [marketplace, setMarketplace] = useState('USA');
   const [targetMonth, setTargetMonth] = useState(defaultMonth ?? currentMonth());
   const [accountName, setAccountName] = useState('Local KDP');
-
-  useEscapeClose(() => {
-    if (step !== 'submitting') onClose();
-  });
 
   // Auto-trigger picker on first mount.
   useEffect(() => {
@@ -111,42 +107,35 @@ export const ImportRoyaltyModal: React.FC<Props> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-zinc-900/20 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('import.title')}
+    <Modal
+      open
+      onClose={() => step !== 'submitting' && onClose()}
+      size="xl"
+      ariaLabel={t('import.title')}
+      closeOnEsc={step !== 'submitting'}
+      closeOnOverlay={step !== 'submitting'}
       data-testid="royalty-import-modal"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && step !== 'submitting') onClose();
-      }}
     >
-      <div className="w-full max-w-2xl bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden">
-        <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-zinc-900 inline-flex items-center gap-2">
+      <ModalHeader
+        title={
+          <span className="inline-flex items-center gap-2">
             <FileSpreadsheet size={16} className="text-zinc-500" />
             {t('import.title')}
-          </h2>
-          <button
-            type="button"
-            onClick={() => step !== 'submitting' && onClose()}
-            className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label={t('import.cancel')}
-          >
-            <X size={16} />
-          </button>
+          </span>
+        }
+        onClose={() => step !== 'submitting' && onClose()}
+      />
+
+      {(step === 'idle' || step === 'loading') && (
+        <div className="px-5 py-10 flex items-center justify-center text-xs text-zinc-500">
+          <Loader2 size={14} className="animate-spin mr-2" />
+          {t('import.loading')}
         </div>
+      )}
 
-        {(step === 'idle' || step === 'loading') && (
-          <div className="px-5 py-10 flex items-center justify-center text-xs text-zinc-500">
-            <Loader2 size={14} className="animate-spin mr-2" />
-            {t('import.loading')}
-          </div>
-        )}
-
-        {(step === 'preview' || step === 'submitting') && parsed && (
-          <>
-            <div className="px-5 py-4 space-y-3">
+      {(step === 'preview' || step === 'submitting') && parsed && (
+        <>
+          <ModalBody className="px-5 py-4 space-y-3">
               <div className="grid grid-cols-3 gap-3">
                 <label className="block text-xs">
                   <span className="block mb-1 text-[11px] font-medium text-zinc-500 uppercase tracking-wide">
@@ -242,32 +231,31 @@ export const ImportRoyaltyModal: React.FC<Props> = ({
                   </div>
                 )}
               </div>
-            </div>
+          </ModalBody>
 
-            <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={step === 'submitting'}
-                className="h-8 px-3 text-xs font-medium rounded-md text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors disabled:opacity-50"
-              >
-                {t('import.cancel')}
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={step === 'submitting'}
-                className="h-8 px-4 text-xs font-medium rounded-md bg-zinc-900 text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                data-testid="royalty-import-confirm"
-              >
-                {step === 'submitting' && <Loader2 size={12} className="animate-spin" />}
-                <Upload size={11} />
-                {step === 'submitting' ? t('import.importing') : t('import.confirm')}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+          <ModalFooter>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={step === 'submitting'}
+              className="h-8 px-3 text-xs font-medium rounded-md text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            >
+              {t('import.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={step === 'submitting'}
+              className="h-8 px-4 text-xs font-medium rounded-md bg-zinc-900 text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              data-testid="royalty-import-confirm"
+            >
+              {step === 'submitting' && <Loader2 size={12} className="animate-spin" />}
+              <Upload size={11} />
+              {step === 'submitting' ? t('import.importing') : t('import.confirm')}
+            </button>
+          </ModalFooter>
+        </>
+      )}
+    </Modal>
   );
 };

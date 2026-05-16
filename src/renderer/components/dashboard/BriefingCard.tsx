@@ -82,7 +82,7 @@ export const BriefingCard: React.FC = () => {
       <Card
         title={
           <span className="flex items-center gap-2">
-            <Sparkles size={14} className="text-violet-500" />
+            <Sparkles size={14} className="text-amber-500" />
             Weekly briefing
           </span>
         }
@@ -100,7 +100,7 @@ export const BriefingCard: React.FC = () => {
               data-testid="briefing-card-upgrade"
               className="
                 inline-flex items-center gap-1.5 px-3 h-7 rounded-md
-                text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700
+                text-xs font-semibold text-white bg-emerald-500 hover:bg-emerald-600
               "
             >
               <Lock size={11} />
@@ -116,7 +116,7 @@ export const BriefingCard: React.FC = () => {
     <Card
       title={
         <span className="flex items-center gap-2">
-          <Sparkles size={14} className="text-violet-500" />
+          <Sparkles size={14} className="text-amber-500" />
           Weekly briefing
         </span>
       }
@@ -147,7 +147,7 @@ export const BriefingCard: React.FC = () => {
             onClick={() => navigate('briefing')}
             className="
               inline-flex items-center gap-1.5 px-3 h-7 rounded-md text-xs
-              font-medium text-violet-700 bg-violet-50 hover:bg-violet-100
+              font-medium text-amber-700 bg-amber-50 hover:bg-amber-100
             "
           >
             <Sparkles size={11} />

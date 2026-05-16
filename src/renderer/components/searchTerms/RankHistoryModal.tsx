@@ -184,7 +184,7 @@ export const RankHistoryModal: React.FC<Props> = ({
             <Line
               type="monotone"
               dataKey="rank"
-              stroke="#6E56CF"
+              stroke="#8b5cf6"
               strokeWidth={2}
               dot={{ r: 3 }}
               activeDot={{ r: 5 }}

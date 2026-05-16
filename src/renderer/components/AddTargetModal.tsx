@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { ApiError } from '../api/client';
 import { targetsApi, type MatchType } from '../api/targets';
 import type { AdGroup } from '../api/adGroups';
+import { Modal, ModalBody, ModalFooter } from './ui';
 
 interface Props {
   adGroups: AdGroup[];
@@ -40,21 +41,6 @@ export const AddTargetModal: React.FC<Props> = ({
   const [matchType, setMatchType] = useState<MatchType>('exact');
   const [bidOverride, setBidOverride] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    document.body.dataset.modalOpen = 'true';
-    return () => {
-      delete document.body.dataset.modalOpen;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onWinKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !submitting) onClose();
-    };
-    window.addEventListener('keydown', onWinKey);
-    return () => window.removeEventListener('keydown', onWinKey);
-  }, [submitting, onClose]);
 
   const selectedGroup = adGroups.find((g) => g.id === adGroupId) ?? null;
 
@@ -113,31 +99,16 @@ export const AddTargetModal: React.FC<Props> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-zinc-900/20 backdrop-blur-sm"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
-      }}
+    <Modal
+      open
+      onClose={() => !submitting && onClose()}
+      size="lg"
+      title={t('addTarget.title')}
+      closeOnEsc={!submitting}
+      closeOnOverlay={!submitting}
     >
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-lg bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden"
-      >
-        <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-start justify-between gap-3">
-          <h2 className="text-base font-semibold text-zinc-900 tracking-tight">
-            {t('addTarget.title')}
-          </h2>
-          <button
-            type="button"
-            onClick={() => !submitting && onClose()}
-            className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label={t('addTarget.closeAria')}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="px-5 py-4 space-y-4">
+      <form onSubmit={handleSubmit}>
+        <ModalBody>
           {/* Ad group */}
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-zinc-700">Ad Group</label>
@@ -235,9 +206,9 @@ export const AddTargetModal: React.FC<Props> = ({
               className="w-full h-9 px-3 text-sm rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-400"
             />
           </div>
-        </div>
+        </ModalBody>
 
-        <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-end gap-2">
+        <ModalFooter>
           <button
             type="button"
             onClick={onClose}
@@ -254,8 +225,8 @@ export const AddTargetModal: React.FC<Props> = ({
             {submitting && <Loader2 size={12} className="animate-spin" />}
             {t('addTarget.actions.submit')}
           </button>
-        </div>
+        </ModalFooter>
       </form>
-    </div>
+    </Modal>
   );
 };

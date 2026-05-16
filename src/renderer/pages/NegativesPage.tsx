@@ -13,11 +13,17 @@ import {
   Card,
   EmptyState,
   LoadingRow,
+  SegmentedControl,
+  ActiveFiltersBar,
 } from '../components/ui';
 import { NegativeListsTab } from '../components/NegativeListsTab';
 import { dateRangeFor } from '../lib/dateRange';
 import { useToast } from '../contexts/ToastContext';
-import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
+import {
+  useGlobalFilters,
+  useGlobalFilterChips,
+} from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 type Tab = 'campaigns' | 'lists';
 
@@ -25,6 +31,8 @@ export const NegativesPage: React.FC = () => {
   const { t } = useTranslation('negatives');
   const toast = useToast();
   const { filters: globalFilters } = useGlobalFilters();
+  const { list: booksList } = useBooks();
+  const chips = useGlobalFilterChips(booksList);
   const [tab, setTab] = useState<Tab>('campaigns');
   const [campaigns, setCampaigns] = useState<CampaignSummary | null>(null);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
@@ -159,6 +167,8 @@ export const NegativesPage: React.FC = () => {
         }
       />
 
+      <ActiveFiltersBar chips={chips} />
+
       <div role="tablist" className="flex items-center gap-1 border-b border-zinc-200">
         {(['campaigns', 'lists'] as const).map((tabId) => (
           <button
@@ -234,24 +244,15 @@ export const NegativesPage: React.FC = () => {
                   "
                 />
                 <div className="flex items-center justify-between gap-2">
-                  <div className="inline-flex bg-white border border-zinc-200 rounded-md p-0.5">
-                    {(['Exact', 'Phrase'] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setMatchType(m)}
-                        disabled={adding}
-                        className={`
-                          px-3 h-7 text-xs font-medium rounded transition-colors
-                          ${matchType === m
-                            ? 'bg-zinc-900 text-white'
-                            : 'text-zinc-600 hover:text-zinc-900'}
-                        `}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
+                  <SegmentedControl<NegativeMatchType>
+                    value={matchType}
+                    onChange={setMatchType}
+                    options={[
+                      { value: 'Exact', label: 'Exact', disabled: adding },
+                      { value: 'Phrase', label: 'Phrase', disabled: adding },
+                    ]}
+                    aria-label="Match type"
+                  />
                   <button
                     type="submit"
                     disabled={adding || !keyword.trim()}
@@ -304,13 +305,13 @@ export const NegativesPage: React.FC = () => {
                         key={n.id}
                         className="group border-t border-zinc-100 hover:bg-zinc-50/60"
                       >
-                        <td className="px-5 py-2.5 text-xs text-zinc-900">
+                        <td className="px-5 py-2.5 text-sm text-zinc-900">
                           {n.keyword_text}
                         </td>
-                        <td className="px-3 py-2.5 text-xs text-zinc-600">
+                        <td className="px-3 py-2.5 text-sm text-zinc-600">
                           {n.match_type}
                         </td>
-                        <td className="px-3 py-2.5 text-[11px] text-zinc-500">
+                        <td className="px-3 py-2.5 text-sm text-zinc-500">
                           {(n.date_added ?? n.created_at ?? '').slice(0, 10) || '—'}
                         </td>
                         <td className="px-5 py-2.5 text-right">

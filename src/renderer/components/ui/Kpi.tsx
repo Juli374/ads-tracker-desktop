@@ -26,7 +26,7 @@ export const Kpi: React.FC<KpiProps> = ({
       {label}
     </div>
     <div
-      className={`mt-2 text-2xl font-semibold tabular-nums ${
+      className={`mt-2 text-2xl font-semibold font-mono tabular-nums tracking-tight ${
         loading ? 'text-zinc-300' : toneClass[tone]
       }`}
     >

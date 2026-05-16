@@ -64,14 +64,14 @@ export const KpiDelta: React.FC<KpiDeltaProps> = ({
         ) : null}
       </div>
       <div
-        className={`mt-2 text-2xl font-semibold tabular-nums ${
+        className={`mt-2 text-2xl font-semibold font-mono tabular-nums tracking-tight ${
           loading ? 'text-zinc-300' : valueTone[tone]
         }`}
       >
         {value}
       </div>
       <div className="mt-1 flex items-center gap-1.5 text-xs">
-        <span className={`flex items-center gap-0.5 font-medium tabular-nums ${deltaColor}`}>
+        <span className={`flex items-center gap-0.5 font-medium font-mono tabular-nums ${deltaColor}`}>
           <ArrowIcon size={11} strokeWidth={2.5} />
           {isFiniteNumber(change) ? formatChange(change) : '—'}
         </span>

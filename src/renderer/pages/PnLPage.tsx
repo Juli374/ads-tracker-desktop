@@ -6,6 +6,7 @@ import {
   ActiveFiltersBar,
   PageHeader,
   RangePicker,
+  SegmentedControl,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import {
@@ -15,7 +16,7 @@ import {
 import { useBooks } from '../contexts/BooksContext';
 import { useToast } from '../contexts/ToastContext';
 import { computePnL, type PnLData, type PnLSource } from '../api/pnl';
-import { metricsApi, type DailySummary, type Attribution } from '../api/metrics';
+import { metricsApi, type DailySummary } from '../api/metrics';
 import { ApiError } from '../api/client';
 import { PnLKpiRow } from '../components/pnl/PnLKpiRow';
 import { PnLMatrix } from '../components/pnl/PnLMatrix';
@@ -38,7 +39,9 @@ export const PnLPage: React.FC = () => {
   const chips = useGlobalFilterChips(booksList);
 
   const [range, setRange] = useState<RangeId>('30d');
-  const [attribution, setAttribution] = useState<Attribution>('14d');
+  // Phase Q.4.1 — attribution is now globally controlled via topbar
+  // GlobalAttributionToggle (was local state here, hardcoded "14d" elsewhere).
+  const attribution = globalFilters.attribution;
   const [source, setSource] = useState<PnLSource>(readSource);
   const [data, setData] = useState<PnLData | null>(null);
   const [daily, setDaily] = useState<DailySummary | null>(null);
@@ -160,7 +163,7 @@ export const PnLPage: React.FC = () => {
         subtitle={subtitle}
         rightSlot={
           <div className="flex items-center gap-2">
-            <AttributionToggle value={attribution} onChange={setAttribution} />
+            {/* Phase Q.4.1 — AttributionToggle moved to topbar (global). */}
             <SourceToggle value={source} onChange={setSource} />
             <RangePicker
               value={range}
@@ -201,72 +204,22 @@ export const PnLPage: React.FC = () => {
   );
 };
 
+// Phase Q.1 — SourceToggle migrated to SegmentedControl primitive (was inline radiogroup).
 const SourceToggle: React.FC<{
   value: PnLSource;
   onChange: (s: PnLSource) => void;
 }> = ({ value, onChange }) => (
-  <div
-    role="radiogroup"
+  <SegmentedControl<PnLSource>
+    value={value}
+    onChange={onChange}
+    options={[
+      { value: 'cloud', label: 'Cloud', icon: <Cloud size={11} />, testId: 'pnl-source-cloud' },
+      { value: 'local', label: 'Local', icon: <HardDrive size={11} />, testId: 'pnl-source-local' },
+    ]}
+    size="sm"
     aria-label="P&L source"
-    className="inline-flex items-center bg-zinc-100 rounded-md p-0.5"
-  >
-    {(
-      [
-        { id: 'cloud' as const, label: 'Cloud', Icon: Cloud },
-        { id: 'local' as const, label: 'Local', Icon: HardDrive },
-      ]
-    ).map(({ id, label, Icon }) => {
-      const active = value === id;
-      return (
-        <button
-          key={id}
-          role="radio"
-          aria-checked={active}
-          type="button"
-          onClick={() => onChange(id)}
-          data-testid={`pnl-source-${id}`}
-          className={`
-            inline-flex items-center gap-1.5 px-2.5 h-6 text-[11px] font-medium rounded
-            transition-colors
-            ${active ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'}
-          `}
-        >
-          <Icon size={11} />
-          {label}
-        </button>
-      );
-    })}
-  </div>
+  />
 );
 
-const ATTRIBUTIONS: Attribution[] = ['1d', '7d', '14d', '30d'];
-
-const AttributionToggle: React.FC<{
-  value: Attribution;
-  onChange: (a: Attribution) => void;
-}> = ({ value, onChange }) => (
-  <div
-    role="radiogroup"
-    aria-label="Attribution window"
-    className="inline-flex items-center bg-white border border-zinc-200 rounded-md p-0.5"
-  >
-    {ATTRIBUTIONS.map((a) => (
-      <button
-        key={a}
-        role="radio"
-        aria-checked={value === a}
-        type="button"
-        onClick={() => onChange(a)}
-        data-testid={`pnl-attribution-${a}`}
-        className={`
-          px-2 h-6 text-[11px] font-medium rounded transition-colors
-          ${value === a
-            ? 'bg-zinc-100 text-zinc-900'
-            : 'text-zinc-500 hover:text-zinc-900'}
-        `}
-      >
-        {a}
-      </button>
-    ))}
-  </div>
-);
+// Phase Q.4.1 — AttributionToggle removed from PnL; lifted to topbar
+// via GlobalAttributionToggle (see MainLayout.tsx).

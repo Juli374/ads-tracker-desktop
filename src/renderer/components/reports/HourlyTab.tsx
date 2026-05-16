@@ -135,10 +135,10 @@ function aggregateGrid(
 }
 
 function colorScale(ratio: number): string {
-  // White → violet (#6E56CF). ratio in [0,1]; 0 returns near-white.
-  const r = Math.round(255 + (110 - 255) * ratio);
-  const g = Math.round(255 + (86 - 255) * ratio);
-  const b = Math.round(255 + (207 - 255) * ratio);
+  // White → emerald (#10b981). ratio in [0,1]; 0 returns near-white.
+  const r = Math.round(255 + (16 - 255) * ratio);
+  const g = Math.round(255 + (185 - 255) * ratio);
+  const b = Math.round(255 + (129 - 255) * ratio);
   return `rgb(${r}, ${g}, ${b})`;
 }
 

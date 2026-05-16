@@ -126,10 +126,8 @@ describe('BriefingPage', () => {
       expect(screen.getByTestId('briefing-page-locked')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('briefing-page')).toBeNull();
+    // Phase Q.1: migrated to <LockedFeatureCard> primitive — the CTA is
+    // now the primitive's built-in emerald button inside the container.
     expect(screen.getByTestId('briefing-page-upgrade-cta')).toBeInTheDocument();
-    // The LockedFeature wrapper attaches a CTA testid keyed to the feature.
-    expect(
-      screen.getByTestId('locked-feature-cta-ai.weekly_briefing'),
-    ).toBeInTheDocument();
   });
 });

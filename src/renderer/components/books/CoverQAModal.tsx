@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, AlertTriangle, CheckCircle2, Loader2, X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import type { CoverQAReport } from '../../../shared/ipc';
 import { analyzeCoverFile } from '../../api/coverQa';
 import { useToast } from '../../contexts/ToastContext';
-import { useEscapeClose } from '../../lib/useEscapeClose';
+import { Modal, ModalBody, ModalFooter } from '../ui';
 
 type Target = 'ebook' | 'print';
 
@@ -49,10 +49,6 @@ export const CoverQAModal: React.FC<Props> = ({ initialFile, onClose, onProceed,
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
-
-  useEscapeClose(() => {
-    if (!loading) onClose();
-  });
 
   // Generate / revoke object URL whenever the picked file changes.
   useEffect(() => {
@@ -113,32 +109,17 @@ export const CoverQAModal: React.FC<Props> = ({ initialFile, onClose, onProceed,
   const passed = report?.checks.filter((c) => c.passed).length ?? 0;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-zinc-900/20 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title ?? t('modals.coverQa.title')}
+    <Modal
+      open
+      onClose={() => !loading && onClose()}
+      size="xl"
+      title={title ?? t('modals.coverQa.title')}
+      ariaLabel={title ?? t('modals.coverQa.title')}
+      closeOnEsc={!loading}
+      closeOnOverlay={!loading}
       data-testid="cover-qa-modal"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !loading) onClose();
-      }}
     >
-      <div className="w-full max-w-2xl bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-zinc-900">
-            {title ?? t('modals.coverQa.title')}
-          </h2>
-          <button
-            type="button"
-            onClick={() => !loading && onClose()}
-            className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label={t('modals.coverQa.close')}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+      <ModalBody className="flex-1 overflow-y-auto px-5 py-4 space-y-4 max-h-[70vh]">
           {/* Target toggle */}
           <div className="flex items-center gap-2 text-xs">
             <span className="text-zinc-500">{t('modals.coverQa.target')}</span>
@@ -249,34 +230,33 @@ export const CoverQAModal: React.FC<Props> = ({ initialFile, onClose, onProceed,
               </div>
             </div>
           )}
-        </div>
+      </ModalBody>
 
-        <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-end gap-2">
+      <ModalFooter>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={loading}
+          className="h-8 px-3 text-xs font-medium rounded-md text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors disabled:opacity-50"
+          data-testid="cover-qa-close"
+        >
+          {t('modals.coverQa.close')}
+        </button>
+        {onProceed && file && (
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleProceed}
             disabled={loading}
-            className="h-8 px-3 text-xs font-medium rounded-md text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors disabled:opacity-50"
-            data-testid="cover-qa-close"
+            className="h-8 px-4 text-xs font-medium rounded-md bg-zinc-900 text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
+            data-testid="cover-qa-proceed"
           >
-            {t('modals.coverQa.close')}
+            {errors > 0
+              ? t('modals.coverQa.proceedAnyway')
+              : t('modals.coverQa.proceed')}
           </button>
-          {onProceed && file && (
-            <button
-              type="button"
-              onClick={handleProceed}
-              disabled={loading}
-              className="h-8 px-4 text-xs font-medium rounded-md bg-zinc-900 text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
-              data-testid="cover-qa-proceed"
-            >
-              {errors > 0
-                ? t('modals.coverQa.proceedAnyway')
-                : t('modals.coverQa.proceed')}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+        )}
+      </ModalFooter>
+    </Modal>
   );
 };
 

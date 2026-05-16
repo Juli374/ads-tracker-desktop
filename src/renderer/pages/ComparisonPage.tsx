@@ -271,12 +271,17 @@ export const ComparisonPage: React.FC = () => {
 
   const filterParams = useMemo(
     () => ({
-      attribution: '14d' as const,
+      attribution: globalFilters.attribution,
       marketplaces: globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined,
       bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
       accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,
     }),
-    [globalFilters.marketplaces, globalFilters.bookId, globalFilters.accounts],
+    [
+      globalFilters.attribution,
+      globalFilters.marketplaces,
+      globalFilters.bookId,
+      globalFilters.accounts,
+    ],
   );
 
   useEffect(() => {
@@ -345,7 +350,7 @@ export const ComparisonPage: React.FC = () => {
 
       {rangeA === rangeB && <ErrorBanner message={t('sameRangeWarning')} />}
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
         <DeltaKpi
           label={t('kpi.spend')}
           a={totalsA.cost}
@@ -435,32 +440,32 @@ export const ComparisonPage: React.FC = () => {
                           ) : (
                             <div className="w-6 h-8 rounded-sm bg-zinc-100 border border-zinc-200 flex-shrink-0" />
                           )}
-                          <div className="text-xs text-zinc-900 truncate max-w-md">
+                          <div className="text-sm text-zinc-900 truncate max-w-md">
                             {r.label}
                           </div>
                         </div>
                       ) : (
-                        <div className="text-xs text-zinc-900 truncate max-w-md">
+                        <div className="text-sm text-zinc-900 truncate max-w-md">
                           {r.label}
                         </div>
                       )}
                     </td>
                     {(dimension === 'book' || dimension === 'campaign' || dimension === 'keyword') && (
-                      <td className="px-3 py-2.5 text-[11px] text-zinc-600 uppercase">
+                      <td className="px-3 py-2.5 text-sm text-zinc-600 uppercase">
                         {r.marketplace || '—'}
                       </td>
                     )}
-                    <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+                    <td className="px-3 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
                       {fmtMoney(r.spendA)}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+                    <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
                       {fmtMoney(r.spendB)}
                     </td>
                     <Cell delta={pctDelta(r.spendB, r.spendA)} inverse />
-                    <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+                    <td className="px-3 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
                       {fmtMoney(r.salesA)}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+                    <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
                       {fmtMoney(r.salesB)}
                     </td>
                     <Cell delta={pctDelta(r.salesB, r.salesA)} />
@@ -594,7 +599,7 @@ const Cell: React.FC<{ delta: number | null; inverse?: boolean; last?: boolean }
       : 'text-red-600';
   return (
     <td
-      className={`${last ? 'px-5' : 'px-3'} py-2.5 text-xs text-right tabular-nums ${color}`}
+      className={`${last ? 'px-5' : 'px-3'} py-2.5 text-sm text-right tabular-nums ${color}`}
     >
       {delta == null
         ? '—'

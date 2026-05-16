@@ -1,6 +1,8 @@
-# CLAUDE.md — Ads Tracker Desktop
+# CLAUDE.md — KDPBook Desktop (Ads Tracker)
 
-> **Что это:** Electron desktop-клиент для Ads Tracker. **Только клиент.** Бэкенд (Flask + Neon PostgreSQL) живёт в `Juli374/ads-tracker` и сюда не входит.
+> **Что это:** Electron desktop-клиент **KDPBook** (модуль Ads Tracker). **Только клиент.** Бэкенд (Flask + Neon PostgreSQL) живёт в `Juli374/ads-tracker` и сюда не входит.
+>
+> **Brand:** surface = "KDPBook · Ads Tracker" (hybrid wordmark per Phase Q). HTML title / dock / native dialogs = "KDPBook". `appBundleId`, URL scheme `ads-tracker-desktop://`, GitHub repo `Juli374/ads-tracker-desktop` — НЕ менять, ломает auto-update + signed installs.
 
 ---
 
@@ -130,3 +132,15 @@ Token хранится в OS Keychain через `safeStorage` — **не в .en
 - **2026-04-30** — desktop/ создан внутри `ads-tracker` как Electron Forge скаффолд
 - **2026-05-07** — принят трек "personal-use first" (см. `docs/electron-migration/README.md`)
 - **2026-05-08** — `desktop/` вынесен в этот отдельный репо `Juli374/ads-tracker-desktop`. В исходном `ads-tracker/desktop/` пока остаётся как safety net
+- **2026-05-16** — Phase Q (Design Pass): KDPBook visual identity. Emerald accent, Playfair Display wordmark + PageHeader, JetBrains Mono on metrics. ~10 new UI primitives (`Modal`, `SegmentedControl`, `Select`, `Textarea`, `Field`, `MetricNumber`, `DisplayHeading`, `Tabs`, `LockedFeatureCard`, `GradientArea`). Global attribution toggle in topbar (was hardcoded "14d" on 4 pages). Sidebar split: Actions / AI / Finance. См. [`docs/electron-migration/design-audit-2026-05-16/`](docs/electron-migration/design-audit-2026-05-16/).
+
+## 🎨 Дизайн-система (Phase Q+)
+
+Источник истины — `book-platform/design-dna.json` (KDPBook brand DNA). Адаптация под desktop — `DESIGN.md` в корне репо. Ключевое:
+
+- **Шрифты:** Inter (UI body), Playfair Display 700 (wordmark + PageHeader H1 only), JetBrains Mono (metrics, table numbers, chart axes).
+- **Accent:** emerald `#10b981` (focus ring, sidebar active, "Live"/"Active" pills, high-emphasis CTAs).
+- **Module palette:** ads=emerald, analytics=blue, publishing=purple, ai=amber, marketplace=rose.
+- **Primary actions:** `bg-zinc-900` (black) для form submits в модалках; emerald для high-emphasis CTA (Upgrade, Sync now, Run briefing).
+- **Token-driven:** все цвета через семантические токены (`accent`, `surface`, `fg-muted`, `success-soft` и т.д.) в `tailwind.config.js`. Старые `bg-zinc-*` ещё в ходу — Phase R может довести codemod.
+- **Out of scope:** Lenis smooth scroll, framer-motion entrances, mesh gradients, magnetic buttons, mobile responsive — это марк-сайт, не desktop power tool.

@@ -13,6 +13,7 @@ import {
   ExportMenu,
   LoadingRow,
   ActiveFiltersBar,
+  SegmentedControl,
 } from '../components/ui';
 import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtMoney, fmtMoneyPrecise, fmtNumber, fmtPct } from '../lib/format';
@@ -377,7 +378,7 @@ export const BooksPage: React.FC = () => {
 
       {booksDrill.level === 'list' && (
         <>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             <Kpi label={t('kpi.books')} value={fmtNumber(filtered.length)} loading={loading} />
             <Kpi label="Spend" value={fmtMoney(totals.cost)} loading={loading} />
             <Kpi label="Orders" value={fmtNumber(totals.orders)} loading={loading} />
@@ -555,33 +556,33 @@ const BookGroupRows: React.FC<{
               <div className="w-7 h-9 rounded-sm bg-zinc-100 border border-zinc-200 flex-shrink-0" />
             )}
             <div className="min-w-0">
-              <div className="text-xs text-zinc-900 truncate max-w-md">
+              <div className="text-sm text-zinc-900 truncate max-w-md">
                 {group.title}
               </div>
               {group.account && (
-                <div className="text-[10px] text-zinc-400 mt-0.5">{group.account}</div>
+                <div className="text-xs text-zinc-400 mt-0.5">{group.account}</div>
               )}
             </div>
           </div>
         </td>
-        <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase">
+        <td className="px-3 py-2.5 text-sm text-zinc-600 uppercase">
           {group.rows.length}
         </td>
-        <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+        <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
           {fmtMoney(group.totals.cost)}
         </td>
-        <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+        <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
           {fmtMoney(group.totals.sales)}
         </td>
-        <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+        <td className="px-3 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
           {group.totals.orders}
         </td>
-        <td className="px-3 py-2.5 text-xs text-right tabular-nums">
+        <td className="px-3 py-2.5 text-sm text-right tabular-nums">
           <span className={group.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
             {group.acos > 0 ? fmtPct(group.acos) : '—'}
           </span>
         </td>
-        <td className="px-3 py-2.5 text-xs text-right tabular-nums text-zinc-500">
+        <td className="px-3 py-2.5 text-sm text-right tabular-nums text-zinc-500">
           {topRating
             ? `${topRating.stars.toFixed(1)}★ (${topRating.count})`
             : '—'}
@@ -589,7 +590,7 @@ const BookGroupRows: React.FC<{
         {/* KDP metrics — three columns. `—` when input data is missing,
             preserving the spec's gracefully-degrade contract. */}
         <td
-          className="px-3 py-2.5 text-xs text-right tabular-nums text-zinc-700"
+          className="px-3 py-2.5 text-sm text-right tabular-nums text-zinc-700"
           data-testid={`book-royalty-per-page-${group.book_id}`}
         >
           {kdp.royaltyPerPage != null
@@ -597,18 +598,18 @@ const BookGroupRows: React.FC<{
             : '—'}
         </td>
         <td
-          className="px-3 py-2.5 text-xs text-right tabular-nums text-zinc-700"
+          className="px-3 py-2.5 text-sm text-right tabular-nums text-zinc-700"
           data-testid={`book-be-acos-${group.book_id}`}
         >
           {kdp.beAcos != null ? fmtPct(kdp.beAcos) : '—'}
         </td>
         <td
-          className="px-3 py-2.5 text-xs text-right tabular-nums text-zinc-700"
+          className="px-3 py-2.5 text-sm text-right tabular-nums text-zinc-700"
           data-testid={`book-max-cpc-${group.book_id}`}
         >
           {kdp.maxCpc != null ? fmtMoneyPrecise(kdp.maxCpc) : '—'}
         </td>
-        <td className="px-5 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+        <td className="px-5 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
           {group.tacos > 0 ? fmtPct(group.tacos) : '—'}
         </td>
       </tr>
@@ -623,34 +624,34 @@ const BookGroupRows: React.FC<{
             }}
             title={t('row.openCampaignsForMp')}
           >
-            <td className="pl-14 pr-5 py-2 text-[11px] text-zinc-600">
+            <td className="pl-14 pr-5 py-2 text-sm text-zinc-600">
               <span className="font-mono uppercase">{row.marketplace || '—'}</span>
               {row.currency && (
                 <span className="ml-2 text-zinc-400">{row.currency}</span>
               )}
             </td>
-            <td className="px-3 py-2 text-[11px] text-zinc-400">—</td>
-            <td className="px-3 py-2 text-[11px] text-zinc-700 text-right tabular-nums">
+            <td className="px-3 py-2 text-sm text-zinc-400">—</td>
+            <td className="px-3 py-2 text-sm text-zinc-700 text-right tabular-nums">
               {fmtMoney(row.cost, row.currency)}
             </td>
-            <td className="px-3 py-2 text-[11px] text-zinc-700 text-right tabular-nums">
+            <td className="px-3 py-2 text-sm text-zinc-700 text-right tabular-nums">
               {fmtMoney(row.sales, row.currency)}
             </td>
-            <td className="px-3 py-2 text-[11px] text-zinc-600 text-right tabular-nums">
+            <td className="px-3 py-2 text-sm text-zinc-600 text-right tabular-nums">
               {row.orders}
             </td>
-            <td className="px-3 py-2 text-[11px] text-right tabular-nums">
+            <td className="px-3 py-2 text-sm text-right tabular-nums">
               <span className={row.acos > 100 ? 'text-red-600' : 'text-zinc-600'}>
                 {row.acos > 0 ? fmtPct(row.acos) : '—'}
               </span>
             </td>
-            <td className="px-3 py-2 text-[11px] text-zinc-400 text-right">—</td>
+            <td className="px-3 py-2 text-sm text-zinc-400 text-right">—</td>
             {/* KDP columns are only meaningful at the book level (book.metadata)
                 — leave child rows empty so the row aligns. */}
-            <td className="px-3 py-2 text-[11px] text-zinc-400 text-right">—</td>
-            <td className="px-3 py-2 text-[11px] text-zinc-400 text-right">—</td>
-            <td className="px-3 py-2 text-[11px] text-zinc-400 text-right">—</td>
-            <td className="px-5 py-2 text-[11px] text-zinc-600 text-right tabular-nums">
+            <td className="px-3 py-2 text-sm text-zinc-400 text-right">—</td>
+            <td className="px-3 py-2 text-sm text-zinc-400 text-right">—</td>
+            <td className="px-3 py-2 text-sm text-zinc-400 text-right">—</td>
+            <td className="px-5 py-2 text-sm text-zinc-600 text-right tabular-nums">
               {row.tacos != null && row.tacos > 0 ? fmtPct(row.tacos) : '—'}
             </td>
           </tr>
@@ -697,21 +698,11 @@ const SortControl: React.FC<{
   value: SortKey;
   onChange: (v: SortKey) => void;
 }> = ({ value, onChange }) => (
-  <div className="inline-flex items-center bg-white border border-zinc-200 rounded-md p-0.5">
-    {SORT_OPTIONS.map((o) => (
-      <button
-        key={o.value}
-        onClick={() => onChange(o.value)}
-        className={`
-          px-2 h-6 text-[11px] font-medium rounded
-          transition-colors
-          ${value === o.value
-            ? 'bg-zinc-100 text-zinc-900'
-            : 'text-zinc-500 hover:text-zinc-900'}
-        `}
-      >
-        {o.label}
-      </button>
-    ))}
-  </div>
+  <SegmentedControl<SortKey>
+    value={value}
+    onChange={onChange}
+    options={SORT_OPTIONS}
+    size="sm"
+    aria-label="Sort by"
+  />
 );

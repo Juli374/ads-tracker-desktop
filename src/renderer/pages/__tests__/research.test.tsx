@@ -120,9 +120,8 @@ describe('ResearchPage', () => {
       expect(screen.getByTestId('research-page-locked')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('research-page')).toBeNull();
-    // Upgrade CTA is wrapped in LockedFeature — its CTA testid exists.
-    expect(
-      screen.getByTestId('locked-feature-cta-ai.niche_explorer'),
-    ).toBeInTheDocument();
+    // Phase Q.1: migrated to <LockedFeatureCard> primitive — testid sits on
+    // the primitive container; CTA is its built-in button.
+    expect(screen.getByTestId('research-page-upgrade-cta')).toBeInTheDocument();
   });
 });

@@ -14,7 +14,7 @@ export const PnLKpiRow: React.FC<PnLKpiRowProps> = ({ totals, loading = false })
   const { t } = useTranslation('pnl');
   const marginPct = totals.margin * 100;
   return (
-    <div className="grid grid-cols-4 gap-3" data-testid="pnl-kpi-row">
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4" data-testid="pnl-kpi-row">
       <Kpi
         label={t('kpi.revenue')}
         value={fmtMoney(totals.revenue)}

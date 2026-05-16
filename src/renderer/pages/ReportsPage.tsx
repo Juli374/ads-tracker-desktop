@@ -20,6 +20,7 @@ import {
   ChartTooltip,
   ChartTooltipRow,
   ActiveFiltersBar,
+  SegmentedControl,
 } from '../components/ui';
 import {
   ResponsiveContainer,
@@ -282,7 +283,7 @@ export const ReportsPage: React.FC = () => {
   const handleExportPdf = () => {
     downloadPdf(
       `ads-tracker-${granularity}-${from}-${to}.pdf`,
-      `Ads Tracker · Reports (${granularity})`,
+      `KDPBook · Ads Tracker · Reports (${granularity})`,
       buildExportRows(),
       exportColumns,
       { subtitle: `${from} → ${to}` },
@@ -352,7 +353,7 @@ export const ReportsPage: React.FC = () => {
           }
           from={from}
           to={to}
-          attribution="14d"
+          attribution={globalFilters.attribution}
           marketplaces={
             globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
           }
@@ -365,7 +366,7 @@ export const ReportsPage: React.FC = () => {
         <MatrixTab
           from={from}
           to={to}
-          attribution="14d"
+          attribution={globalFilters.attribution}
           marketplaces={
             globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
           }
@@ -378,7 +379,7 @@ export const ReportsPage: React.FC = () => {
         <HourlyTab
           from={from}
           to={to}
-          attribution="14d"
+          attribution={globalFilters.attribution}
           marketplaces={
             globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
           }
@@ -399,7 +400,7 @@ export const ReportsPage: React.FC = () => {
 
       {tab === 'overview' && <>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
         <Kpi label={t('kpi.spend')} value={fmtMoney(totals.spend)} loading={loading} />
         <Kpi label={t('kpi.sales')} value={fmtMoney(totals.sales)} loading={loading} />
         <Kpi
@@ -528,34 +529,34 @@ export const ReportsPage: React.FC = () => {
                   className="border-t border-zinc-100 hover:bg-zinc-50/60"
                 >
                   <td className="px-5 py-2.5">
-                    <div className="text-xs text-zinc-900 font-medium">
+                    <div className="text-sm text-zinc-900 font-medium">
                       {r.label}
                     </div>
-                    <div className="text-[10px] text-zinc-400 mt-0.5">
+                    <div className="text-xs text-zinc-400 mt-0.5">
                       {r.range}
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+                  <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
                     {fmtMoney(r.spend)}
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+                  <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
                     {fmtMoney(r.sales)}
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+                  <td className="px-3 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
                     {r.orders}
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-zinc-600 text-right tabular-nums">
+                  <td className="px-3 py-2.5 text-sm text-zinc-600 text-right tabular-nums">
                     {fmtNumber(r.clicks)}
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-right tabular-nums">
+                  <td className="px-3 py-2.5 text-sm text-right tabular-nums">
                     <span className={r.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
                       {r.acos > 0 ? fmtPct(r.acos) : '—'}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-zinc-600 text-right tabular-nums">
+                  <td className="px-3 py-2.5 text-sm text-zinc-600 text-right tabular-nums">
                     {r.royalty != null && r.royalty > 0 ? fmtMoney(r.royalty) : '—'}
                   </td>
-                  <td className="px-5 py-2.5 text-xs text-right tabular-nums">
+                  <td className="px-5 py-2.5 text-sm text-right tabular-nums">
                     <span
                       className={
                         r.profit == null
@@ -638,24 +639,24 @@ export const ReportsPage: React.FC = () => {
                     key={code}
                     className="border-t border-zinc-100 hover:bg-zinc-50/60"
                   >
-                    <td className="px-5 py-2.5 text-xs text-zinc-900 uppercase font-medium">
+                    <td className="px-5 py-2.5 text-sm text-zinc-900 uppercase font-medium">
                       {code}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+                    <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
                       {fmtMoney(m.cost)}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
+                    <td className="px-3 py-2.5 text-sm text-zinc-900 text-right tabular-nums">
                       {fmtMoney(m.sales)}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+                    <td className="px-3 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
                       {m.orders}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-right tabular-nums">
+                    <td className="px-3 py-2.5 text-sm text-right tabular-nums">
                       <span className={m.acos > 100 ? 'text-red-600' : 'text-zinc-700'}>
                         {m.acos > 0 ? fmtPct(m.acos) : '—'}
                       </span>
                     </td>
-                    <td className="px-5 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
+                    <td className="px-5 py-2.5 text-sm text-zinc-700 text-right tabular-nums">
                       {m.tacos != null && m.tacos > 0 ? fmtPct(m.tacos) : '—'}
                     </td>
                   </tr>
@@ -732,23 +733,16 @@ const GranularityToggle: React.FC<{
 }> = ({ value, onChange }) => {
   const { t } = useTranslation('reports');
   return (
-    <div className="inline-flex items-center bg-white border border-zinc-200 rounded-md p-0.5">
-      {(['daily', 'weekly'] as const).map((g) => (
-        <button
-          key={g}
-          onClick={() => onChange(g)}
-          className={`
-            px-2.5 h-6 text-[11px] font-medium rounded
-            transition-colors
-            ${value === g
-              ? 'bg-zinc-100 text-zinc-900'
-              : 'text-zinc-500 hover:text-zinc-900'}
-          `}
-        >
-          {g === 'daily' ? t('summary.granularityDaily') : t('summary.granularityWeekly')}
-        </button>
-      ))}
-    </div>
+    <SegmentedControl<Granularity>
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: 'daily', label: t('summary.granularityDaily') },
+        { value: 'weekly', label: t('summary.granularityWeekly') },
+      ]}
+      size="sm"
+      aria-label={t('summary.granularityDaily') + '/' + t('summary.granularityWeekly')}
+    />
   );
 };
 

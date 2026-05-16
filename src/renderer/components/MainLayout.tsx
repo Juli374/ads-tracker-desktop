@@ -100,10 +100,12 @@ const BriefingPage = lazy(() =>
 import { NavProvider, useNav, ViewId } from '../contexts/NavContext';
 import { CommandPalette } from './CommandPalette';
 import { GlobalFilters } from './GlobalFilters';
+import { GlobalAttributionToggle } from './GlobalAttributionToggle';
 import { NotificationsBell } from './NotificationsBell';
 import { UserMenu } from './UserMenu';
 import { useEntitlement } from '../hooks/useEntitlement';
 import type { FeatureKey } from '../../shared/entitlements';
+import { NavItem as UINavItem } from './ui/NavItem';
 
 interface NavItem {
   id: ViewId;
@@ -139,13 +141,16 @@ const actionsNav: NavItem[] = [
   { id: 'automation', icon: Zap, shortcut: 'G U', feature: 'automation.rules' },
   { id: 'alerts', icon: Activity, shortcut: 'G L' },
   { id: 'operations', icon: ClipboardList, shortcut: 'G T', feature: 'automation.rules' },
-  // Phase L Lane A — Listing Studio (Pro tier). Sidebar item shows Pro badge
-  // when locked, but navigation still works — the page itself renders the
-  // upgrade card.
-  { id: 'listing_studio', icon: Sparkles, shortcut: 'G E', feature: 'ai.title_generator' },
-  // Phase M.5 Lane E — Weekly Author Briefing (Pro tier). Sidebar item shows
-  // Pro badge when locked, but navigation still works — the page itself
-  // renders the upgrade card.
+];
+
+// Phase Q.4.3 — AI surfaces split into their own sidebar section. Three AI
+// pages (Listing Studio, Briefing, Research) were previously scattered across
+// the Analytics + Actions groups. Audit (05-navigation.md §Sidebar density)
+// recommended clustering them under a dedicated subhead for clarity.
+const aiNav: NavItem[] = [
+  // Phase Q.4.2 — shortcut corrected from stale `G E` (taken by P&L Earnings)
+  // to actual runtime mapping `G W` (Writing). See HOTKEY_MAP below.
+  { id: 'listing_studio', icon: Sparkles, shortcut: 'G W', feature: 'ai.title_generator' },
   { id: 'briefing', icon: Mail, shortcut: 'G J', feature: 'ai.weekly_briefing' },
 ];
 
@@ -313,17 +318,18 @@ const Layout: React.FC = () => {
     <div className="h-screen w-screen flex flex-col bg-white text-foreground overflow-hidden">
       <header className="h-12 flex-shrink-0 border-b border-zinc-200 flex items-center justify-between px-4 bg-white">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-zinc-900 flex items-center justify-center">
-            <span className="text-white text-xs font-bold tracking-tight">A</span>
+          <div className="w-7 h-7 rounded-md bg-zinc-900 flex items-center justify-center">
+            <span className="font-display text-sm font-bold text-emerald-400">K</span>
           </div>
-          <span className="text-sm font-semibold text-zinc-900 tracking-tight">
-            Ads Tracker
+          <span className="font-display text-base font-bold tracking-tight text-zinc-900">
+            KDPBook
           </span>
-          <AppVersionLabel />
+          <span className="text-[10px] text-zinc-400 ml-1">· Ads Tracker · v0.1.0</span>
         </div>
 
         <div className="flex items-center gap-2">
           <GlobalFilters />
+          <GlobalAttributionToggle />
           <button
             data-testid="topbar-command-palette-trigger"
             onClick={() => setPaletteOpen(true)}
@@ -365,6 +371,11 @@ const Layout: React.FC = () => {
               {t('sections.actions')}
             </div>
             {actionsNav.map(renderNavItem)}
+
+            <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+              {t('sections.ai', { defaultValue: 'AI' })}
+            </div>
+            {aiNav.map(renderNavItem)}
 
             <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
               {t('sections.finance')}
@@ -420,10 +431,11 @@ interface NavItemRowProps {
 }
 
 /**
- * Phase K: вынесли в отдельный компонент чтобы можно было дёрнуть
- * `useEntitlement` per-item. Sidebar item рендерит Pro/Business badge
- * рядом с label если фича закрыта, но навигация всё равно работает —
- * страница сама покажет upgrade-card.
+ * Phase K: thin wrapper that calls `useEntitlement` per-item and forwards
+ * locked/shortcut state to the `<NavItem>` primitive. The actual sidebar-row
+ * presentation lives in `ui/NavItem.tsx`. Sidebar item renders a tier badge
+ * if the feature is locked, but navigation still works — the page itself
+ * shows the upgrade-card.
  */
 const NavItemRow: React.FC<NavItemRowProps> = ({ item, isActive, onClick }) => {
   const { t } = useTranslation('nav');
@@ -432,54 +444,29 @@ const NavItemRow: React.FC<NavItemRowProps> = ({ item, isActive, onClick }) => {
   // feature — `locked=false` всегда.
   const ent = useEntitlement(item.feature ?? 'ai.title_generator');
   const isLocked = item.feature ? !ent.on : false;
-  const tierRequired = item.feature ? ent.tierRequired : 'pro';
-  const Icon = item.icon;
+  // `useEntitlement` returns `Tier = 'start' | 'pro' | 'business'`. The badge
+  // только различает business vs всё остальное, поэтому narrowим до
+  // `'pro' | 'business'` для UINavItem.
+  const badgeTier: 'pro' | 'business' =
+    item.feature && ent.tierRequired === 'business' ? 'business' : 'pro';
 
   const badgeLabel =
-    tierRequired === 'business'
+    badgeTier === 'business'
       ? tCommon('entitlements.lockedBadgeBusiness')
       : tCommon('entitlements.lockedBadge');
 
   return (
-    <button
-      data-testid={`nav-${item.id}`}
-      data-locked={isLocked ? 'true' : undefined}
+    <UINavItem
+      icon={<item.icon size={16} strokeWidth={2} />}
+      label={t(`items.${item.id}` as 'items.dashboard')}
+      active={isActive}
       onClick={onClick}
-      className={`
-        group flex items-center gap-2.5 w-full h-9 px-3 rounded-md text-sm
-        transition-colors duration-100 select-none
-        ${isActive
-          ? 'bg-zinc-100 text-zinc-900 font-medium'
-          : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'}
-      `}
-    >
-      <Icon
-        size={16}
-        strokeWidth={2}
-        className={isActive ? 'text-zinc-900' : 'text-zinc-500 group-hover:text-zinc-700'}
-      />
-      <span className="flex-1 text-left truncate">
-        {t(`items.${item.id}` as 'items.dashboard')}
-      </span>
-      {isLocked && (
-        <span
-          data-testid={`nav-badge-${item.id}`}
-          className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-100 text-violet-700"
-        >
-          {badgeLabel}
-        </span>
-      )}
-      {item.shortcut && !isLocked && (
-        <span
-          className={`
-            text-[10px] font-mono tracking-wider opacity-0 group-hover:opacity-100
-            transition-opacity ${isActive ? 'opacity-60' : ''}
-          `}
-        >
-          {item.shortcut}
-        </span>
-      )}
-    </button>
+      lockedTier={isLocked ? badgeTier : undefined}
+      lockedBadgeText={isLocked ? badgeLabel : undefined}
+      lockedBadgeTestId={isLocked ? `nav-badge-${item.id}` : undefined}
+      shortcut={item.shortcut}
+      dataTestId={`nav-${item.id}`}
+    />
   );
 };
 

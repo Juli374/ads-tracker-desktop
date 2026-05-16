@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useBooks } from '../contexts/BooksContext';
 import { ApiError } from '../api/client';
@@ -13,6 +13,7 @@ import {
 import { adGroupsApi } from '../api/adGroups';
 import { targetsApi, type MatchType } from '../api/targets';
 import { negativesApi, type NegativeMatchType } from '../api/negatives';
+import { Modal, ModalBody, ModalFooter, ModalHeader } from './ui';
 
 interface Props {
   onClose(): void;
@@ -59,22 +60,6 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
   const [negatives, setNegatives] = useState<string>('');
   const [negMatchType, setNegMatchType] = useState<NegativeMatchType>('Exact');
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    document.body.dataset.modalOpen = 'true';
-    return () => {
-      delete document.body.dataset.modalOpen;
-    };
-  }, []);
-
-  // Window-level Esc handler (фокус может быть в любом из инпутов модала).
-  useEffect(() => {
-    const onWinKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !submitting) onClose();
-    };
-    window.addEventListener('keydown', onWinKey);
-    return () => window.removeEventListener('keydown', onWinKey);
-  }, [submitting, onClose]);
 
   // Книги с активными ASIN-ами по маркетплейсам, отсортированные по названию.
   const sortedBooks = useMemo(
@@ -204,37 +189,23 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 bg-zinc-900/20 backdrop-blur-sm overflow-y-auto"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
-      }}
+    <Modal
+      open
+      onClose={() => !submitting && onClose()}
+      size="xl"
+      closeOnEsc={!submitting}
+      closeOnOverlay={!submitting}
+      ariaLabel={t('add.title')}
+      data-testid="add-campaign-modal"
     >
-      <form
-        onSubmit={handleSubmit}
-        data-testid="add-campaign-modal"
-        className="w-full max-w-2xl bg-white border border-zinc-200 rounded-xl shadow-card overflow-hidden my-auto"
-      >
-        <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-zinc-900 tracking-tight">
-              {t('add.title')}
-            </h2>
-            <div className="text-xs text-zinc-500 mt-0.5">
-              {t('add.subtitle')}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => !submitting && onClose()}
-            className="text-zinc-400 hover:text-zinc-700 transition-colors"
-            aria-label={t('add.closeAria')}
-          >
-            <X size={16} />
-          </button>
-        </div>
+      <form onSubmit={handleSubmit}>
+        <ModalHeader
+          title={t('add.title')}
+          description={t('add.subtitle')}
+          onClose={() => !submitting && onClose()}
+        />
 
-        <div className="px-5 py-4 space-y-5 max-h-[70vh] overflow-y-auto">
+        <ModalBody className="px-5 py-4 space-y-5 max-h-[70vh] overflow-y-auto">
           {/* Тип кампании */}
           <Section title={t('add.type.title')}>
             <div className="grid grid-cols-3 gap-2">
@@ -494,9 +465,9 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
               </Field>
             </div>
           </Section>
-        </div>
+        </ModalBody>
 
-        <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-end gap-2">
+        <ModalFooter>
           <button
             type="button"
             onClick={onClose}
@@ -523,9 +494,9 @@ export const AddCampaignModal: React.FC<Props> = ({ onClose, onCreated }) => {
             {submitting && <Loader2 size={12} className="animate-spin" />}
             {t('add.actions.submit')}
           </button>
-        </div>
+        </ModalFooter>
       </form>
-    </div>
+    </Modal>
   );
 };
 

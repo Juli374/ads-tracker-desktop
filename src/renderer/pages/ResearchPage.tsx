@@ -21,7 +21,8 @@ import { Compass, Loader2, Plus, Save, Trash2, X } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
-import { LockedFeature } from '../components/LockedFeature';
+import { LockedFeatureCard } from '../components/ui/LockedFeatureCard';
+import { UpgradeModal } from '../components/UpgradeModal';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -91,24 +92,29 @@ function emptyRow(keyword: string): NicheKeyword {
 
 export const ResearchPage: React.FC = () => {
   const { t } = useTranslation('research');
-  const { on: featureOn } = useEntitlement('ai.niche_explorer');
+  const { on: featureOn, tierRequired } = useEntitlement('ai.niche_explorer');
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   if (!featureOn) {
+    // Phase Q.1: migrated to <LockedFeatureCard> primitive.
     return (
       <div data-testid="research-page-locked" className="space-y-4">
         <PageHeader title={t('title')} subtitle={t('subtitle')} />
-        <Card>
-          <div className="p-8 text-center space-y-3">
-            <Compass className="mx-auto text-violet-500" size={28} />
-            <h3 className="text-lg font-semibold text-zinc-900">{t('locked.title')}</h3>
-            <p className="text-sm text-zinc-500 max-w-md mx-auto">{t('locked.description')}</p>
-            <LockedFeature feature="ai.niche_explorer" mode="dim">
-              <Button variant="primary" size="md" data-testid="research-page-upgrade-cta">
-                {t('locked.cta')}
-              </Button>
-            </LockedFeature>
-          </div>
-        </Card>
+        <LockedFeatureCard
+          data-testid="research-page-upgrade-cta"
+          icon={<Compass />}
+          title={t('locked.title')}
+          description={t('locked.description')}
+          tier={tierRequired === 'business' ? 'business' : 'pro'}
+          onUpgrade={() => setUpgradeOpen(true)}
+          ctaLabel={t('locked.cta')}
+        />
+        <UpgradeModal
+          open={upgradeOpen}
+          onClose={() => setUpgradeOpen(false)}
+          triggeredBy="ai.niche_explorer"
+          recommendedTier={tierRequired}
+        />
       </div>
     );
   }

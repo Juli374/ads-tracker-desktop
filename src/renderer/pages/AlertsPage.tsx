@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import { metricsApi, type AlertItem } from '../api/metrics';
 import {
+  ActiveFiltersBar,
   Card,
   EmptyState,
   ErrorBanner,
@@ -16,7 +17,11 @@ import { dateRangeFor, RangeId } from '../lib/dateRange';
 import { fmtNumber } from '../lib/format';
 import { useToast } from '../contexts/ToastContext';
 import { useNav } from '../contexts/NavContext';
-import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
+import {
+  useGlobalFilters,
+  useGlobalFilterChips,
+} from '../contexts/GlobalFiltersContext';
+import { useBooks } from '../contexts/BooksContext';
 
 type Severity = 'critical' | 'warning' | 'info';
 
@@ -48,6 +53,8 @@ export const AlertsPage: React.FC = () => {
   const toast = useToast();
   const { navigate } = useNav();
   const { filters: globalFilters } = useGlobalFilters();
+  const { list: booksList } = useBooks();
+  const chips = useGlobalFilterChips(booksList);
   const [alerts, setAlerts] = useState<AlertItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [unsupported, setUnsupported] = useState(false);
@@ -131,6 +138,8 @@ export const AlertsPage: React.FC = () => {
           />
         }
       />
+
+      <ActiveFiltersBar chips={chips} />
 
       {unsupported && <ErrorBanner message={t('errors.unsupportedBanner')} />}
 

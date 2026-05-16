@@ -227,7 +227,7 @@ export const AITab: React.FC = () => {
       <Card title={t('ai.keyTitle')}>
         <div className="px-5 py-5 space-y-4">
           <p className="text-xs text-zinc-500 leading-relaxed flex items-start gap-2">
-            <Sparkles size={13} className="text-violet-500 mt-0.5 flex-shrink-0" />
+            <Sparkles size={13} className="text-amber-500 mt-0.5 flex-shrink-0" />
             <span>{t('ai.keySubtitle')}</span>
           </p>
 

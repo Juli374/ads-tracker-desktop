@@ -3,8 +3,8 @@
 // Initializes a rotating log file in `app.getPath('logs')`:
 //   - level=info (debug only when ADS_TRACKER_LOG_LEVEL=debug)
 //   - fileName='ads-tracker.log' (under <userData>/logs/ on Linux/Win,
-//     ~/Library/Logs/Ads Tracker/ on macOS — that is what app.getPath('logs')
-//     returns)
+//     ~/Library/Logs/KDPBook/ on macOS — that is what app.getPath('logs')
+//     returns, derived from productName)
 //   - rotation: 2 MiB per file, max 5 archived files
 //
 // Exposes typed log functions plus `scrubSecrets` so callers can launder
