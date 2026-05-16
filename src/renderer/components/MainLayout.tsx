@@ -30,6 +30,7 @@ import { BooksPage } from '../pages/BooksPage';
 import { CampaignsPage } from '../pages/CampaignsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { CalendarBell } from './CalendarBell';
+import { SyncStatusPill } from './SyncStatusPill';
 
 // Lazy-loaded — остальные страницы вытягиваются по требованию.
 // Каждая идёт в отдельный chunk → ~150–250 KB gzip с initial bundle.
@@ -339,6 +340,8 @@ const Layout: React.FC = () => {
             </span>
           </button>
 
+          <SyncStatusPill />
+
           <CalendarBell />
 
           <NotificationsBell />
@@ -472,10 +475,16 @@ const ConnectionIndicator: React.FC = () => {
 
     const ping = async () => {
       try {
-        // Lightweight call — first 1 row of tasks works for both API-key and JWT auth.
+        // Lightweight call — first 1 row of tasks works for both API-key
+        // (`at_live_*`) AND JWT auth. NB: do NOT use `/api/auth/verify` —
+        // backend rejects API keys there with 401, which our global
+        // api-client interceptor would interpret as session-expired and
+        // sign the user out (Phase I.4 wiring). Bug landed during refactor;
+        // restored to `/api/tasks?limit=1` matching the original comment.
         await window.api.request<unknown>({
           method: 'GET',
-          path: '/api/auth/verify',
+          path: '/api/tasks',
+          query: { limit: 1 },
         });
         if (!cancelled) {
           failureCountRef.current = 0;
