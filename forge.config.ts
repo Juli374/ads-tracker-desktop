@@ -118,6 +118,13 @@ const config: ForgeConfig = {
     // Setting both productName and executableName explicitly here keeps the
     // app brand readable in app menus while making Linux packaging happy.
     executableName: 'ads-tracker',
+    // Ship build/app-update.yml as Resources/app-update.yml inside the
+    // packaged bundle. electron-updater reads it to know the update feed
+    // (GitHub provider + owner + repo). electron-forge doesn't generate
+    // this file (electron-builder does), so we author it by hand. updater.ts
+    // also calls autoUpdater.setFeedURL programmatically as primary path;
+    // this file is the documented fallback when setFeedURL is unavailable.
+    extraResource: ['./build/app-update.yml'],
     // Кастомный protocol regstered at install-time (macOS plist).
     protocols: [
       {

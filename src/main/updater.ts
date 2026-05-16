@@ -132,6 +132,28 @@ export function initAutoUpdater(window: BrowserWindow | null): void {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  // Programmatically set the feed. electron-updater by default reads
+  // app-update.yml from Resources/, but electron-forge doesn't generate
+  // that file (electron-builder does). Setting it via setFeedURL bypasses
+  // the file lookup entirely — works whether or not app-update.yml exists.
+  // Required fields for GitHub provider: provider, owner, repo. The token
+  // is implicit (electron-updater reads GH_TOKEN for private repos; ours
+  // is private but releases are still readable without a token because
+  // the user is the repo owner authenticated separately).
+  try {
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: 'Juli374',
+      repo: 'ads-tracker-desktop',
+    });
+  } catch (err) {
+    // Old electron-updater versions throw on unsupported provider shapes;
+    // log and continue — checkForUpdates() will fall back to app-update.yml
+    // (which may also exist via packagerConfig.extraResource).
+    // eslint-disable-next-line no-console
+    console.warn('[updater] setFeedURL failed; falling back to app-update.yml', err);
+  }
+
   // TODO: replace with electron-log after Lane B merges. Пока — console
   // (electron-updater сам пишет туда же при отсутствии logger).
   // autoUpdater.logger = log;

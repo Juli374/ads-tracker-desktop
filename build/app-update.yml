@@ -1,0 +1,15 @@
+# electron-updater reads this from Resources/app-update.yml inside the
+# packaged .app bundle to know where to look for updates. electron-builder
+# normally generates this at build time, but we use electron-forge — so we
+# ship it as a static asset via packagerConfig.extraResource in forge.config.ts.
+#
+# The token is not embedded here. For a public GitHub repo, none is needed.
+# For a private repo (which this is), the client reads GH_TOKEN from env at
+# runtime — or anonymously, since GitHub Releases on a repo you own are
+# readable when authenticated via the desktop client's stored API token.
+#
+# updater.ts also calls autoUpdater.setFeedURL with the same shape — this
+# YAML is a belt-and-suspenders fallback in case setFeedURL ever fails.
+provider: github
+owner: Juli374
+repo: ads-tracker-desktop
