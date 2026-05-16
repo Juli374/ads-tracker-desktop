@@ -60,6 +60,11 @@ typings/
 # dotenv environment variables file
 .env
 .env.test
+.env.local
+
+# Owner-build env shortcuts — token + tier overrides sourced by the dev
+# launcher. Template lives at local-env.sh.example. Never commit the real one.
+local-env.sh
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

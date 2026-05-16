@@ -1,0 +1,27 @@
+#!/bin/bash
+# Copy to `local-env.sh` (gitignored) and fill in the values you need.
+# The dev launcher sources this file before `npm start`. Packaged builds
+# don't read it — they pick up the env from whatever shell spawned them.
+#
+# All variables are optional. Setting any of them is opt-in dev/owner
+# behavior; nothing here is required for a clean install.
+
+# Owner-build shortcut: skip LoginScreen and authenticate as this token.
+# Generate from /Settings/Tokens on the Railway app, mark "API token", and
+# rotate when this device is decommissioned.
+# export ADS_TRACKER_PERSONAL_TOKEN="at_live_..."
+
+# Force a tier for the current build without round-tripping to
+# /api/me/entitlements. Useful for owner builds (full feature access) and
+# for testing locked-feature UX without a real Pro/Business account.
+# Values: 'start' | 'pro' | 'business'
+# export ADS_TRACKER_FORCE_TIER="business"
+
+# Allow plaintext fallback when safeStorage (OS Keychain / DPAPI) is
+# unavailable — e.g. unsigned DMG before Keychain unlock. Off by default
+# so a release user never trips it silently.
+# export ADS_TRACKER_ALLOW_PLAIN_TOKEN="1"
+
+# Override the backend base URL (e.g. point at staging / a local Flask).
+# Defaults to https://ads-tracker-production.up.railway.app
+# export ADS_TRACKER_API_URL="https://staging.example.com"

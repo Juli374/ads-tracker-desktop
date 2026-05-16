@@ -2,10 +2,12 @@ import { app, safeStorage } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-// Никаких хардкод-токенов в исходниках. Токен берётся из:
+// Источники токена, по приоритету:
 // 1. ENV ADS_TRACKER_API_TOKEN (для CI/тестов)
-// 2. Encrypted via safeStorage (production)
-// 3. Plain-file fallback (unsigned dev — при отсутствии keychain)
+// 2. ENV ADS_TRACKER_PERSONAL_TOKEN (для owner-сборки — экспортируется в
+//    local-env.sh, gitignored)
+// 3. Encrypted via safeStorage (production)
+// 4. Plain-file fallback (unsigned dev — при отсутствии keychain)
 // Если ни один источник не дал токен — возвращаем null, юзер увидит LoginScreen.
 
 const TOKEN_FILE_ENC = 'auth-token.bin';
@@ -20,6 +22,13 @@ const oauthStatePath = (): string => path.join(app.getPath('userData'), OAUTH_ST
 
 function envToken(): string | null {
   const raw = process.env.ADS_TRACKER_API_TOKEN?.trim();
+  return raw && raw.length > 0 ? raw : null;
+}
+
+// Owner-build shortcut. Token comes from a gitignored local-env.sh that the
+// launcher sources before `npm start`. Keep the token OUT of source control.
+function personalEnvToken(): string | null {
+  const raw = process.env.ADS_TRACKER_PERSONAL_TOKEN?.trim();
   return raw && raw.length > 0 ? raw : null;
 }
 
@@ -60,16 +69,19 @@ export async function readToken(): Promise<string | null> {
   const fromEnv = envToken();
   if (fromEnv) return fromEnv;
 
-  // 2) Зашифрованный keychain (production/signed builds)
+  // 2) Owner-build env shortcut (local-env.sh)
+  const fromPersonal = personalEnvToken();
+  if (fromPersonal) return fromPersonal;
+
+  // 3) Зашифрованный keychain (production/signed builds)
   const fromEnc = await readEncrypted();
   if (fromEnc) return fromEnc;
 
-  // 3) Plain-файл (unsigned dev/personal build, fallback когда
-  //    safeStorage недоступен — например DMG без notarization)
+  // 4) Plain-файл (unsigned dev, fallback когда safeStorage недоступен)
   const fromPlain = await readPlain();
   if (fromPlain) return fromPlain;
 
-  // 4) Ничего не нашли — юзер увидит LoginScreen.
+  // 5) Ничего не нашли — юзер увидит LoginScreen.
   return null;
 }
 
