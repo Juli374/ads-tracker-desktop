@@ -151,7 +151,16 @@ const config: ForgeConfig = {
     new PublisherGithub({
       repository: { owner: 'Juli374', name: 'ads-tracker-desktop' },
       prerelease: false,
-      draft: true,
+      // Auto-publish releases immediately (was `true`, which created a Draft
+      // that required a manual click on github.com/.../releases to push live).
+      // electron-updater only sees PUBLISHED releases, so a draft-gated flow
+      // breaks "install-once, self-update forever" — the user has to do an
+      // out-of-band publish click before every update can reach existing
+      // installs. For a personal/owner build the lint+package+make in CI is
+      // enough of a gate. If a public release later wants a smoke-test gate
+      // back, flip this to `true` AND add a `gh release edit --draft=false`
+      // step that runs after manual approval.
+      draft: false,
     }),
   ],
   plugins: [
