@@ -93,7 +93,6 @@ export const CampaignsPage: React.FC = () => {
         const data = await metricsApi.summaryByCampaign({
           from,
           to,
-          attribution: '7d',
           activeOnly,
           marketplaces: globalFilters.marketplaces.length
             ? globalFilters.marketplaces
@@ -320,13 +319,13 @@ export const CampaignsPage: React.FC = () => {
                 <th className="text-left px-3 py-2 font-medium">{t('list.th.book')}</th>
                 <th className="text-left px-3 py-2 font-medium">MP</th>
                 <th className="text-left px-3 py-2 font-medium">{t('list.th.type')}</th>
+                <th className="text-left px-3 py-2 font-medium">Status</th>
                 <th className="text-right px-3 py-2 font-medium">Spend</th>
                 <th className="text-right px-3 py-2 font-medium">Sales</th>
                 <th className="text-right px-3 py-2 font-medium">Orders</th>
                 <th className="text-right px-3 py-2 font-medium">CTR</th>
                 <th className="text-right px-3 py-2 font-medium">ACOS</th>
-                <th className="px-2 py-2 w-9"></th>
-                <th className="px-3 py-2 w-9"></th>
+                <th className="px-3 py-2 w-16"></th>
               </tr>
             </thead>
             {loading && !summary ? (
@@ -421,7 +420,7 @@ const CampaignRow: React.FC<{
 
   return (
     <tr
-      className="group border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
+      className="border-t border-zinc-100 hover:bg-zinc-50/80 cursor-pointer transition-colors"
       onClick={onDrillDown}
       title={t('list.row.openSearchTerms')}
     >
@@ -429,11 +428,9 @@ const CampaignRow: React.FC<{
         <div className="text-xs text-zinc-900 truncate" title={c.campaign_name}>
           {c.campaign_name}
         </div>
-        {c.status && (
-          <div className="text-[10px] text-zinc-400 mt-0.5">
-            {c.targeting_type} · {c.status}
-          </div>
-        )}
+        <div className="text-[10px] text-zinc-400 mt-0.5">
+          {c.targeting_type}
+        </div>
       </td>
       <td className="px-3 py-2.5 max-w-[160px]">
         <div className="text-xs text-zinc-700 truncate" title={c.book_title}>
@@ -446,6 +443,33 @@ const CampaignRow: React.FC<{
       </td>
       <td className="px-3 py-2.5 text-xs text-zinc-600 uppercase">
         {c.campaign_type}
+      </td>
+      <td className="px-3 py-2.5">
+        <button
+          onClick={onTogglePause}
+          disabled={busy}
+          data-testid={`campaign-pause-${c.campaign_id}`}
+          className={`
+            inline-flex items-center gap-1 h-6 px-2 rounded text-[10px] font-medium uppercase tracking-wide
+            transition-colors disabled:opacity-50
+            ${isPaused
+              ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200'
+              : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'}
+          `}
+          title={
+            isPaused
+              ? t('details.header.resumeTitle')
+              : t('details.header.pauseTitle')
+          }
+          aria-label={
+            isPaused
+              ? t('details.header.resumeTitle')
+              : t('details.header.pauseTitle')
+          }
+        >
+          {isPaused ? <Play size={9} /> : <Pause size={9} />}
+          {isPaused ? 'Paused' : 'Active'}
+        </button>
       </td>
       <td className="px-3 py-2.5 text-xs text-zinc-900 text-right tabular-nums">
         {fmtMoney(c.cost, c.currency)}
@@ -464,46 +488,23 @@ const CampaignRow: React.FC<{
           {c.acos > 0 ? fmtPct(c.acos) : '—'}
         </span>
       </td>
-      <td className="px-2 py-2.5 text-right">
-        <button
-          onClick={onTogglePause}
-          disabled={busy}
-          data-testid={`campaign-pause-${c.campaign_id}`}
-          className={`
-            h-6 w-6 flex items-center justify-center rounded transition-colors disabled:opacity-50
-            ${isPaused
-              ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
-              : 'text-amber-600 hover:text-amber-700 hover:bg-amber-50'}
-          `}
-          title={
-            isPaused
-              ? t('details.header.resumeTitle')
-              : t('details.header.pauseTitle')
-          }
-          aria-label={
-            isPaused
-              ? t('details.header.resumeTitle')
-              : t('details.header.pauseTitle')
-          }
-        >
-          {isPaused ? <Play size={11} /> : <Pause size={11} />}
-        </button>
-      </td>
       <td className="px-3 py-2.5 text-right">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onEdit();
           }}
+          data-testid={`campaign-edit-${c.campaign_id}`}
           className="
-            h-6 w-6 flex items-center justify-center rounded
-            text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200
-            opacity-0 group-hover:opacity-100 transition-opacity
+            h-6 px-2 inline-flex items-center gap-1 rounded
+            text-[11px] text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100
+            border border-zinc-200 bg-white transition-colors
           "
           title={t('list.row.edit')}
           aria-label={t('list.row.editAria')}
         >
-          <Pencil size={11} />
+          <Pencil size={10} />
+          Edit
         </button>
       </td>
     </tr>
