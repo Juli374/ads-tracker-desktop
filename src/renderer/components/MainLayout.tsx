@@ -31,6 +31,7 @@ import { CampaignsPage } from '../pages/CampaignsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { CalendarBell } from './CalendarBell';
 import { SyncStatusPill } from './SyncStatusPill';
+import { UpdatePill } from './UpdatePill';
 
 // Lazy-loaded — остальные страницы вытягиваются по требованию.
 // Каждая идёт в отдельный chunk → ~150–250 KB gzip с initial bundle.
@@ -339,6 +340,8 @@ const Layout: React.FC = () => {
               ⌘K
             </span>
           </button>
+
+          <UpdatePill />
 
           <SyncStatusPill />
 
