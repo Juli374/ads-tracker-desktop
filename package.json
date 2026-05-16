@@ -11,7 +11,7 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "test": "vitest run",
+    "test": "vitest run --pool=forks --no-file-parallelism",
     "test:watch": "vitest"
   },
   "keywords": [],
