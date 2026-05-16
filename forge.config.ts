@@ -96,6 +96,14 @@ const config: ForgeConfig = {
     icon: 'assets/icon',
     appBundleId: 'com.juli374.ads-tracker',
     appCategoryType: 'public.app-category.business',
+    // electron-installer-debian (MakerDeb) hard-codes a lookup for the binary
+    // at <out>/<appName>-<platform>-<arch>/<executableName>. Without this,
+    // executableName falls back to package.json `name` (ads-tracker-desktop)
+    // while the binary actually ships as the productName ("Ads Tracker") —
+    // Linux build fails with "could not find the Electron app binary".
+    // Setting both productName and executableName explicitly here keeps the
+    // app brand readable in app menus while making Linux packaging happy.
+    executableName: 'ads-tracker',
     // Кастомный protocol regstered at install-time (macOS plist).
     protocols: [
       {

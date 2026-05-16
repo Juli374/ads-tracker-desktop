@@ -80,11 +80,13 @@ jobs:
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-      # PublisherGithub reads GH_TOKEN. Fall back to the built-in GITHUB_TOKEN
-      # so the publish step works without manual secret setup — the workflow
-      # already declares `contents: write` permissions for it. Owners who
-      # want to publish from a fork or with extra scopes set GH_TOKEN
-      # explicitly and that takes precedence.
+      # @electron-forge/publisher-github reads GITHUB_TOKEN. Earlier attempt
+      # set GH_TOKEN (the `gh` CLI naming) instead and publish died with
+      # "Please set GITHUB_TOKEN in your environment". The built-in
+      # GITHUB_TOKEN already has `contents: write` from the permissions
+      # block above, so no manual secret setup needed. GH_TOKEN is kept as
+      # well so any release step that shells out to `gh` keeps working.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
       APPLE_CERT_BASE64_PRESENT: ${{ secrets.APPLE_CERT_BASE64 != '' }}
       WIN_CSC_LINK_PRESENT: ${{ secrets.WIN_CSC_LINK != '' }}
