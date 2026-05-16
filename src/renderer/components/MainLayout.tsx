@@ -319,7 +319,7 @@ const Layout: React.FC = () => {
           <span className="text-sm font-semibold text-zinc-900 tracking-tight">
             Ads Tracker
           </span>
-          <span className="text-xs text-zinc-400 ml-1">v0.1.0</span>
+          <AppVersionLabel />
         </div>
 
         <div className="flex items-center gap-2">
@@ -395,6 +395,23 @@ const PageFallback: React.FC = () => (
     <Loader2 size={18} className="animate-spin text-zinc-400" />
   </div>
 );
+
+// Reads version from main (`app.getVersion()` via AppGetVersion IPC) so the
+// label tracks package.json without anyone needing to remember to bump a
+// hardcoded string. Renders nothing until the IPC resolves to avoid layout
+// shift on first paint.
+const AppVersionLabel: React.FC = () => {
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    if (!window.api?.app) return;
+    window.api.app
+      .getInfo()
+      .then((info) => setVersion(info.version))
+      .catch(() => setVersion(null));
+  }, []);
+  if (!version) return null;
+  return <span className="text-xs text-zinc-400 ml-1">v{version}</span>;
+};
 
 interface NavItemRowProps {
   item: NavItem;
