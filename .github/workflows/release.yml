@@ -173,6 +173,24 @@ jobs:
       - name: Make installers
         run: npm run make
 
+      # ----- Generate electron-updater manifests ---------------------------
+      # PublisherGithub doesn't emit `latest-mac.yml` / `latest.yml`, which
+      # electron-updater on the installed client reads to detect new
+      # versions. Without these, the auto-update pipeline dead-ends at 404.
+      # Our script walks out/make/, computes sha512 over the .zip (mac) /
+      # Setup.exe (win) artefact for this platform, and writes the matching
+      # YAML to out/manifests/.
+      - name: Generate update manifests
+        run: node scripts/generate-update-manifest.js
+
+      - name: Stage manifests next to installers
+        shell: bash
+        run: |
+          mkdir -p out/make
+          if [ -d out/manifests ]; then
+            cp -v out/manifests/*.yml out/make/ 2>/dev/null || true
+          fi
+
       # ----- Upload workflow artefacts (always) ----------------------------
       # Even when we skip publish, having the installers as a workflow
       # artefact lets a reviewer download and smoke-test them before the
@@ -208,3 +226,27 @@ jobs:
           startsWith(github.ref, 'refs/tags/v') &&
           env.GH_TOKEN_PRESENT == 'true'
         run: npm run publish
+
+      # ----- Upload update manifests onto the Release ----------------------
+      # `npm run publish` (forge PublisherGithub) creates/updates a draft
+      # Release and uploads the installer artefacts, but NOT the manifest
+      # YAMLs we just generated. Attach them with `gh release upload` so
+      # electron-updater on the installed client can find latest-mac.yml /
+      # latest.yml at https://github.com/<owner>/<repo>/releases/latest/download/.
+      - name: Upload update manifests to Release
+        if: |
+          startsWith(github.ref, 'refs/tags/v') &&
+          env.GH_TOKEN_PRESENT == 'true'
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if [ -d out/manifests ] && ls out/manifests/*.yml >/dev/null 2>&1; then
+            for f in out/manifests/*.yml; do
+              echo "Uploading $f to release $TAG"
+              gh release upload "$TAG" "$f" --clobber
+            done
+          else
+            echo "No manifest files found in out/manifests; skipping upload"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
