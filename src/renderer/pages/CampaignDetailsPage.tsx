@@ -164,7 +164,6 @@ export const CampaignDetailsPage: React.FC = () => {
         const data: CampaignSummary = await metricsApi.summaryByCampaign({
           from,
           to,
-          attribution: '7d',
         });
         const found = data.campaigns.find((c) => c.campaign_id === campaignId);
         if (!found) {
@@ -478,6 +477,25 @@ const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
     }
   };
 
+  const onToggleState = async (id: number, current: string | undefined) => {
+    const next: 'enabled' | 'paused' =
+      (current ?? '').toLowerCase() === 'paused' ? 'enabled' : 'paused';
+    setList((prev) =>
+      prev ? prev.map((g) => (g.id === id ? { ...g, state: next } : g)) : prev,
+    );
+    try {
+      await adGroupsApi.update(id, { state: next });
+      toast.success(t('details.header.stateUpdated'));
+    } catch (err) {
+      setList((prev) =>
+        prev ? prev.map((g) => (g.id === id ? { ...g, state: current } : g)) : prev,
+      );
+      toast.error(
+        err instanceof ApiError ? err.message : t('details.header.stateUpdateFailed'),
+      );
+    }
+  };
+
   return (
     <Card
       title="Ad Groups"
@@ -508,10 +526,16 @@ const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
             </tr>
           </thead>
           <tbody>
-            {list.map((g) => (
+            {list.map((g) => {
+              const isPaused = (g.state ?? '').toLowerCase() === 'paused';
+              return (
               <tr key={g.id} className="border-t border-zinc-100 hover:bg-zinc-50/60">
                 <td className="px-5 py-2.5 text-xs text-zinc-900">{g.name}</td>
-                <td className="px-3 py-2.5 text-[11px] text-zinc-600">{g.state ?? '—'}</td>
+                <td className="px-3 py-2.5 text-[11px]">
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${isPaused ? 'text-amber-700 bg-amber-50' : 'text-emerald-700 bg-emerald-50'}`}>
+                    {g.state ?? '—'}
+                  </span>
+                </td>
                 <td className="px-3 py-2.5 text-xs text-right">
                   <EditableNumber
                     value={g.default_bid}
@@ -525,9 +549,24 @@ const AdGroupsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
                 <td className="px-3 py-2.5 text-xs text-zinc-700 text-right tabular-nums">
                   {fmtNumber((g as AdGroup & { targets_count?: number }).targets_count ?? 0)}
                 </td>
-                <td className="px-5 py-2.5"></td>
+                <td className="px-5 py-2.5 text-right">
+                  <button
+                    type="button"
+                    onClick={() => onToggleState(g.id, g.state)}
+                    data-testid={`adgroup-state-toggle-${g.id}`}
+                    title={isPaused ? t('details.header.resumeTitle') : t('details.header.pauseTitle')}
+                    className={`h-6 w-6 inline-flex items-center justify-center rounded transition-colors ${
+                      isPaused
+                        ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
+                        : 'text-amber-600 hover:text-amber-700 hover:bg-amber-50'
+                    }`}
+                  >
+                    {isPaused ? <Play size={11} /> : <Pause size={11} />}
+                  </button>
+                </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       )}
