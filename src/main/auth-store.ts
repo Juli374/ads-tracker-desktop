@@ -99,22 +99,18 @@ export async function writeToken(token: string): Promise<void> {
     await fs.writeFile(encPath(), encrypted, { mode: 0o600 });
     return;
   }
-  // Fallback: запись без шифрования НЕ разрешена по умолчанию. Это убирает
-  // незаметную ловушку, в которой токен оказывался на диске в plaintext, если
-  // safeStorage внезапно недоступен (например первый запуск signed-DMG до
-  // unlock'а keychain'а). Опт-ин — только через ENV, чтобы dev мог
-  // воспроизвести сценарий локально, но release-юзер никогда не наткнётся.
-  if (process.env.ADS_TRACKER_ALLOW_PLAIN_TOKEN === '1') {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[auth-store] safeStorage unavailable — writing token in plaintext per ADS_TRACKER_ALLOW_PLAIN_TOKEN=1',
-    );
-    await fs.writeFile(plainPath(), token, { encoding: 'utf8', mode: 0o600 });
-    return;
-  }
-  throw new Error(
-    'safeStorage encryption unavailable. Set ADS_TRACKER_ALLOW_PLAIN_TOKEN=1 to opt into plaintext fallback (dev only).',
-  );
+  // Fallback: unsigned packaged macOS DMG can't reach the user's Keychain
+  // until the OS deems the app "trusted" (usually after Gatekeeper signs off
+  // — which never happens for unsigned apps). The env-gated throw above
+  // blocked every login on unsigned builds, including the LoginScreen "paste
+  // token" flow that's the ONLY way for a fresh install to authenticate.
+  //
+  // Silently fall back to a mode-0o600 plaintext file in userData (owner-only
+  // on disk). Once the project moves to a signed + notarised DMG, safeStorage
+  // becomes available and this branch never runs.
+  // eslint-disable-next-line no-console
+  console.warn('[auth-store] safeStorage unavailable — falling back to plaintext (0o600) in userData');
+  await fs.writeFile(plainPath(), token, { encoding: 'utf8', mode: 0o600 });
 }
 
 export async function clearToken(): Promise<void> {
