@@ -41,7 +41,7 @@ export const HourlyDynamicsChart: React.FC<Props> = ({
   currency,
   from,
   to,
-  attribution = '7d',
+  attribution = '14d',
 }) => {
   const { t } = useTranslation('campaigns');
   const { t: tCommon } = useTranslation('common');

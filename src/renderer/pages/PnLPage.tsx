@@ -38,7 +38,7 @@ export const PnLPage: React.FC = () => {
   const chips = useGlobalFilterChips(booksList);
 
   const [range, setRange] = useState<RangeId>('30d');
-  const [attribution, setAttribution] = useState<Attribution>('7d');
+  const [attribution, setAttribution] = useState<Attribution>('14d');
   const [source, setSource] = useState<PnLSource>(readSource);
   const [data, setData] = useState<PnLData | null>(null);
   const [daily, setDaily] = useState<DailySummary | null>(null);

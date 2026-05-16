@@ -271,7 +271,7 @@ export const ComparisonPage: React.FC = () => {
 
   const filterParams = useMemo(
     () => ({
-      attribution: '7d' as const,
+      attribution: '14d' as const,
       marketplaces: globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined,
       bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
       accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,

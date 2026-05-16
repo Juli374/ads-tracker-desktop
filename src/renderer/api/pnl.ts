@@ -165,7 +165,7 @@ export async function computePnL(params: ComputePnLParams): Promise<PnLData> {
   const {
     from,
     to,
-    attribution = '7d',
+    attribution = '14d',
     source = 'cloud',
     targetMonth = monthOf(to),
     marketplace,

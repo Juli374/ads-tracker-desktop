@@ -91,7 +91,6 @@ export const DashboardPage: React.FC = () => {
     () => ({
       from,
       to,
-      attribution: '7d' as const,
       marketplaces: globalFilters.marketplaces.length
         ? globalFilters.marketplaces
         : undefined,
@@ -280,7 +279,7 @@ export const DashboardPage: React.FC = () => {
             <AlertsWidget
               from={from}
               to={to}
-              attribution="7d"
+              attribution="14d"
               marketplaces={filterParams.marketplaces}
               bookIds={filterParams.bookIds}
               accounts={filterParams.accounts}
@@ -298,7 +297,7 @@ export const DashboardPage: React.FC = () => {
       <OrganicPaidBlock
         from={from}
         to={to}
-        attribution="7d"
+        attribution="14d"
         marketplaces={filterParams.marketplaces}
         bookIds={filterParams.bookIds}
         accounts={filterParams.accounts}

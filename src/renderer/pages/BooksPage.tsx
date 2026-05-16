@@ -90,7 +90,6 @@ export const BooksPage: React.FC = () => {
           metricsApi.summaryByBook({
             from,
             to,
-            attribution: '7d',
             marketplaces: globalFilters.marketplaces.length
               ? globalFilters.marketplaces
               : undefined,
@@ -220,7 +219,6 @@ export const BooksPage: React.FC = () => {
       const data = await metricsApi.summaryByCampaign({
         from,
         to,
-        attribution: '7d',
         bookIds: booksDrill.selectedBookId != null ? [booksDrill.selectedBookId] : undefined,
         marketplaces: [marketplace],
       });

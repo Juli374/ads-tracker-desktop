@@ -25,7 +25,7 @@ const severityIcon = (sev: string) => {
 export const AlertsWidget: React.FC<Props> = ({
   from,
   to,
-  attribution = '7d',
+  attribution = '14d',
   marketplaces,
   bookIds,
   accounts,

@@ -80,7 +80,6 @@ export const CampaignWeeklyMetrics: React.FC<Props> = ({
       .summaryWeekly({
         from: range.from,
         to: range.to,
-        attribution: '7d',
         bookIds: bookId != null ? [bookId] : undefined,
         marketplaces: marketplace ? [marketplace] : undefined,
       })

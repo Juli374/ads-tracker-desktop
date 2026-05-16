@@ -173,7 +173,6 @@ export const ReportsPage: React.FC = () => {
       const common = {
         from,
         to,
-        attribution: '7d' as const,
         marketplaces: globalFilters.marketplaces.length
           ? globalFilters.marketplaces
           : undefined,
@@ -353,7 +352,7 @@ export const ReportsPage: React.FC = () => {
           }
           from={from}
           to={to}
-          attribution="7d"
+          attribution="14d"
           marketplaces={
             globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
           }
@@ -366,7 +365,7 @@ export const ReportsPage: React.FC = () => {
         <MatrixTab
           from={from}
           to={to}
-          attribution="7d"
+          attribution="14d"
           marketplaces={
             globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
           }
@@ -379,7 +378,7 @@ export const ReportsPage: React.FC = () => {
         <HourlyTab
           from={from}
           to={to}
-          attribution="7d"
+          attribution="14d"
           marketplaces={
             globalFilters.marketplaces.length ? globalFilters.marketplaces : undefined
           }

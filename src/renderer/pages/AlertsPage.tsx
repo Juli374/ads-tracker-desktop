@@ -64,7 +64,6 @@ export const AlertsPage: React.FC = () => {
         const res = await metricsApi.alerts({
           from,
           to,
-          attribution: '7d',
           marketplaces: globalFilters.marketplaces.length
             ? globalFilters.marketplaces
             : undefined,

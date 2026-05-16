@@ -409,6 +409,13 @@ export interface CampaignAllChangesResponse {
 
 export type Attribution = '1d' | '7d' | '14d' | '30d';
 
+// Parity with the Railway frontend (CloudscapeDashboard default).
+// 7d under-counts royalty/ACOS because Kindle purchases often complete in the
+// second week after a click; the original web app shipped with 14d as the
+// canonical default and authors compare numbers against that. If you ever need
+// to A/B-test windows, change at the call site — not here.
+export const DEFAULT_ATTRIBUTION: Attribution = '14d';
+
 export interface RangeParams {
   from?: string;
   to?: string;
@@ -428,7 +435,7 @@ function buildSummaryQuery(
   return {
     from: params.from,
     to: params.to,
-    attribution: params.attribution ?? '7d',
+    attribution: params.attribution ?? DEFAULT_ATTRIBUTION,
     marketplace: params.marketplace,
     'accounts[]': params.accounts,
     'marketplaces[]': params.marketplaces,
@@ -526,7 +533,7 @@ export const metricsApi = {
         {
           from: params.from,
           to: params.to,
-          attribution: params.attribution ?? '7d',
+          attribution: params.attribution ?? DEFAULT_ATTRIBUTION,
         },
       );
       if (direct && typeof direct === 'object' && 'campaign_id' in direct) {
@@ -550,7 +557,7 @@ export const metricsApi = {
       {
         from: params.from,
         to: params.to,
-        attribution: params.attribution ?? '7d',
+        attribution: params.attribution ?? DEFAULT_ATTRIBUTION,
       },
     );
   },
@@ -564,7 +571,7 @@ export const metricsApi = {
       {
         from: params.from,
         to: params.to,
-        attribution: params.attribution ?? '7d',
+        attribution: params.attribution ?? DEFAULT_ATTRIBUTION,
       },
     );
   },
