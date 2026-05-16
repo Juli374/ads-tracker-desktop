@@ -92,7 +92,21 @@ const squirrelOptions: ConstructorParameters<typeof MakerSquirrel>[0] = {
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true,
+    // AutoUnpackNativesPlugin handles `.node` files automatically, but sharp's
+    // libvips ships as a separate package (`@img/sharp-libvips-darwin-arm64`)
+    // whose payload is `.dylib` (not `.node`), so the auto-unpack logic leaves
+    // it INSIDE app.asar. dlopen() can't follow @rpath into an asar bundle,
+    // and v3.2.5 booted with "Library not loaded: @rpath/libvips-cpp.8.17.3.dylib"
+    // on every fresh install.
+    //
+    // Force-unpack the whole `@img` subtree from node_modules so all libvips
+    // shared libs land on disk where dlopen can find them. The pattern also
+    // keeps `.node` files unpacked (redundant with AutoUnpackNativesPlugin —
+    // belt + suspenders so a single forge-plugin removal doesn't silently
+    // re-break this).
+    asar: {
+      unpack: '**/{*.node,**/node_modules/@img/**/*}',
+    },
     icon: 'assets/icon',
     appBundleId: 'com.juli374.ads-tracker',
     appCategoryType: 'public.app-category.business',
