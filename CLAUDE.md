@@ -1,6 +1,6 @@
 # CLAUDE.md — KDPBook Desktop (Ads Tracker)
 
-> **Что это:** Electron desktop-клиент **KDPBook** (модуль Ads Tracker). **Только клиент.** Бэкенд (Flask + Neon PostgreSQL) живёт в `Juli374/ads-tracker` и сюда не входит.
+> **Что это:** Electron desktop-клиент **KDPBook** (модуль Ads Tracker). **Только клиент.** Бэкенд (Flask + Railway PostgreSQL) живёт в `Juli374/ads-tracker` и сюда не входит.
 >
 > **Brand:** surface = "KDPBook · Ads Tracker" (hybrid wordmark per Phase Q). HTML title / dock / native dialogs = "KDPBook". `appBundleId`, URL scheme `ads-tracker-desktop://`, GitHub repo `Juli374/ads-tracker-desktop` — НЕ менять, ломает auto-update + signed installs.
 
