@@ -173,24 +173,6 @@ jobs:
       - name: Make installers
         run: npm run make
 
-      # ----- Generate electron-updater manifests ---------------------------
-      # PublisherGithub doesn't emit `latest-mac.yml` / `latest.yml`, which
-      # electron-updater on the installed client reads to detect new
-      # versions. Without these, the auto-update pipeline dead-ends at 404.
-      # Our script walks out/make/, computes sha512 over the .zip (mac) /
-      # Setup.exe (win) artefact for this platform, and writes the matching
-      # YAML to out/manifests/.
-      - name: Generate update manifests
-        run: node scripts/generate-update-manifest.js
-
-      - name: Stage manifests next to installers
-        shell: bash
-        run: |
-          mkdir -p out/make
-          if [ -d out/manifests ]; then
-            cp -v out/manifests/*.yml out/make/ 2>/dev/null || true
-          fi
-
       # ----- Upload workflow artefacts (always) ----------------------------
       # Even when we skip publish, having the installers as a workflow
       # artefact lets a reviewer download and smoke-test them before the
@@ -208,7 +190,6 @@ jobs:
             out/**/*.deb
             out/**/*.rpm
             out/**/*.AppImage
-            out/**/latest*.yml
           if-no-files-found: warn
           retention-days: 14
 
@@ -227,12 +208,30 @@ jobs:
           env.GH_TOKEN_PRESENT == 'true'
         run: npm run publish
 
+      # ----- Generate electron-updater manifests (POST-publish) ------------
+      # Phase Q.5+ — moved AFTER publish because forge PublisherGithub
+      # re-archives/re-compresses some artefacts on upload (different mtimes,
+      # different filename casing for Windows Setup.exe). Hashing the local
+      # `out/make/` files BEFORE publish produced manifests whose sha512 did
+      # not match the actually-uploaded asset → "sha512 checksum mismatch"
+      # on the client. Fix: download the asset from the freshly-published
+      # release and hash THAT. The script falls back to local hashing when
+      # --remote is not passed (workflow_dispatch dry runs).
+      - name: Generate update manifests from released assets
+        if: |
+          startsWith(github.ref, 'refs/tags/v') &&
+          env.GH_TOKEN_PRESENT == 'true'
+        shell: bash
+        run: node scripts/generate-update-manifest.js --remote "${GITHUB_REF#refs/tags/}"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+
       # ----- Upload update manifests onto the Release ----------------------
       # `npm run publish` (forge PublisherGithub) creates/updates a draft
       # Release and uploads the installer artefacts, but NOT the manifest
-      # YAMLs we just generated. Attach them with `gh release upload` so
-      # electron-updater on the installed client can find latest-mac.yml /
-      # latest.yml at https://github.com/<owner>/<repo>/releases/latest/download/.
+      # YAMLs. Attach them with `gh release upload` so electron-updater on
+      # the installed client can find latest-mac.yml / latest.yml at
+      # https://github.com/<owner>/<repo>/releases/latest/download/.
       - name: Upload update manifests to Release
         if: |
           startsWith(github.ref, 'refs/tags/v') &&

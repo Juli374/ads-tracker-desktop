@@ -12,14 +12,19 @@
 // the existing assets via `gh release upload`.
 //
 // Usage:
-//   node scripts/generate-update-manifest.js <out-make-dir> <output-dir>
-//
-// Or with defaults (out/make → out/manifests):
 //   node scripts/generate-update-manifest.js
+//     (default — hash local out/make/*.zip and out/make/*.Setup.exe)
+//
+//   node scripts/generate-update-manifest.js --remote v3.3.0
+//     (download artefacts from the named GitHub Release and hash THOSE.
+//      Required when PublisherGithub re-archives files between local make
+//      and upload, which produces a stable but DIFFERENT sha than the
+//      local out/make/ file. See release.yml comment for context.)
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execSync } = require('child_process');
 
 function findFiles(rootDir, predicate) {
   const results = [];
@@ -62,10 +67,10 @@ function toYaml({ version, files, path: topPath, sha512, releaseDate }) {
   return lines.join('\n') + '\n';
 }
 
-function manifestFor(targetFile, version, releaseDate) {
+function manifestFor(targetFile, urlName, version, releaseDate) {
   const stat = fs.statSync(targetFile);
   const sha = sha512Base64(targetFile);
-  const url = path.basename(targetFile);
+  const url = urlName || path.basename(targetFile);
   return toYaml({
     version,
     files: [{ url, sha512: sha, size: stat.size }],
@@ -75,56 +80,117 @@ function manifestFor(targetFile, version, releaseDate) {
   });
 }
 
+// Download a single release asset to a temp dir and return the local path.
+function downloadAsset(tag, assetName, downloadsDir) {
+  fs.mkdirSync(downloadsDir, { recursive: true });
+  const outPath = path.join(downloadsDir, assetName);
+  console.log(`[generate-update-manifest] downloading ${assetName} from release ${tag}`);
+  // Use gh release download to fetch the exact bytes published.
+  execSync(
+    `gh release download ${tag} --pattern '${assetName}' --output ${JSON.stringify(outPath)} --clobber`,
+    { stdio: 'inherit' },
+  );
+  return outPath;
+}
+
+function listReleaseAssetNames(tag) {
+  const json = execSync(`gh release view ${tag} --json assets --jq '.assets[].name'`, {
+    encoding: 'utf8',
+  });
+  return json.split('\n').filter(Boolean);
+}
+
 function main() {
-  const outMake = process.argv[2] || path.join(process.cwd(), 'out', 'make');
-  const outDir = process.argv[3] || path.join(process.cwd(), 'out', 'manifests');
+  const args = process.argv.slice(2);
+  let remoteTag = null;
+  const remoteIdx = args.indexOf('--remote');
+  if (remoteIdx !== -1) {
+    remoteTag = args[remoteIdx + 1];
+    if (!remoteTag) {
+      console.error('[generate-update-manifest] --remote requires a tag argument');
+      process.exit(1);
+    }
+  }
+
+  const outDir = path.join(process.cwd(), 'out', 'manifests');
   const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
   const version = pkg.version;
   const releaseDate = new Date().toISOString();
+  fs.mkdirSync(outDir, { recursive: true });
 
+  if (remoteTag) {
+    // Remote mode — hash the actually-published assets so the manifest
+    // sha512 matches what electron-updater will download.
+    const downloadsDir = path.join(process.cwd(), 'out', 'release-downloads');
+    fs.mkdirSync(downloadsDir, { recursive: true });
+    const assetNames = listReleaseAssetNames(remoteTag);
+
+    // macOS — find darwin .zip (electron-updater downloads the .zip, not the .dmg)
+    const macZipName = assetNames.find((n) => /darwin.*arm64.*\.zip$/i.test(n))
+      || assetNames.find((n) => /darwin.*\.zip$/i.test(n));
+    if (macZipName) {
+      const localPath = downloadAsset(remoteTag, macZipName, downloadsDir);
+      const yaml = manifestFor(localPath, macZipName, version, releaseDate);
+      const out = path.join(outDir, 'latest-mac.yml');
+      fs.writeFileSync(out, yaml);
+      console.log(`[generate-update-manifest] ${out} → ${macZipName}`);
+    } else {
+      console.log('[generate-update-manifest] no darwin .zip on release, skipping latest-mac.yml');
+    }
+
+    // Windows — Setup.exe
+    const winExeName = assetNames.find((n) => /Setup\.exe$/i.test(n));
+    if (winExeName) {
+      const localPath = downloadAsset(remoteTag, winExeName, downloadsDir);
+      const yaml = manifestFor(localPath, winExeName, version, releaseDate);
+      const out = path.join(outDir, 'latest.yml');
+      fs.writeFileSync(out, yaml);
+      console.log(`[generate-update-manifest] ${out} → ${winExeName}`);
+    } else {
+      console.log('[generate-update-manifest] no Setup.exe on release, skipping latest.yml');
+    }
+
+    // Linux — AppImage
+    const linuxAppImageName = assetNames.find((n) => /\.AppImage$/i.test(n));
+    if (linuxAppImageName) {
+      const localPath = downloadAsset(remoteTag, linuxAppImageName, downloadsDir);
+      const yaml = manifestFor(localPath, linuxAppImageName, version, releaseDate);
+      const out = path.join(outDir, 'latest-linux.yml');
+      fs.writeFileSync(out, yaml);
+      console.log(`[generate-update-manifest] ${out} → ${linuxAppImageName}`);
+    }
+    return;
+  }
+
+  // Local mode (legacy / dry-run) — hash files in out/make/
+  const outMake = args[0] || path.join(process.cwd(), 'out', 'make');
   if (!fs.existsSync(outMake)) {
     console.error(`[generate-update-manifest] out/make dir not found: ${outMake}`);
     process.exit(1);
   }
-  fs.mkdirSync(outDir, { recursive: true });
 
-  // electron-updater on macOS reads `latest-mac.yml` and downloads the .zip
-  // (NOT the .dmg — the .dmg is for human-driven first install only).
   const macZips = findFiles(outMake, (p) => /-darwin-.+\.zip$/i.test(p));
   if (macZips.length > 0) {
-    // If multiple arches, prefer arm64 for Apple Silicon. electron-updater
-    // also supports listing both in the files: array with arch suffixes; for
-    // a single-arch build we just emit the one we have.
     const zip = macZips.find((p) => /arm64/i.test(p)) || macZips[0];
-    const yaml = manifestFor(zip, version, releaseDate);
+    const yaml = manifestFor(zip, null, version, releaseDate);
     const out = path.join(outDir, 'latest-mac.yml');
     fs.writeFileSync(out, yaml);
     console.log(`[generate-update-manifest] ${out} → ${path.basename(zip)}`);
-  } else {
-    console.log('[generate-update-manifest] no macOS .zip found, skipping latest-mac.yml');
   }
 
-  // Windows: electron-updater reads `latest.yml` and downloads the NSIS .exe
-  // installer. Squirrel-made .nupkg is for the legacy Squirrel updater path
-  // which electron-updater doesn't use.
   const winExes = findFiles(outMake, (p) => /Setup\.exe$/i.test(p));
   if (winExes.length > 0) {
     const exe = winExes[0];
-    const yaml = manifestFor(exe, version, releaseDate);
+    const yaml = manifestFor(exe, null, version, releaseDate);
     const out = path.join(outDir, 'latest.yml');
     fs.writeFileSync(out, yaml);
     console.log(`[generate-update-manifest] ${out} → ${path.basename(exe)}`);
-  } else {
-    console.log('[generate-update-manifest] no Windows Setup.exe found, skipping latest.yml');
   }
 
-  // Linux: electron-updater on linux reads `latest-linux.yml` (or per-arch).
-  // AppImage is the canonical update channel; .deb/.rpm are installer-only.
-  // We don't ship AppImage today (forge makers are deb/rpm only) so skip.
   const linuxAppImages = findFiles(outMake, (p) => /\.AppImage$/i.test(p));
   if (linuxAppImages.length > 0) {
     const img = linuxAppImages[0];
-    const yaml = manifestFor(img, version, releaseDate);
+    const yaml = manifestFor(img, null, version, releaseDate);
     const out = path.join(outDir, 'latest-linux.yml');
     fs.writeFileSync(out, yaml);
     console.log(`[generate-update-manifest] ${out} → ${path.basename(img)}`);
