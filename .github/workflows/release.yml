@@ -62,7 +62,11 @@ jobs:
       # other artefacts so the human reviewer has something to ship.
       fail-fast: false
       matrix:
-        os: [macos-14, windows-2022, ubuntu-22.04]
+        # Linux dropped 2026-05-17 — personal-use track, KDP author audience
+        # is ~99% macOS+Windows, Linux desktop share ≈3% globally and lower
+        # among self-publishers. Re-add `ubuntu-22.04` before Phase 5/6
+        # public release if Linux support becomes a real audience need.
+        os: [macos-14, windows-2022]
 
     # Job-level env so:
     #   1. step-level `if:` clauses can use `env.X != ''` to detect

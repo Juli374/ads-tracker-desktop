@@ -1,9 +1,9 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
-import { MakerDeb } from '@electron-forge/maker-deb';
-import { MakerRpm } from '@electron-forge/maker-rpm';
 import { MakerDMG } from '@electron-forge/maker-dmg';
+// MakerDeb / MakerRpm dropped 2026-05-17 — see release.yml matrix comment.
+// Re-import + re-add to makers[] when Linux support is needed again.
 import { PublisherGithub } from '@electron-forge/publisher-github';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { WebpackPlugin } from '@electron-forge/plugin-webpack';
@@ -147,8 +147,6 @@ const config: ForgeConfig = {
     // Юзер распаковывает архив и запускает KDPBook.exe внутри.
     new MakerZIP({}, ['darwin', 'win32']),
     new MakerDMG({ icon: 'assets/icon.icns' }, ['darwin']),
-    new MakerRpm({}, ['linux']),
-    new MakerDeb({}, ['linux']),
   ],
   publishers: [
     // GitHub Releases — наш канал auto-update. electron-updater сам читает
