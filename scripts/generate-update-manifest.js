@@ -24,7 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 function findFiles(rootDir, predicate) {
   const results = [];
@@ -85,9 +85,13 @@ function downloadAsset(tag, assetName, downloadsDir) {
   fs.mkdirSync(downloadsDir, { recursive: true });
   const outPath = path.join(downloadsDir, assetName);
   console.log(`[generate-update-manifest] downloading ${assetName} from release ${tag}`);
-  // Use gh release download to fetch the exact bytes published.
-  execSync(
-    `gh release download ${tag} --pattern '${assetName}' --output ${JSON.stringify(outPath)} --clobber`,
+  // NB: use execFileSync with array args — execSync's shell-string form mangles
+  // single quotes on Windows Git Bash (gh receives literal quote chars and
+  // pattern matching fails with "no assets match"). Array args bypass the
+  // shell entirely, working identically on Unix and Windows.
+  execFileSync(
+    'gh',
+    ['release', 'download', tag, '--pattern', assetName, '--output', outPath, '--clobber'],
     { stdio: 'inherit' },
   );
   return outPath;
