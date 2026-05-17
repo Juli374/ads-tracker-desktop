@@ -1,0 +1,41 @@
+{
+  "$schema": "https://kdpbook.com/schemas/feature-keys-v1.json",
+  "generated_from": "src/shared/entitlements.ts",
+  "v": 1,
+  "all_feature_keys": [
+    "ai.title_generator",
+    "ai.advisor_panel",
+    "ai.reverse_asin",
+    "ai.niche_explorer",
+    "ai.weekly_briefing",
+    "ai.bid_copilot",
+    "analytics.hourly_dynamics",
+    "analytics.multi_period_metrics",
+    "analytics.search_terms_deep",
+    "marketplace.multi",
+    "automation.rules",
+    "automation.scheduled_reports",
+    "books.bulk_import",
+    "royalties.advanced_breakdown",
+    "export.unlimited",
+    "support.priority"
+  ],
+  "default_tier_for_feature": {
+    "ai.title_generator": "pro",
+    "ai.advisor_panel": "pro",
+    "ai.reverse_asin": "pro",
+    "ai.niche_explorer": "pro",
+    "ai.weekly_briefing": "pro",
+    "ai.bid_copilot": "pro",
+    "analytics.hourly_dynamics": "pro",
+    "analytics.multi_period_metrics": "pro",
+    "analytics.search_terms_deep": "pro",
+    "marketplace.multi": "business",
+    "automation.rules": "business",
+    "automation.scheduled_reports": "business",
+    "books.bulk_import": "pro",
+    "royalties.advanced_breakdown": "pro",
+    "export.unlimited": "pro",
+    "support.priority": "business"
+  }
+}

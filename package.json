@@ -12,7 +12,9 @@
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
     "test": "vitest run --pool=forks --no-file-parallelism",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "export-feature-keys": "node scripts/emit-feature-keys.mjs",
+    "sync-backend-feature-keys": "node scripts/sync-backend-feature-keys.mjs"
   },
   "keywords": [],
   "author": {

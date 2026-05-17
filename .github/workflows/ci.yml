@@ -41,6 +41,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Drift gate: feature_keys.json must match what entitlements.ts would
+      # currently emit. If TS was edited without re-running the exporter,
+      # this step regenerates and fails on `git diff`. See Phase R.0.1.
+      - name: Feature keys — re-emit and assert no diff
+        run: |
+          npm run export-feature-keys
+          git diff --exit-code feature_keys.json \
+            || (echo "::error::feature_keys.json is stale. Run 'npm run export-feature-keys' locally and commit." && exit 1)
+
       - name: Type-check
         run: npx tsc --noEmit
 
