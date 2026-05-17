@@ -185,9 +185,15 @@ export const HeroChart: React.FC<HeroChartProps> = ({
   const hasPercent = axisInUse.has('percent');
   // count разделяет ось с money (количество не в $, но без %).
 
+  // Phase Q.5+ — sort ascending by date so the chart x-axis runs oldest→newest
+  // left-to-right (standard convention). Backend returns daily array in
+  // descending order (newest first); without the sort the chart reads
+  // right-to-left which is confusing.
   const chartData = useMemo(
     () =>
-      data.map((d) => ({
+      [...data]
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+        .map((d) => ({
         date: d.date,
         spend: d.spend,
         sales: d.sales,

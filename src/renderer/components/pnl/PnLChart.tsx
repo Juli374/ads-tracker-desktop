@@ -25,14 +25,18 @@ interface PnLChartProps {
 export const PnLChart: React.FC<PnLChartProps> = ({ daily, loading = false }) => {
   const { t } = useTranslation('pnl');
 
+  // Phase Q.5+ — sort ascending (oldest→newest left-to-right). Backend returns
+  // daily series descending; without sort the x-axis reads right-to-left.
   const data = useMemo(() => {
-    return daily.map((d) => {
-      const profit =
-        d.profit != null && Number.isFinite(d.profit)
-          ? d.profit
-          : (d.royalty ?? 0) - (d.spend ?? 0);
-      return { date: d.date, profit };
-    });
+    return [...daily]
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+      .map((d) => {
+        const profit =
+          d.profit != null && Number.isFinite(d.profit)
+            ? d.profit
+            : (d.royalty ?? 0) - (d.spend ?? 0);
+        return { date: d.date, profit };
+      });
   }, [daily]);
 
   return (

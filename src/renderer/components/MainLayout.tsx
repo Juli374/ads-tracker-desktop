@@ -324,7 +324,8 @@ const Layout: React.FC = () => {
           <span className="font-display text-base font-bold tracking-tight text-zinc-900">
             KDPBook
           </span>
-          <span className="text-[10px] text-zinc-400 ml-1">· Ads Tracker · v0.1.0</span>
+          <span className="text-[10px] text-zinc-400 ml-1">· Ads Tracker ·</span>
+          <AppVersionLabel />
         </div>
 
         <div className="flex items-center gap-2">

@@ -429,7 +429,9 @@ export const ReportsPage: React.FC = () => {
           <div className="px-2 py-3 h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={daily.daily}
+                data={[...daily.daily].sort((a, b) =>
+                  a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+                )}
                 margin={{ top: 8, right: 24, bottom: 8, left: 8 }}
               >
                 <CartesianGrid stroke="#f4f4f5" vertical={false} />
