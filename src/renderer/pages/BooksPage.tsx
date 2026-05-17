@@ -107,7 +107,8 @@ export const BooksPage: React.FC = () => {
       // Load ratings silently
       try {
         const rData = await ratingsApi.allBooks();
-        setRatings(rData.ratings);
+        // Defensive: older backend builds may omit `ratings`. Default to [].
+        setRatings(rData?.ratings ?? []);
       } catch {
         // ratings are optional, don't show error
       }
@@ -285,7 +286,8 @@ export const BooksPage: React.FC = () => {
     setSelectedBook(null);
   };
 
-  const getRatingsForBook = (bookId: number) => ratings.filter((r) => r.bookId === bookId);
+  const getRatingsForBook = (bookId: number) =>
+    (ratings ?? []).filter((r) => r.bookId === bookId);
 
   // Get the rows for the selected book (marketplaces panel)
   const selectedBookRows = useMemo(() => {

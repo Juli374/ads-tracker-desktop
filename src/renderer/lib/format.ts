@@ -23,8 +23,12 @@ export const fmtNumber = (n: number | null | undefined, max = 0) => {
 export const fmtMoney = (n: number | null | undefined, currency?: string | null) => {
   if (!isFiniteNumber(n)) return '—';
   const sign = n < 0 ? '-' : '';
+  // Phase Q.5+ — show 2 decimals always. Round-to-dollar (the previous default)
+  // hid real values like $204.73 as "$205" in KPI tiles and tables, which is
+  // sloppy for a financial tool. fmtMoneyPrecise stays as an explicit alias.
   return `${sign}${symbolFor(currency)}${new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Math.abs(n))}`;
 };
 
