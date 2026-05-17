@@ -45,6 +45,13 @@ export const IpcChannel = {
   UpdateGetStatus: 'update:getStatus',
   UpdateCheck: 'update:check',
   UpdateQuitAndInstall: 'update:quitAndInstall',
+  // Phase Q.5+ — user-controllable auto-download. Persisted in userData.
+  // When false: electron-updater detects update but stops at state='available'
+  // — user must click "Download now" to trigger download.
+  UpdateSetAutoDownload: 'update:setAutoDownload',
+  // Phase Q.5+ — manual download trigger (used when autoDownload=false and
+  // state='available'). No-op in dev / when state is not 'available'.
+  UpdateDownloadNow: 'update:downloadNow',
   // Pub/sub: main → renderer при каждом изменении state (checking → available →
   // downloading → downloaded → error). Полезная нагрузка — UpdateStatus.
   UpdateChanged: 'update:changed',
@@ -356,6 +363,10 @@ export interface UpdateStatus {
   error?: string;
   // Включён ли апдейтер. false в dev (`!app.isPackaged`) → UI рисует disabled-state.
   enabled: boolean;
+  // Phase Q.5+ — true iff user has enabled auto-download. Default true.
+  // When false, state='available' will NOT auto-progress to 'downloading';
+  // the UI surfaces a "Download now" button.
+  auto_download?: boolean;
 }
 
 // === AI settings (Phase J.3 Lane C) ===
@@ -659,6 +670,17 @@ export interface DesktopApi {
      * когда state='downloaded'. В dev / non-packaged билде — no-op.
      */
     quitAndInstall(): Promise<void>;
+    /**
+     * Phase Q.5+ — toggle auto-download. Persists to userData/updater-prefs.json.
+     * When false, the next 'update-available' event will NOT trigger download;
+     * the UI shows a "Download now" button instead.
+     */
+    setAutoDownload(enabled: boolean): Promise<UpdateStatus>;
+    /**
+     * Phase Q.5+ — trigger download when auto-download is OFF and state='available'.
+     * No-op otherwise.
+     */
+    downloadNow(): Promise<UpdateStatus>;
     /**
      * Подписка на push-обновления state. Возвращает unsubscribe.
      * Эмитится из main каждый раз, когда меняется state (через события

@@ -39,7 +39,13 @@ import {
 import { performApiRequest } from './api-client';
 import { localStore, DEFAULT_AI_SETTINGS, AiSettingsRow } from './local-db';
 import { localRoyalty, RoyaltyParseError } from './local-db/royalty';
-import { getStatus as getUpdateStatus, checkForUpdates, quitAndInstall as updaterQuitAndInstall } from './updater';
+import {
+  getStatus as getUpdateStatus,
+  checkForUpdates,
+  quitAndInstall as updaterQuitAndInstall,
+  setAutoDownload as updaterSetAutoDownload,
+  downloadUpdateNow as updaterDownloadNow,
+} from './updater';
 import { logger, getLogFilePath, scrubSecrets, scrubValue } from './logger';
 import { generate as anthropicGenerate } from './ai/anthropic';
 import { describeBrandVoice, mergeForSeries } from './ai/brandVoice';
@@ -577,6 +583,17 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannel.UpdateQuitAndInstall, async (): Promise<void> => {
     updaterQuitAndInstall();
+  });
+
+  ipcMain.handle(
+    IpcChannel.UpdateSetAutoDownload,
+    async (_e, enabled: boolean): Promise<UpdateStatus> => {
+      return updaterSetAutoDownload(Boolean(enabled));
+    },
+  );
+
+  ipcMain.handle(IpcChannel.UpdateDownloadNow, async (): Promise<UpdateStatus> => {
+    return updaterDownloadNow();
   });
 
   // ====== Phase I.2 Lane B: log + log path + reveal-in-folder ======

@@ -94,6 +94,10 @@ const api: DesktopApi = {
     check: () => ipcRenderer.invoke(IpcChannel.UpdateCheck) as Promise<UpdateStatus>,
     quitAndInstall: () =>
       ipcRenderer.invoke(IpcChannel.UpdateQuitAndInstall) as Promise<void>,
+    setAutoDownload: (enabled: boolean) =>
+      ipcRenderer.invoke(IpcChannel.UpdateSetAutoDownload, enabled) as Promise<UpdateStatus>,
+    downloadNow: () =>
+      ipcRenderer.invoke(IpcChannel.UpdateDownloadNow) as Promise<UpdateStatus>,
     onChange: (handler) => {
       const wrapped = (_e: IpcRendererEvent, status: UpdateStatus) => handler(status);
       ipcRenderer.on(IpcChannel.UpdateChanged, wrapped);

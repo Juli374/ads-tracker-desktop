@@ -236,6 +236,9 @@ export function installMockApi(options: MockApiOptions = {}): void {
       getStatus: vi.fn(async () => updateIdle),
       check: vi.fn(async () => updateIdle),
       quitAndInstall: vi.fn(async () => undefined),
+      // Phase Q.5+
+      setAutoDownload: vi.fn(async () => updateIdle),
+      downloadNow: vi.fn(async () => updateIdle),
       // Push subscription; default mock is a no-op that returns an unsubscribe.
       onChange: vi.fn(() => () => undefined),
     },

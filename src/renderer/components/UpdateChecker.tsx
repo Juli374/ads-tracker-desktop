@@ -13,6 +13,41 @@ import { useToast } from '../contexts/ToastContext';
 import type { UpdateStatus } from '../../shared/ipc';
 
 /**
+ * Phase Q.5+ — small toggle for an updater preference (e.g. autoDownload).
+ * Wired to a controlled boolean; emits onChange on click.
+ */
+const SettingToggle: React.FC<{
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled?: boolean;
+  testId?: string;
+}> = ({ checked, onChange, disabled = false, testId }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    disabled={disabled}
+    onClick={() => onChange(!checked)}
+    data-testid={testId}
+    className={`
+      relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full
+      transition-colors duration-fast ease-smooth
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40
+      disabled:opacity-50 disabled:cursor-not-allowed
+      ${checked ? 'bg-emerald-500' : 'bg-zinc-300'}
+    `}
+  >
+    <span
+      className={`
+        inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm
+        transition-transform duration-fast ease-smooth
+        ${checked ? 'translate-x-[18px]' : 'translate-x-[3px]'}
+      `}
+    />
+  </button>
+);
+
+/**
  * UI авто-апдейтера. Подписывается на push-обновления state из main и
  * перерисовывается при каждом изменении (checking → available → downloading
  * → downloaded → error). В dev / unpackaged build — рисует disabled-state.
@@ -33,6 +68,8 @@ export const UpdateChecker: React.FC = () => {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [checking, setChecking] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [autoDownloadPending, setAutoDownloadPending] = useState(false);
 
   useEffect(() => {
     if (!window.api?.update) return;
@@ -92,6 +129,40 @@ export const UpdateChecker: React.FC = () => {
     }
   };
 
+  // Phase Q.5+ — toggle auto-download preference. Persists in main (userData).
+  const handleAutoDownloadToggle = async (next: boolean) => {
+    if (!window.api?.update?.setAutoDownload) {
+      toast.error(t('updates.errors.ipcUnavailable'));
+      return;
+    }
+    setAutoDownloadPending(true);
+    try {
+      const nextStatus = await window.api.update.setAutoDownload(next);
+      setStatus(nextStatus);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('updates.errors.checkFailed'));
+    } finally {
+      setAutoDownloadPending(false);
+    }
+  };
+
+  // Phase Q.5+ — manual download (when autoDownload is OFF and update is available).
+  const handleDownloadNow = async () => {
+    if (!window.api?.update?.downloadNow) {
+      toast.error(t('updates.errors.ipcUnavailable'));
+      return;
+    }
+    setDownloading(true);
+    try {
+      const next = await window.api.update.downloadNow();
+      setStatus(next);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('updates.errors.checkFailed'));
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const state = status?.state ?? 'idle';
   const enabled = status?.enabled ?? false;
 
@@ -131,6 +202,9 @@ export const UpdateChecker: React.FC = () => {
     return '';
   })();
 
+  const autoDownload = status?.auto_download ?? true;
+  const showDownloadNow = enabled && state === 'available' && !autoDownload;
+
   return (
     <Card title={t('updates.cardTitle')}>
       <div className="px-5 py-4 space-y-3">
@@ -149,13 +223,13 @@ export const UpdateChecker: React.FC = () => {
         {state === 'downloading' && typeof status?.progress_percent === 'number' ? (
           <div className="h-1 w-full bg-zinc-100 rounded-sm overflow-hidden">
             <div
-              className="h-full bg-violet-600 transition-all duration-200 ease-out"
+              className="h-full bg-emerald-500 transition-all duration-200 ease-out"
               style={{ width: `${Math.max(0, Math.min(100, status.progress_percent))}%` }}
             />
           </div>
         ) : null}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Restart-кнопка появляется только когда обновление скачано */}
           {state === 'downloaded' ? (
             <button
@@ -165,12 +239,30 @@ export const UpdateChecker: React.FC = () => {
               data-testid="update-restart"
               className="
                 inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium
-                text-white border border-violet-600 bg-violet-600 hover:bg-violet-700 transition-colors
+                text-white border border-emerald-500 bg-emerald-500 hover:bg-emerald-600 transition-colors
                 disabled:opacity-50 disabled:cursor-not-allowed
               "
             >
               <Rocket size={12} />
               {t('updates.restartButton')}
+            </button>
+          ) : null}
+
+          {/* Phase Q.5+ — Download now appears when autoDownload is OFF and update is available */}
+          {showDownloadNow ? (
+            <button
+              type="button"
+              onClick={handleDownloadNow}
+              disabled={downloading}
+              data-testid="update-download-now"
+              className="
+                inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium
+                text-white border border-emerald-500 bg-emerald-500 hover:bg-emerald-600 transition-colors
+                disabled:opacity-50 disabled:cursor-not-allowed
+              "
+            >
+              <Download size={12} className={downloading ? 'animate-pulse' : ''} />
+              {t('updates.downloadNow', { defaultValue: 'Download now' })}
             </button>
           ) : null}
 
@@ -190,6 +282,34 @@ export const UpdateChecker: React.FC = () => {
             {t('updates.checkButton')}
           </button>
         </div>
+
+        {/* Phase Q.5+ — auto-download toggle. Default ON; user can disable. */}
+        {enabled ? (
+          <div className="pt-3 mt-1 border-t border-zinc-100 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs font-medium text-zinc-900">
+                {t('updates.autoDownloadLabel', { defaultValue: 'Automatically download updates' })}
+              </div>
+              <div className="text-[11px] text-zinc-500 mt-0.5">
+                {autoDownload
+                  ? t('updates.autoDownloadOnHint', {
+                      defaultValue:
+                        'New versions download in the background as soon as they appear.',
+                    })
+                  : t('updates.autoDownloadOffHint', {
+                      defaultValue:
+                        "You'll see a Download button when a new version is available.",
+                    })}
+              </div>
+            </div>
+            <SettingToggle
+              checked={autoDownload}
+              onChange={handleAutoDownloadToggle}
+              disabled={autoDownloadPending}
+              testId="update-auto-download-toggle"
+            />
+          </div>
+        ) : null}
       </div>
     </Card>
   );

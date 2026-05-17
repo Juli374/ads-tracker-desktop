@@ -17,10 +17,44 @@
 //
 // TODO (Lane B): заменить console.* на electron-log после мерджа Lane B.
 //                См. src/main/logger.ts (после Lane B) для централизованного log.
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { app, BrowserWindow } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { IpcChannel } from '../shared/ipc';
 import type { UpdateStatus } from '../shared/ipc';
+
+// === Phase Q.5+ — persistent auto-download preference ===
+// Stored in userData/updater-prefs.json. Default = true (auto-download on).
+const PREFS_FILENAME = 'updater-prefs.json';
+interface UpdaterPrefs {
+  autoDownload: boolean;
+}
+
+function prefsPath(): string {
+  return path.join(app.getPath('userData'), PREFS_FILENAME);
+}
+
+function readPrefs(): UpdaterPrefs {
+  try {
+    const raw = fs.readFileSync(prefsPath(), 'utf8');
+    const parsed = JSON.parse(raw) as Partial<UpdaterPrefs>;
+    return {
+      autoDownload: typeof parsed.autoDownload === 'boolean' ? parsed.autoDownload : true,
+    };
+  } catch {
+    // File missing / unreadable / malformed → default to ON.
+    return { autoDownload: true };
+  }
+}
+
+function writePrefs(prefs: UpdaterPrefs): void {
+  try {
+    fs.writeFileSync(prefsPath(), JSON.stringify(prefs, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[updater] failed to persist prefs', err);
+  }
+}
 
 // Текущее состояние, обновляемое из событий electron-updater.
 let state: UpdateStatus = {
@@ -103,6 +137,47 @@ export function subscribe(cb: Subscriber): () => void {
   return () => subscribers.delete(cb);
 }
 
+/**
+ * Phase Q.5+ — toggle auto-download preference. Persists to userData and
+ * applies immediately to the live autoUpdater instance.
+ *
+ * Effect:
+ *   - true  → next 'update-available' event auto-progresses to 'downloading'
+ *   - false → next 'update-available' event stops at 'available'; user must
+ *             call `downloadUpdateNow()` to trigger download
+ */
+export function setAutoDownload(enabled: boolean): UpdateStatus {
+  writePrefs({ autoDownload: enabled });
+  // Apply to the live instance (no-op safety if not initialized yet).
+  try {
+    autoUpdater.autoDownload = enabled;
+  } catch {
+    // electron-updater unavailable in dev — fine to swallow.
+  }
+  setState({ auto_download: enabled });
+  return { ...state };
+}
+
+/**
+ * Phase Q.5+ — manually trigger download when auto-download is OFF and an
+ * update is available. No-op when not in 'available' state.
+ */
+export async function downloadUpdateNow(): Promise<UpdateStatus> {
+  if (!state.enabled) return { ...state };
+  if (state.state !== 'available') {
+    // Nothing to download; surface a hint.
+    return { ...state };
+  }
+  try {
+    await autoUpdater.downloadUpdate();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[updater] downloadUpdate failed', err);
+    setState({ state: 'error', error: message });
+  }
+  return { ...state };
+}
+
 // === legacy alias для обратной совместимости с ipc-handlers.ts (старое имя) ===
 export const getUpdateStatus = getStatus;
 
@@ -126,11 +201,15 @@ export function initAutoUpdater(window: BrowserWindow | null): void {
     return;
   }
 
-  // Конфигурация — autoDownload=true (как только update-available, начинаем
-  // скачивать), autoInstallOnAppQuit=true (если юзер не нажал «Restart now»,
-  // апдейт применится при следующем закрытии app).
-  autoUpdater.autoDownload = true;
+  // Конфигурация — autoDownload читается из persisted prefs (default=true).
+  // Юзер может отключить через UI; настройка сохраняется в userData/updater-prefs.json
+  // и переживает рестарты. autoInstallOnAppQuit=true (если юзер не нажал
+  // «Restart now», апдейт применится при следующем закрытии app — независимо
+  // от autoDownload).
+  const prefs = readPrefs();
+  autoUpdater.autoDownload = prefs.autoDownload;
   autoUpdater.autoInstallOnAppQuit = true;
+  setState({ auto_download: prefs.autoDownload });
 
   // Programmatically set the feed. electron-updater by default reads
   // app-update.yml from Resources/, but electron-forge doesn't generate
