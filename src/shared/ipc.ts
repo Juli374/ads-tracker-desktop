@@ -367,6 +367,11 @@ export interface UpdateStatus {
   // When false, state='available' will NOT auto-progress to 'downloading';
   // the UI surfaces a "Download now" button.
   auto_download?: boolean;
+  // Phase Q.5+ — direct link to the GitHub release page. Always populated.
+  // UI surfaces it as a "Manual download" escape hatch when auto-update
+  // fails (typical on unsigned macOS builds where Squirrel.Mac rejects the
+  // downloaded .app on code-signature validation).
+  release_url?: string;
 }
 
 // === AI settings (Phase J.3 Lane C) ===

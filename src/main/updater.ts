@@ -56,12 +56,19 @@ function writePrefs(prefs: UpdaterPrefs): void {
   }
 }
 
+// Release URL for the manual-download escape hatch. Always populated so the
+// UI can offer "Open release page" when auto-update fails (typical on
+// unsigned macOS builds — Squirrel.Mac rejects the downloaded .app on
+// code-signature validation regardless of whether the SHA matches).
+const RELEASE_URL = 'https://github.com/Juli374/ads-tracker-desktop/releases/latest';
+
 // Текущее состояние, обновляемое из событий electron-updater.
 let state: UpdateStatus = {
   state: 'idle',
   current_version: app.getVersion(),
   enabled: false,
   message: 'Auto-update not initialized.',
+  release_url: RELEASE_URL,
 };
 
 // Подписчики на изменение state (внутри main-процесса). Renderer'ы получают

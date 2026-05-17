@@ -3,6 +3,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Download,
+  ExternalLink,
   Loader,
   RefreshCw,
   Rocket,
@@ -204,6 +205,25 @@ export const UpdateChecker: React.FC = () => {
 
   const autoDownload = status?.auto_download ?? true;
   const showDownloadNow = enabled && state === 'available' && !autoDownload;
+  const releaseUrl =
+    status?.release_url ??
+    'https://github.com/Juli374/ads-tracker-desktop/releases/latest';
+  // Phase Q.5+ — when an unsigned macOS update fails code-signature validation,
+  // ShipIt surfaces a `state='error'` with the signature error. Offer a
+  // direct download link to the release page so the user can install the
+  // new version manually (drag DMG to Applications).
+  const showManualDownload = enabled && (state === 'error' || state === 'available');
+
+  const handleOpenRelease = () => {
+    if (!window.api?.shell?.openExternal) {
+      // Fallback: window.open works in renderer for https URLs.
+      window.open(releaseUrl, '_blank');
+      return;
+    }
+    void window.api.shell.openExternal(releaseUrl).catch(() => {
+      window.open(releaseUrl, '_blank');
+    });
+  };
 
   return (
     <Card title={t('updates.cardTitle')}>
@@ -281,7 +301,36 @@ export const UpdateChecker: React.FC = () => {
             <RefreshCw size={12} className={checking ? 'animate-spin' : ''} />
             {t('updates.checkButton')}
           </button>
+
+          {/* Phase Q.5+ — manual download escape hatch. Visible when auto-update
+              has detected an update OR failed. macOS Sequoia+ rejects unsigned
+              .app on code-signature validation regardless of SHA, so this is
+              the reliable path. */}
+          {showManualDownload ? (
+            <button
+              type="button"
+              onClick={handleOpenRelease}
+              data-testid="update-manual-download"
+              className="
+                inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium
+                text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors
+              "
+            >
+              <ExternalLink size={12} />
+              {t('updates.manualDownload', { defaultValue: 'Download manually' })}
+            </button>
+          ) : null}
         </div>
+
+        {/* Phase Q.5+ — explanatory hint when auto-update fails on macOS unsigned builds. */}
+        {state === 'error' ? (
+          <div className="text-[11px] text-zinc-500 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 leading-relaxed">
+            {t('updates.signatureHint', {
+              defaultValue:
+                'If macOS rejected the update with a signature error, download the new version manually from the release page and drag it into your Applications folder.',
+            })}
+          </div>
+        ) : null}
 
         {/* Phase Q.5+ — auto-download toggle. Default ON; user can disable. */}
         {enabled ? (
