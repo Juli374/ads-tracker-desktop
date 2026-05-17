@@ -94,10 +94,13 @@ function downloadAsset(tag, assetName, downloadsDir) {
 }
 
 function listReleaseAssetNames(tag) {
-  const json = execSync(`gh release view ${tag} --json assets --jq '.assets[].name'`, {
-    encoding: 'utf8',
-  });
-  return json.split('\n').filter(Boolean);
+  // NB: do NOT use `--jq` here — Windows Git Bash mangles the single-quoted
+  // expression `'.assets[].name'` and gh CLI receives literal quote chars,
+  // failing with "unexpected token". Parse the full JSON in Node instead.
+  const json = execSync(`gh release view ${tag} --json assets`, { encoding: 'utf8' });
+  const parsed = JSON.parse(json);
+  if (!Array.isArray(parsed.assets)) return [];
+  return parsed.assets.map((a) => a.name).filter(Boolean);
 }
 
 function main() {

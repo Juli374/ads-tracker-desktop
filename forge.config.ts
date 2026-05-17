@@ -111,13 +111,13 @@ const config: ForgeConfig = {
     appBundleId: 'com.juli374.ads-tracker',
     appCategoryType: 'public.app-category.business',
     // electron-installer-debian (MakerDeb) hard-codes a lookup for the binary
-    // at <out>/<appName>-<platform>-<arch>/<executableName>. Without this,
-    // executableName falls back to package.json `name` (ads-tracker-desktop)
-    // while the binary actually ships as the productName ("KDPBook") —
-    // Linux build fails with "could not find the Electron app binary".
-    // Setting both productName and executableName explicitly here keeps the
-    // app brand readable in app menus while making Linux packaging happy.
-    executableName: 'ads-tracker',
+    // at <out>/<productName>-<platform>-<arch>/<executableName>. With productName
+    // = "KDPBook" (Phase Q rename) the folder is now `KDPBook-linux-x64/`, but
+    // the binary inside is still named after package.json `name`
+    // (ads-tracker-desktop) — electron-packager produces the binary from the
+    // package name, not productName/executableName. Match executableName to
+    // the actual binary name so MakerDeb finds it.
+    executableName: 'ads-tracker-desktop',
     // Ship build/app-update.yml as Resources/app-update.yml inside the
     // packaged bundle. electron-updater reads it to know the update feed
     // (GitHub provider + owner + repo). electron-forge doesn't generate
