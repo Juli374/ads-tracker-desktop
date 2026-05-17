@@ -6,6 +6,12 @@ import type {
   ApiRequestPayload,
   ApiResponse,
   AppInfo,
+  AuthChangePasswordResult,
+  AuthLoginResult,
+  AuthSetup2faResult,
+  AuthSignupResult,
+  AuthUserProfile,
+  AuthVerify2faResult,
   AutoNegScanResult,
   AutoNegState,
   AutoNegThresholds,
@@ -63,7 +69,29 @@ interface MockApiOptions {
   briefingList?: WeeklyBriefing[];
   /** Phase M.5 Lane E — override briefing.runNow() return value. */
   briefingRunResult?: BriefingRunResult;
+  /** Phase R.7 — override auth.login() return value. */
+  authLoginResult?: AuthLoginResult;
+  /** Phase R.7 — override auth.signup() return value. */
+  authSignupResult?: AuthSignupResult;
+  /** Phase R.7 — override auth.verify2fa() return value. */
+  authVerify2faResult?: AuthVerify2faResult;
+  /** Phase R.7 — override auth.changePassword() return value. */
+  authChangePasswordResult?: AuthChangePasswordResult;
+  /** Phase R.7 — override auth.setup2fa() return value. */
+  authSetup2faResult?: AuthSetup2faResult;
 }
+
+/**
+ * Phase R.7 — default user for the new email/password auth flow.
+ * Mirrors the shape backend returns from /api/auth/{login,signup,refresh}.
+ */
+const defaultAuthUser: AuthUserProfile = {
+  id: 1,
+  email: 'test@test.local',
+  full_name: 'Test User',
+  role: 'user',
+  avatar: null,
+};
 
 export function installMockApi(options: MockApiOptions = {}): void {
   const responses = options.responses ?? {};
@@ -198,6 +226,46 @@ export function installMockApi(options: MockApiOptions = {}): void {
       clearToken: vi.fn(async () => undefined),
       // Phase I.4 Lane D: 401 push-event from main. Default noop subscribe.
       onExpired: vi.fn(() => () => undefined),
+      // Phase R.7 — email/password auth. Each mock is overridable per-test
+      // via installMockApi({ authLoginResult: {...} }) etc. Defaults are the
+      // happy path so existing tests that don't care about auth keep working.
+      login: vi.fn(
+        async (): Promise<AuthLoginResult> =>
+          options.authLoginResult ?? {
+            ok: true,
+            user: defaultAuthUser,
+          },
+      ),
+      verify2fa: vi.fn(
+        async (): Promise<AuthVerify2faResult> =>
+          options.authVerify2faResult ?? { ok: true, user: defaultAuthUser },
+      ),
+      signup: vi.fn(
+        async (): Promise<AuthSignupResult> =>
+          options.authSignupResult ?? {
+            ok: true,
+            user: defaultAuthUser,
+            emailVerified: false,
+          },
+      ),
+      logout: vi.fn(async () => undefined),
+      forgotPassword: vi.fn(async () => ({ ok: true as const })),
+      changePassword: vi.fn(
+        async (): Promise<AuthChangePasswordResult> =>
+          options.authChangePasswordResult ?? {
+            ok: true,
+            allSessionsRevoked: true,
+          },
+      ),
+      setup2fa: vi.fn(
+        async (): Promise<AuthSetup2faResult> =>
+          options.authSetup2faResult ?? {
+            secret: 'JBSWY3DPEHPK3PXP',
+            otpauthUri:
+              'otpauth://totp/KDPBook:test@test.local?secret=JBSWY3DPEHPK3PXP&issuer=KDPBook',
+          },
+      ),
+      onAuthenticated: vi.fn(() => () => undefined),
     },
     request,
     mediaUpload,

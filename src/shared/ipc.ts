@@ -15,6 +15,18 @@ export const IpcChannel = {
   // Pub/sub event: main → renderer когда сервер вернул 401 (токен протух).
   // Renderer слушает и автоматически делает signOut + редирект на LoginScreen.
   AuthExpired: 'auth:expired',
+  // Phase R.7 — full email/password auth lifecycle. main owns the backend
+  // calls so the renderer never touches /api/auth/* directly; on success
+  // the token pair lands in safeStorage. AuthAuthenticated is a push event
+  // emitted whenever a successful login/refresh stores new tokens.
+  AuthLogin: 'auth:login',
+  AuthVerify2fa: 'auth:verify2fa',
+  AuthSignup: 'auth:signup',
+  AuthLogout: 'auth:logout',
+  AuthForgotPassword: 'auth:forgotPassword',
+  AuthChangePassword: 'auth:changePassword',
+  AuthSetup2fa: 'auth:setup2fa',
+  AuthAuthenticated: 'auth:authenticated',
   ApiRequest: 'api:request',
   MediaUpload: 'media:upload',
   // Pub/sub event: main → renderer когда пришёл deeplink ads-tracker-desktop://...
@@ -208,6 +220,84 @@ export interface AuthExpiredEvent {
   reason: 'token_invalid' | 'token_revoked' | 'unknown';
   // Путь, на котором сервер ответил 401 — для дебага.
   path?: string;
+}
+
+// === Phase R.7 — email/password auth lifecycle ===
+
+/**
+ * User profile shape returned by backend `/api/auth/{login,signup,refresh}`.
+ * Mirrors `AuthUser` in `renderer/api/auth.ts` but lives here so main can
+ * type-check it before re-emitting via push events.
+ */
+export interface AuthUserProfile {
+  id: number;
+  email: string;
+  full_name: string | null;
+  role: string;
+  avatar: string | null;
+  /** Backend sets this on signup; UI surfaces a "verify your email" banner. */
+  email_verified?: boolean;
+}
+
+/**
+ * Result of an `auth:login` call. The backend can return three shapes:
+ *
+ *  - regular success: ok=true with full user. Tokens are persisted by main
+ *    before this resolves; renderer just updates UI.
+ *  - 2FA required: ok=true + requires2fa=true + partialToken. Renderer swaps
+ *    to a TOTP-input step and calls `auth:verify2fa(partialToken, code)`.
+ *  - 2FA setup required: ok=true + requiresSetup=true + partialToken. Same
+ *    flow, but the user must first call `auth:setup2fa()` to get the secret
+ *    + otpauth_uri (QR code), enter a code into their authenticator, then
+ *    `auth:verify2fa(partialToken, code)`.
+ *  - failure: ok=false + error (bad credentials, network, etc).
+ */
+export interface AuthLoginResult {
+  ok: boolean;
+  requires2fa?: boolean;
+  requiresSetup?: boolean;
+  partialToken?: string;
+  user?: AuthUserProfile;
+  error?: string;
+}
+
+export interface AuthVerify2faResult {
+  ok: boolean;
+  user?: AuthUserProfile;
+  error?: string;
+}
+
+export interface AuthSignupResult {
+  ok: boolean;
+  user?: AuthUserProfile;
+  /** Will be false right after signup; UI shows a verify-email banner. */
+  emailVerified?: boolean;
+  error?: string;
+}
+
+export interface AuthChangePasswordResult {
+  ok: boolean;
+  /** True iff backend revoked all other sessions on success. */
+  allSessionsRevoked?: boolean;
+  error?: string;
+}
+
+export interface AuthSetup2faResult {
+  /** Base32 TOTP secret (used as fallback when QR can't render). */
+  secret: string;
+  /** otpauth:// URI for QR generation. */
+  otpauthUri: string;
+}
+
+/**
+ * Push event emitted from main whenever login/signup/verify2fa stores new
+ * tokens (and after a refresh too). Renderer's AuthContext listens and
+ * transitions from `unauthenticated` → `authenticated` without polling.
+ */
+export interface AuthAuthenticatedEvent {
+  user: AuthUserProfile;
+  /** Epoch ms when the new access token expires. */
+  accessExpiresAt: number;
 }
 
 // === OAuth CSRF state ===
@@ -628,6 +718,35 @@ export interface DesktopApi {
      * редирект на LoginScreen + показывает тост "Сессия истекла".
      */
     onExpired(handler: (event: AuthExpiredEvent) => void): () => void;
+    // Phase R.7 — email/password auth. main owns the backend POST so the
+    // refresh token never crosses the IPC boundary. On success, tokens are
+    // already in safeStorage when the promise resolves.
+    /** Email + password login. May return a partial token if 2FA required. */
+    login(email: string, password: string): Promise<AuthLoginResult>;
+    /** Finish a 2FA challenge with the TOTP code. */
+    verify2fa(partialToken: string, code: string): Promise<AuthVerify2faResult>;
+    /** Create a new account. Tokens are persisted by main before resolution. */
+    signup(
+      email: string,
+      password: string,
+      fullName?: string,
+    ): Promise<AuthSignupResult>;
+    /** Server-side logout (revokes refresh token). Local tokens cleared too. */
+    logout(): Promise<void>;
+    /** Always returns ok:true — backend hides whether the email exists. */
+    forgotPassword(email: string): Promise<{ ok: true }>;
+    /** Change password while logged in. Server revokes other sessions on success. */
+    changePassword(
+      currentPassword: string,
+      newPassword: string,
+    ): Promise<AuthChangePasswordResult>;
+    /** Fetch TOTP setup material so renderer can render the QR code. */
+    setup2fa(): Promise<AuthSetup2faResult>;
+    /**
+     * Push event subscription: main emits when login/refresh stores fresh
+     * tokens. AuthContext flips status → 'authenticated' without polling.
+     */
+    onAuthenticated(handler: (event: AuthAuthenticatedEvent) => void): () => void;
   };
   request<T = unknown>(payload: ApiRequestPayload): Promise<ApiResponse<T>>;
   mediaUpload<T = unknown>(payload: MediaUploadPayload): Promise<MediaUploadResponse<T>>;

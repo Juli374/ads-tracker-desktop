@@ -4,7 +4,13 @@ import type {
   DesktopApi,
   ApiRequestPayload,
   ApiResponse,
+  AuthAuthenticatedEvent,
+  AuthChangePasswordResult,
   AuthExpiredEvent,
+  AuthLoginResult,
+  AuthSetup2faResult,
+  AuthSignupResult,
+  AuthVerify2faResult,
   MediaUploadPayload,
   MediaUploadResponse,
   DeepLinkEvent,
@@ -47,6 +53,31 @@ const api: DesktopApi = {
       const wrapped = (_e: IpcRendererEvent, payload: AuthExpiredEvent) => handler(payload);
       ipcRenderer.on(IpcChannel.AuthExpired, wrapped);
       return () => ipcRenderer.off(IpcChannel.AuthExpired, wrapped);
+    },
+    // Phase R.7 — email/password auth. Each call below is a thin pass-through
+    // to its IPC handler; main owns token persistence and backend calls.
+    login: (email: string, password: string) =>
+      ipcRenderer.invoke(IpcChannel.AuthLogin, email, password) as Promise<AuthLoginResult>,
+    verify2fa: (partialToken: string, code: string) =>
+      ipcRenderer.invoke(IpcChannel.AuthVerify2fa, partialToken, code) as Promise<AuthVerify2faResult>,
+    signup: (email: string, password: string, fullName?: string) =>
+      ipcRenderer.invoke(IpcChannel.AuthSignup, email, password, fullName) as Promise<AuthSignupResult>,
+    logout: () => ipcRenderer.invoke(IpcChannel.AuthLogout) as Promise<void>,
+    forgotPassword: (email: string) =>
+      ipcRenderer.invoke(IpcChannel.AuthForgotPassword, email) as Promise<{ ok: true }>,
+    changePassword: (currentPassword: string, newPassword: string) =>
+      ipcRenderer.invoke(
+        IpcChannel.AuthChangePassword,
+        currentPassword,
+        newPassword,
+      ) as Promise<AuthChangePasswordResult>,
+    setup2fa: () =>
+      ipcRenderer.invoke(IpcChannel.AuthSetup2fa) as Promise<AuthSetup2faResult>,
+    onAuthenticated: (handler) => {
+      const wrapped = (_e: IpcRendererEvent, payload: AuthAuthenticatedEvent) =>
+        handler(payload);
+      ipcRenderer.on(IpcChannel.AuthAuthenticated, wrapped);
+      return () => ipcRenderer.off(IpcChannel.AuthAuthenticated, wrapped);
     },
   },
   request: <T = unknown>(payload: ApiRequestPayload): Promise<ApiResponse<T>> =>

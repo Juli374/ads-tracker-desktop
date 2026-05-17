@@ -16,6 +16,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Card } from '../ui';
 import { UpdateChecker } from '../UpdateChecker';
+import { ChangePasswordSection } from './ChangePasswordSection';
 import { useAuth } from '../../contexts/AuthContext';
 import type { AppInfo } from '../../../shared/ipc';
 
@@ -139,6 +140,10 @@ export const ApplicationTab: React.FC = () => {
           </>
         )}
       </Card>
+
+      {/* Phase R.7 — change password section. Only renders for email/password
+          accounts; api_key role users (legacy at_live_* installs) skip this. */}
+      {user?.role !== 'api_key' && <ChangePasswordSection />}
 
       <UpdateChecker />
 

@@ -10,6 +10,11 @@ interface AuthContextValue {
   status: AuthStatus;
   user: AuthUser | null;
   error: string | null;
+  /**
+   * Legacy single-token entry point: writes the token via auth:setToken and
+   * verifies it. Kept for the at_live_* fallback in LoginScreen and for any
+   * other caller that doesn't use the Phase R.7 email/password flow.
+   */
   saveTokenAndVerify(token: string): Promise<void>;
   signOut(): Promise<void>;
 }
@@ -80,6 +85,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsub;
   }, [toast, t]);
 
+  // Phase R.7 — listen to the auth:authenticated push event. main emits this
+  // whenever a successful login/signup/2FA-verify stores a fresh token pair.
+  // We flip to authenticated WITHOUT re-verifying (the backend already gave
+  // us the user); the optimistic transition makes the screen swap instant.
+  useEffect(() => {
+    const onAuthd = window.api?.auth?.onAuthenticated;
+    if (typeof onAuthd !== 'function') return;
+    const unsub = onAuthd((event) => {
+      const u = event?.user;
+      if (!u) return;
+      const authUser: AuthUser = {
+        id: u.id,
+        email: u.email,
+        full_name: u.full_name,
+        role: u.role,
+        avatar: u.avatar,
+      };
+      setUser(authUser);
+      setStatus('authenticated');
+      setError(null);
+      // Phase K: refresh entitlements so the first paint of the authenticated
+      // UI has the right tier. Push will also arrive via EntitlementsChanged.
+      if (typeof window.api?.entitlements?.refresh === 'function') {
+        void window.api.entitlements.refresh().catch(() => undefined);
+      }
+    });
+    return unsub;
+  }, []);
+
   const saveTokenAndVerify = useCallback(async (token: string) => {
     setError(null);
     await window.api.auth.setToken(token);
@@ -104,7 +138,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signOut = useCallback(async () => {
-    await window.api.auth.clearToken();
+    // Phase R.7 — try server-side logout (revokes refresh token). On failure
+    // we still clear local state so the user gets out of the authenticated
+    // UI. The fallback to clearToken matches the pre-R.7 contract for legacy
+    // installs that never had a refresh token to revoke.
+    try {
+      if (typeof window.api?.auth?.logout === 'function') {
+        await window.api.auth.logout();
+      } else {
+        await window.api.auth.clearToken();
+      }
+    } catch {
+      // ignore — best effort
+      try {
+        await window.api.auth.clearToken();
+      } catch {
+        // ignore
+      }
+    }
     setUser(null);
     setStatus('unauthenticated');
     // Phase K: на logout main очистит cache и эмитит EntitlementsChanged

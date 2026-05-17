@@ -140,7 +140,9 @@
     "role": "Role",
     "fullName": "Name",
     "signOut": "Sign out and change token",
-    "signOutHint": "Token will be removed from system keychain. You'll need to paste a key on the next launch."
+    "signOutHint": "Token will be removed from system keychain. You'll need to paste a key on the next launch.",
+    "changePasswordTitle": "Change password",
+    "changePasswordSubtitle": "Update your KDPBook password. All other sessions will be signed out."
   },
   "apiKey": {
     "cardTitle": "API key",

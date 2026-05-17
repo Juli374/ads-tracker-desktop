@@ -6,6 +6,11 @@ import {
   AppInfo,
   ApiRequestPayload,
   ApiResponse,
+  AuthChangePasswordResult,
+  AuthLoginResult,
+  AuthSetup2faResult,
+  AuthSignupResult,
+  AuthVerify2faResult,
   MediaUploadPayload,
   MediaUploadResponse,
   LocalRoyaltyImportPayload,
@@ -36,7 +41,16 @@ import {
   writePendingOAuthState,
   writeToken,
 } from './auth-store';
-import { performApiRequest } from './api-client';
+import {
+  authChangePassword,
+  authForgotPassword,
+  authLogin,
+  authLogout,
+  authSetup2FA,
+  authSignup,
+  authVerify2FA,
+  performApiRequest,
+} from './api-client';
 import { localStore, DEFAULT_AI_SETTINGS, AiSettingsRow } from './local-db';
 import { localRoyalty, RoyaltyParseError } from './local-db/royalty';
 import {
@@ -281,6 +295,145 @@ export function registerIpcHandlers(): void {
       // ignore
     });
   });
+
+  // ====== Phase R.7 — email/password auth lifecycle ======
+  // Renderer never touches /api/auth/* directly. main owns the backend POSTs
+  // so secrets (refresh token, partial 2FA token) never need to live in the
+  // renderer's process. Token persistence happens inside the helpers; this
+  // layer is pure shape validation + delegation.
+
+  ipcMain.handle(
+    IpcChannel.AuthLogin,
+    async (_evt, email: unknown, password: unknown): Promise<AuthLoginResult> => {
+      if (typeof email !== 'string' || email.length === 0 || email.length > 320) {
+        return { ok: false, error: 'auth:login: email must be a non-empty string' };
+      }
+      if (typeof password !== 'string' || password.length === 0 || password.length > 1024) {
+        return { ok: false, error: 'auth:login: password must be a non-empty string' };
+      }
+      try {
+        const result = await authLogin(email, password);
+        // Phase K: после успешного login (без 2FA) — освежаем entitlements.
+        if (result.ok && !result.requires2fa && !result.requiresSetup) {
+          void refreshEntitlements().catch(() => undefined);
+        }
+        return result;
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.AuthVerify2fa,
+    async (
+      _evt,
+      partialToken: unknown,
+      code: unknown,
+    ): Promise<AuthVerify2faResult> => {
+      if (typeof partialToken !== 'string' || partialToken.length === 0) {
+        return { ok: false, error: 'auth:verify2fa: partialToken required' };
+      }
+      if (typeof code !== 'string' || code.length === 0 || code.length > 16) {
+        return { ok: false, error: 'auth:verify2fa: code must be a non-empty string' };
+      }
+      try {
+        const result = await authVerify2FA(partialToken, code);
+        if (result.ok) {
+          void refreshEntitlements().catch(() => undefined);
+        }
+        return result;
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.AuthSignup,
+    async (
+      _evt,
+      email: unknown,
+      password: unknown,
+      fullName: unknown,
+    ): Promise<AuthSignupResult> => {
+      if (typeof email !== 'string' || email.length === 0 || email.length > 320) {
+        return { ok: false, error: 'auth:signup: email required' };
+      }
+      if (typeof password !== 'string' || password.length < 10 || password.length > 1024) {
+        return { ok: false, error: 'auth:signup: password must be ≥ 10 chars' };
+      }
+      let validatedFullName: string | undefined;
+      if (fullName !== undefined && fullName !== null) {
+        if (typeof fullName !== 'string' || fullName.length > 200) {
+          return { ok: false, error: 'auth:signup: fullName must be a string ≤ 200 chars' };
+        }
+        validatedFullName = fullName;
+      }
+      try {
+        const result = await authSignup(email, password, validatedFullName);
+        if (result.ok) {
+          void refreshEntitlements().catch(() => undefined);
+        }
+        return result;
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    },
+  );
+
+  ipcMain.handle(IpcChannel.AuthLogout, async (): Promise<void> => {
+    try {
+      await authLogout();
+    } finally {
+      // Always clear entitlements cache regardless of server-side success.
+      await clearEntitlementsOnLogout().catch(() => undefined);
+    }
+  });
+
+  ipcMain.handle(
+    IpcChannel.AuthForgotPassword,
+    async (_evt, email: unknown): Promise<{ ok: true }> => {
+      // Even invalid input returns ok:true — matches backend behaviour and
+      // prevents user-enumeration via timing or different error messages.
+      if (typeof email !== 'string' || email.length === 0 || email.length > 320) {
+        return { ok: true };
+      }
+      return authForgotPassword(email);
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.AuthChangePassword,
+    async (
+      _evt,
+      currentPassword: unknown,
+      newPassword: unknown,
+    ): Promise<AuthChangePasswordResult> => {
+      if (typeof currentPassword !== 'string' || currentPassword.length === 0) {
+        return { ok: false, error: 'auth:changePassword: currentPassword required' };
+      }
+      if (
+        typeof newPassword !== 'string' ||
+        newPassword.length < 10 ||
+        newPassword.length > 1024
+      ) {
+        return { ok: false, error: 'auth:changePassword: newPassword must be ≥ 10 chars' };
+      }
+      try {
+        return await authChangePassword(currentPassword, newPassword);
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.AuthSetup2fa,
+    async (): Promise<AuthSetup2faResult> => {
+      return authSetup2FA();
+    },
+  );
 
   ipcMain.handle(
     IpcChannel.ApiRequest,
