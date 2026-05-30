@@ -11,7 +11,8 @@
  * Bulk-bar появляется только когда selected.size > 0.
  *
  * Бэкенд-протокол:
- *  - Inline bid edit: PUT /api/targets/:id (через targetsApi.update).
+ *  - Inline bid edit: PUT /api/amazon-ads/targets/:id/bid (amazonAdsApi.setTargetBid) —
+ *    реально доходит до Amazon, не откатывается следующим sync'ом.
  *  - Status toggle: PUT /api/amazon-ads/targets/:id/state (amazonAdsApi).
  *  - Bulk pause/resume/×N/+$N/move/add-negative — единичные POST'ы через
  *    targetsApi.bulk* (см. src/renderer/api/targets.ts).
@@ -62,7 +63,7 @@ export const KeywordsTable: React.FC<Props> = ({
 
   const onSaveBid = async (id: number, next: number) => {
     try {
-      await targetsApi.update(id, { bid: next });
+      await amazonAdsApi.setTargetBid(id, next);
       // local list реактивно обновится через onReload(); здесь — no-op.
       // EditableNumber вернёт finished promise, caller (caller-of-caller)
       // не нужен — мы держим список через onReload.

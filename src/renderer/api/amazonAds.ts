@@ -122,6 +122,20 @@ export const amazonAdsApi = {
     );
   },
 
+  // Меняет ставку через Amazon API (backend сам транслирует local id → amzn id
+  // и вызывает Amazon Ads, затем обновляет local DB). В отличие от
+  // targetsApi.update() — это НЕ local-only: правка реально доходит до Amazon,
+  // поэтому следующий pull-sync её не откатывает. backend gate: can_manage_bids.
+  setTargetBid(
+    targetId: number,
+    bid: number,
+  ): Promise<{ message: string }> {
+    return apiClient.put<{ message: string }>(
+      `/api/amazon-ads/targets/${targetId}/bid`,
+      { bid },
+    );
+  },
+
   bulkUpdateTargets(payload: {
     target_ids: number[];
     state?: 'enabled' | 'paused';

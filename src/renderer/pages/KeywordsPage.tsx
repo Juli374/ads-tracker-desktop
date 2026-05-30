@@ -9,6 +9,7 @@ import {
   type KeywordSummary,
 } from '../api/metrics';
 import { targetsApi } from '../api/targets';
+import { amazonAdsApi } from '../api/amazonAds';
 import { ReverseAsinPanel } from '../components/keywords/ReverseAsinPanel';
 import { LockedFeature } from '../components/LockedFeature';
 import {
@@ -246,7 +247,7 @@ export const KeywordsPage: React.FC = () => {
       throw new Error('no target_id');
     }
     try {
-      await targetsApi.update(item.target_id, { bid: next });
+      await amazonAdsApi.setTargetBid(item.target_id, next);
       setSummary((prev) =>
         prev
           ? {
