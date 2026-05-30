@@ -6,6 +6,8 @@ import {
   AuthAuthenticatedEvent,
   AuthChangePasswordResult,
   AuthExpiredEvent,
+  AuthHandoffErrorCode,
+  AuthHandoffRedeemResult,
   AuthLoginResult,
   AuthSetup2faResult,
   AuthSignupResult,
@@ -719,4 +721,87 @@ export async function authSetup2FA(): Promise<AuthSetup2faResult> {
     throw new Error('Malformed 2FA setup response');
   }
   return { secret: r.data.secret, otpauthUri: r.data.otpauth_uri };
+}
+
+// =============================================================================
+// Phase 0 — Identity bridge (browser-handoff login)
+// =============================================================================
+//
+// The website mints a one-time handoff token after a browser login and sends
+// it to us via the `ads-tracker-desktop://callback?token=…&type=handoff`
+// deep-link. We POST it to the Railway redeem endpoint, which verifies it
+// server-to-server with the website and returns a normal login-shape token
+// pair. On success we persist + announce exactly like email/password login.
+//
+// SECURITY: the plaintext token must NEVER be logged — not the token, not the
+// request URL (a path constant only), not any header. The authPost helper
+// above already keeps requests log-free; we keep it that way here.
+
+interface HandoffRedeemBackendResponse {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  user?: AuthUserProfile;
+}
+
+/**
+ * Map the Railway redeem-endpoint HTTP status to a renderer error code. The
+ * contract (PHASE0 §1.4): 400 missing_token, 401 invalid_handoff, 403
+ * email_not_verified / account_disabled, 409 email_conflict, 502
+ * bridge_unreachable, 503 handoff_disabled, 500 redeem_failed. Status 0 means
+ * the desktop never reached Railway (transport failure) → NETWORK.
+ *
+ * 403 is ambiguous (email_not_verified vs account_disabled) at the HTTP layer,
+ * so we disambiguate on the body `error` string when present.
+ */
+function mapHandoffStatus(status: number, errorBody?: string): AuthHandoffErrorCode {
+  if (status === 0) return 'NETWORK';
+  if (status === 502) return 'BRIDGE_UNREACHABLE';
+  if (status === 401) return 'INVALID';
+  if (status === 403) {
+    return errorBody === 'account_disabled' ? 'ACCOUNT_DISABLED' : 'EMAIL_NOT_VERIFIED';
+  }
+  if (status === 409) return 'CONFLICT';
+  if (status === 503) return 'DISABLED';
+  return 'SERVER';
+}
+
+/**
+ * POST /api/auth/desktop-handoff/redeem with the plaintext handoff token. On a
+ * 200 with a well-formed login-shape body, persists the token pair and emits
+ * auth:authenticated. All non-200 / transport failures resolve (never throw)
+ * to `{ok:false, code, error}` so the IPC handler / renderer can branch on the
+ * code for a localised toast.
+ */
+export async function authHandoffRedeem(token: string): Promise<AuthHandoffRedeemResult> {
+  const r = await authPost<HandoffRedeemBackendResponse>(
+    '/api/auth/desktop-handoff/redeem',
+    { token },
+  );
+  if (!r.ok) {
+    // r.error is the backend `error` string (e.g. "account_disabled") when the
+    // body was JSON, else a generic "HTTP <status>" / transport message. Never
+    // contains the token.
+    return {
+      ok: false,
+      error: r.error || 'Handoff redeem failed',
+      code: mapHandoffStatus(r.status, r.error),
+    };
+  }
+  const d = r.data;
+  if (
+    !d ||
+    typeof d.access_token !== 'string' ||
+    typeof d.refresh_token !== 'string' ||
+    !d.user
+  ) {
+    return { ok: false, error: 'Malformed handoff response', code: 'SERVER' };
+  }
+  await persistAndAnnounce(
+    d.access_token,
+    d.refresh_token,
+    typeof d.expires_in === 'number' ? d.expires_in : 3600,
+    d.user,
+  );
+  return { ok: true, user: d.user };
 }

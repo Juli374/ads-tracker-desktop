@@ -49,6 +49,17 @@ export const CredentialsTab: React.FC = () => {
         if (url.host !== 'callback' && url.pathname.replace(/\/+/g, '') !== 'callback')
           return;
 
+        // Phase 0 — Identity bridge shares this `callback` host. A handoff
+        // deep-link (`type=handoff`) is NOT an Amazon OAuth callback — bail out
+        // silently so we don't show the `missingCode` toast for it. The handoff
+        // itself is handled by useHandoffDeepLink (mounted in AuthContext).
+        // Kept as a standalone check (NOT folded into `!code`) so genuinely
+        // broken Amazon links — `callback` with neither code nor type — still
+        // surface the missingCode toast below.
+        if (url.searchParams.get('type') === 'handoff') {
+          return;
+        }
+
         const code = url.searchParams.get('code');
         const state = url.searchParams.get('state');
         if (!code) {

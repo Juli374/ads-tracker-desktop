@@ -7,6 +7,7 @@ import type {
   ApiResponse,
   AppInfo,
   AuthChangePasswordResult,
+  AuthHandoffRedeemResult,
   AuthLoginResult,
   AuthSetup2faResult,
   AuthSignupResult,
@@ -79,6 +80,8 @@ interface MockApiOptions {
   authChangePasswordResult?: AuthChangePasswordResult;
   /** Phase R.7 — override auth.setup2fa() return value. */
   authSetup2faResult?: AuthSetup2faResult;
+  /** Phase 0 — override auth.handoffRedeem() return value. */
+  authHandoffRedeemResult?: AuthHandoffRedeemResult;
 }
 
 /**
@@ -264,6 +267,11 @@ export function installMockApi(options: MockApiOptions = {}): void {
             otpauthUri:
               'otpauth://totp/KDPBook:test@test.local?secret=JBSWY3DPEHPK3PXP&issuer=KDPBook',
           },
+      ),
+      // Phase 0 — Identity bridge handoff redeem. Default happy path.
+      handoffRedeem: vi.fn(
+        async (): Promise<AuthHandoffRedeemResult> =>
+          options.authHandoffRedeemResult ?? { ok: true, user: defaultAuthUser },
       ),
       onAuthenticated: vi.fn(() => () => undefined),
     },

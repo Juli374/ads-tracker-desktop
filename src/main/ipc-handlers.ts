@@ -7,6 +7,7 @@ import {
   ApiRequestPayload,
   ApiResponse,
   AuthChangePasswordResult,
+  AuthHandoffRedeemResult,
   AuthLoginResult,
   AuthSetup2faResult,
   AuthSignupResult,
@@ -44,6 +45,7 @@ import {
 import {
   authChangePassword,
   authForgotPassword,
+  authHandoffRedeem,
   authLogin,
   authLogout,
   authSetup2FA,
@@ -432,6 +434,33 @@ export function registerIpcHandlers(): void {
     IpcChannel.AuthSetup2fa,
     async (): Promise<AuthSetup2faResult> => {
       return authSetup2FA();
+    },
+  );
+
+  // Phase 0 — Identity bridge. Redeem a one-time handoff token for a Railway
+  // token pair. Pure shape validation + delegation; token persistence + the
+  // auth:authenticated emit happen inside authHandoffRedeem. We never log the
+  // token (not even its length). On success we refresh entitlements so the
+  // first authenticated paint has the right tier (same as the login handler).
+  ipcMain.handle(
+    IpcChannel.AuthHandoffRedeem,
+    async (_evt, token: unknown): Promise<AuthHandoffRedeemResult> => {
+      if (typeof token !== 'string' || token.length === 0 || token.length > 4096) {
+        return { ok: false, error: 'auth:handoff:redeem: token required', code: 'SERVER' };
+      }
+      try {
+        const result = await authHandoffRedeem(token);
+        if (result.ok) {
+          void refreshEntitlements().catch(() => undefined);
+        }
+        return result;
+      } catch (err) {
+        return {
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+          code: 'SERVER',
+        };
+      }
     },
   );
 

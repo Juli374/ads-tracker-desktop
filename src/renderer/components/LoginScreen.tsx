@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
+  Globe,
   KeyRound,
   Loader2,
   Lock,
@@ -32,6 +33,16 @@ import { ForgotPasswordModal } from './auth/ForgotPasswordModal';
  */
 
 type Mode = 'email' | 'token' | '2fa' | '2fa-setup';
+
+/**
+ * Phase 0 — Identity bridge. Base URL of the KDPBook website. The "Sign in with
+ * browser" button opens `<SITE>/connect-desktop`, which (after a browser login)
+ * mints a one-time handoff token and redirects back into the desktop via the
+ * `ads-tracker-desktop://callback?token=…&type=handoff` deep-link. Hardcoded
+ * (not env) per the Phase 0 plan — the site domain is fixed for this release.
+ */
+const SITE_BASE_URL = 'https://book-platform-bay.vercel.app';
+const CONNECT_DESKTOP_URL = `${SITE_BASE_URL}/connect-desktop`;
 
 /**
  * Решает, показывать ли dedicated retry-screen вместо обычной формы:
@@ -66,6 +77,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onShowSignup }) => {
   const [networkUnreachable, setNetworkUnreachable] = useState(false);
   const [apiHost, setApiHost] = useState<string>('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  // Phase 0 — "Sign in with browser" busy state (while we hand off to the OS
+  // browser). The redeem itself happens later via the deep-link handler in
+  // AuthContext, so we only need to cover the openExternal round-trip.
+  const [browserBusy, setBrowserBusy] = useState(false);
 
   // 2FA-only state. `partialToken` is what the backend issued at the first
   // step of login when 2FA is required; we keep it in state so the user can
@@ -171,6 +186,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onShowSignup }) => {
       handleAuthError(err, 'errors.loginFailed');
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Phase 0 — open the website's connect-desktop page in the system browser.
+  // After the user authenticates there, the site deep-links a handoff token
+  // back into the app; useHandoffDeepLink (AuthContext) redeems it. We don't
+  // await any redeem here — this only kicks off the browser round-trip.
+  const onBrowserSignIn = async () => {
+    setLocalError(null);
+    setBrowserBusy(true);
+    try {
+      await window.api.shell.openExternal(CONNECT_DESKTOP_URL);
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : t('errors.handoffFailed'));
+    } finally {
+      setBrowserBusy(false);
     }
   };
 
@@ -381,6 +412,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onShowSignup }) => {
               >
                 {busy && <Loader2 size={14} className="animate-spin" />}
                 {busy ? t('actions.signingIn') : t('actions.signIn')}
+              </button>
+
+              {/* Phase 0 — browser handoff sign-in. */}
+              <button
+                type="button"
+                onClick={onBrowserSignIn}
+                disabled={browserBusy}
+                data-testid="login-browser-signin"
+                className="w-full h-9 rounded-md border border-zinc-200 bg-white text-zinc-700 text-sm font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {browserBusy ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Globe size={14} />
+                )}
+                {t('actions.signInWithBrowser')}
               </button>
 
               <button

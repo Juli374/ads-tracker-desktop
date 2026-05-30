@@ -7,6 +7,7 @@ import type {
   AuthAuthenticatedEvent,
   AuthChangePasswordResult,
   AuthExpiredEvent,
+  AuthHandoffRedeemResult,
   AuthLoginResult,
   AuthSetup2faResult,
   AuthSignupResult,
@@ -73,6 +74,9 @@ const api: DesktopApi = {
       ) as Promise<AuthChangePasswordResult>,
     setup2fa: () =>
       ipcRenderer.invoke(IpcChannel.AuthSetup2fa) as Promise<AuthSetup2faResult>,
+    // Phase 0 — Identity bridge handoff redeem. Pass-through to its IPC handler.
+    handoffRedeem: (token: string) =>
+      ipcRenderer.invoke(IpcChannel.AuthHandoffRedeem, token) as Promise<AuthHandoffRedeemResult>,
     onAuthenticated: (handler) => {
       const wrapped = (_e: IpcRendererEvent, payload: AuthAuthenticatedEvent) =>
         handler(payload);

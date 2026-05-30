@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { useTranslation } from 'react-i18next';
 import { authApi, AuthUser } from '../api/auth';
 import { ApiError } from '../api/client';
+import { useHandoffDeepLink } from '../lib/useHandoffDeepLink';
 import { useToast } from './ToastContext';
 
 type AuthStatus = 'loading' | 'unauthenticated' | 'authenticated';
@@ -30,6 +31,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Дебаунс для onExpired: если несколько параллельных запросов одновременно
   // вернут 401, мы получим 5 push-event'ов подряд → не хотим 5 тостов.
   const expiredHandlingRef = useRef<boolean>(false);
+  // Phase 0 — Identity bridge. Mirror `status` into a ref so the handoff
+  // deep-link handler can read the *current* auth state without re-subscribing
+  // (and without showing an error toast over an already-authenticated session).
+  const statusRef = useRef<AuthStatus>(status);
+  statusRef.current = status;
+  const isAuthenticated = useCallback(() => statusRef.current === 'authenticated', []);
+
+  // Phase 0 — handoff deep-link (browser → desktop). Mounted here so it is
+  // always live regardless of which screen is showing. On success main emits
+  // auth:authenticated and the listener below flips us to authenticated.
+  useHandoffDeepLink(isAuthenticated);
 
   const verifyExisting = useCallback(async () => {
     const token = await window.api.auth.getToken();

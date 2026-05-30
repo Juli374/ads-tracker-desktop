@@ -26,6 +26,11 @@ export const IpcChannel = {
   AuthForgotPassword: 'auth:forgotPassword',
   AuthChangePassword: 'auth:changePassword',
   AuthSetup2fa: 'auth:setup2fa',
+  // Phase 0 — Identity bridge. Redeem a one-time handoff token (minted by the
+  // website after a browser login) for a Railway access/refresh token pair.
+  // main owns the POST so the handoff token never needs to be re-read by the
+  // renderer; on success the token pair lands in safeStorage exactly like login.
+  AuthHandoffRedeem: 'auth:handoff:redeem',
   AuthAuthenticated: 'auth:authenticated',
   ApiRequest: 'api:request',
   MediaUpload: 'media:upload',
@@ -287,6 +292,37 @@ export interface AuthSetup2faResult {
   secret: string;
   /** otpauth:// URI for QR generation. */
   otpauthUri: string;
+}
+
+// === Phase 0 — Identity bridge (browser-handoff login) ===
+
+/**
+ * Machine-readable error codes for a failed handoff redeem. The renderer maps
+ * these to localised strings (i18n auth.json `errors.handoff*`). Distinct from
+ * ApiErrorCode because the bridge has its own failure taxonomy (e.g. the
+ * website verify-endpoint being unreachable, or the killswitch being off).
+ */
+export type AuthHandoffErrorCode =
+  | 'NETWORK'             // transport failed before a status (status 0)
+  | 'BRIDGE_UNREACHABLE'  // Railway could not reach the website verify-endpoint (502)
+  | 'INVALID'             // token expired / already used / malformed (401)
+  | 'EMAIL_NOT_VERIFIED'  // Supabase email unconfirmed (403)
+  | 'ACCOUNT_DISABLED'    // Railway row is_active=0 (403)
+  | 'CONFLICT'            // email linked to a different Supabase account (409)
+  | 'DISABLED'            // killswitch off on Railway (503)
+  | 'SERVER';             // anything else (400/500/unknown)
+
+/**
+ * Result of an `auth:handoff:redeem` call. On success the token pair is already
+ * in safeStorage (main persisted it before resolving) and auth:authenticated
+ * has been emitted — the renderer just needs to know it worked. On failure,
+ * `code` drives the localised toast.
+ */
+export interface AuthHandoffRedeemResult {
+  ok: boolean;
+  user?: AuthUserProfile;
+  error?: string;
+  code?: AuthHandoffErrorCode;
 }
 
 /**
@@ -742,6 +778,14 @@ export interface DesktopApi {
     ): Promise<AuthChangePasswordResult>;
     /** Fetch TOTP setup material so renderer can render the QR code. */
     setup2fa(): Promise<AuthSetup2faResult>;
+    /**
+     * Phase 0 — Identity bridge. Redeem a one-time handoff token (delivered via
+     * the `ads-tracker-desktop://callback?token=…&type=handoff` deep-link) for a
+     * Railway token pair. main POSTs `/api/auth/desktop-handoff/redeem`, persists
+     * the returned pair, and emits auth:authenticated on success. The plaintext
+     * token never appears in logs (neither here nor in main).
+     */
+    handoffRedeem(token: string): Promise<AuthHandoffRedeemResult>;
     /**
      * Push event subscription: main emits when login/refresh stores fresh
      * tokens. AuthContext flips status → 'authenticated' without polling.
