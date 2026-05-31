@@ -24,14 +24,15 @@ describe('RoyaltiesTab', () => {
     expect(await screen.findByTestId('settings-royalties-tab')).toBeInTheDocument();
   });
 
-  it('shows source toggle with cloud and local options', async () => {
+  it('shows the local import button (royalty is local-only now)', async () => {
     render(
       <Wrap>
         <RoyaltiesTab />
       </Wrap>,
     );
     await screen.findByTestId('settings-royalties-tab');
-    // SourceToggle radio group is rendered
-    expect(screen.getByRole('radiogroup', { name: /source\.ariaLabel/i })).toBeInTheDocument();
+    // Royalty is fully local: import button is always available, no source toggle.
+    expect(await screen.findByTestId('royalty-import-btn')).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: /source\.ariaLabel/i })).not.toBeInTheDocument();
   });
 });

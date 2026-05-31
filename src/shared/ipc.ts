@@ -357,6 +357,16 @@ export interface LocalRoyaltyUpload {
   currency?: string;
 }
 
+// Phase D-B: record type tag mirroring main/local-db/index.ts RoyaltyRecordType.
+export type LocalRoyaltyRecordType =
+  | 'ebook_royalty'
+  | 'paperback_sale'
+  | 'paperback_royalty'
+  | 'hardcover_sale'
+  | 'hardcover_royalty'
+  | 'kenp_read'
+  | 'legacy';
+
 export interface LocalRoyaltyRecord {
   id: number;
   upload_id: number;
@@ -368,6 +378,27 @@ export interface LocalRoyaltyRecord {
   royalty: number;
   revenue: number;
   currency?: string;
+  // Phase D-B rich fields (all optional; legacy rows omit / null them).
+  record_type?: LocalRoyaltyRecordType;
+  book_id?: number | null;
+  author_name?: string | null;
+  isbn?: string | null;
+  royalty_date?: string | null;
+  order_date?: string | null;
+  read_date?: string | null;
+  royalty_type?: string | null;
+  transaction_type?: string | null;
+  units_sold?: number;
+  units_refunded?: number;
+  net_units_sold?: number;
+  avg_list_price?: number | null;
+  avg_offer_price?: number | null;
+  avg_file_size_mb?: number | null;
+  avg_delivery_cost?: number | null;
+  avg_manufacturing_cost?: number | null;
+  kenp_read?: number;
+  account?: string | null;
+  file_hash?: string | null;
 }
 
 export interface LocalRoyaltyMonthSummary {
@@ -389,6 +420,25 @@ export interface LocalRoyaltyImportPayload {
     royalty: number;
     revenue: number;
     currency?: string;
+    // Phase D-B rich fields (optional; importer persists them when present).
+    record_type?: LocalRoyaltyRecordType;
+    book_id?: number | null;
+    author_name?: string | null;
+    isbn?: string | null;
+    royalty_date?: string | null;
+    order_date?: string | null;
+    read_date?: string | null;
+    royalty_type?: string | null;
+    transaction_type?: string | null;
+    units_sold?: number;
+    units_refunded?: number;
+    net_units_sold?: number;
+    avg_list_price?: number | null;
+    avg_offer_price?: number | null;
+    avg_file_size_mb?: number | null;
+    avg_delivery_cost?: number | null;
+    avg_manufacturing_cost?: number | null;
+    kenp_read?: number;
   }>;
 }
 

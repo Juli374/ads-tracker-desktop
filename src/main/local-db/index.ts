@@ -10,7 +10,7 @@
 // - Чтение обёрнуто в try/catch с дефолтом — если файл повреждён, подставляем
 //   пустой стейт и логируем (не падаем).
 // - Schema-versioned: top-level поле `version` для будущих миграций.
-import { app } from 'electron';
+import { app, safeStorage } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -21,7 +21,14 @@ import { AutoNegThresholds, DEFAULT_AUTO_NEG_THRESHOLDS } from '../../shared/ipc
 // Schema v4 adds `weekly_briefings` table (Phase M.5 Lane E) — array of past
 // AI-generated weekly briefing records. Forward-only: existing v3 installs
 // migrate to an empty briefings list on first read.
-export const SCHEMA_VERSION = 4;
+// Schema v5 (Phase D-B) enriches `royalty_records` with the full backend-parity
+// field set (record_type, dates, author/isbn, pricing, file/manufacturing
+// costs, royalty_type/transaction_type, units_refunded/net_units_sold, kenp,
+// book_id, account, file_hash). Migration from v4 is LOSSLESS and additive:
+// existing flat rows keep their units/royalty/revenue and gain a synthesised
+// `record_type: 'legacy'` plus null/0 defaults for the new columns — no data
+// dropped. See `migrateRoyaltyRecord` below.
+export const SCHEMA_VERSION = 5;
 
 // Phase J.3 Lane C — AI settings (Claude API key, model slots, brand voice).
 // Stored locally because the personal-use first track does not push secrets to
@@ -81,6 +88,20 @@ export interface RoyaltyUploadRow {
   currency?: string;
 }
 
+/**
+ * Royalty record type (Phase D-B). Distinguishes the six canonical backend
+ * buckets so the desktop can re-derive sales-vs-royalty and per-format views,
+ * plus `legacy` for v4-and-earlier flat rows migrated forward.
+ */
+export type RoyaltyRecordType =
+  | 'ebook_royalty'
+  | 'paperback_sale'
+  | 'paperback_royalty'
+  | 'hardcover_sale'
+  | 'hardcover_royalty'
+  | 'kenp_read'
+  | 'legacy';
+
 export interface RoyaltyRecordRow {
   id: number;
   upload_id: number;
@@ -88,10 +109,37 @@ export interface RoyaltyRecordRow {
   book_title?: string;
   marketplace: string;
   target_month: string;
+  // --- Dashboard-stable aggregate fields (present on every row) ---
+  // `units` mirrors the backend net_units_sold for sales rows (and the legacy
+  // units count for migrated rows); `revenue` has no first-class KDP source so
+  // it floors to `royalty` exactly as the cloud importer did.
   units: number;
   royalty: number;
   revenue: number;
   currency?: string;
+  // --- Phase D-B rich fields (backend parity) -----------------------------
+  // All optional so v4 rows migrate forward without these; new imports always
+  // populate `record_type` and the relevant subset.
+  record_type?: RoyaltyRecordType;
+  book_id?: number | null;
+  author_name?: string | null;
+  isbn?: string | null;
+  royalty_date?: string | null;
+  order_date?: string | null;
+  read_date?: string | null;
+  royalty_type?: string | null;
+  transaction_type?: string | null;
+  units_sold?: number;
+  units_refunded?: number;
+  net_units_sold?: number;
+  avg_list_price?: number | null;
+  avg_offer_price?: number | null;
+  avg_file_size_mb?: number | null;
+  avg_delivery_cost?: number | null;
+  avg_manufacturing_cost?: number | null;
+  kenp_read?: number;
+  account?: string | null;
+  file_hash?: string | null;
 }
 
 /**
@@ -173,17 +221,36 @@ export interface LocalDbState {
  */
 export const BRIEFING_HISTORY_CAP = 26;
 
-const EMPTY_STATE: LocalDbState = {
-  version: SCHEMA_VERSION,
-  royalty_uploads: [],
-  royalty_records: [],
-  next_upload_id: 1,
-  next_record_id: 1,
-  ai_settings: DEFAULT_AI_SETTINGS,
-  auto_negativator: DEFAULT_AUTO_NEG,
-  weekly_briefings: [],
-  next_briefing_id: 1,
-};
+// Fresh empty state. ВАЖНО: фабрика, а не shared-константа. Прежний
+// `EMPTY_STATE` ссылался на тот же объект `DEFAULT_AI_SETTINGS` /
+// `DEFAULT_AUTO_NEG`, и shallow-spread `{...EMPTY_STATE}` копировал лишь
+// ссылку — поэтому `mutate(s => s.ai_settings.claudeKey = ...)` на свежем
+// сторе мутировал глобальный дефолт на весь процесс. Глубоко клонируем
+// вложенные объекты, чтобы дефолты были иммутабельны.
+function freshEmptyState(): LocalDbState {
+  return {
+    version: SCHEMA_VERSION,
+    royalty_uploads: [],
+    royalty_records: [],
+    next_upload_id: 1,
+    next_record_id: 1,
+    ai_settings: {
+      ...DEFAULT_AI_SETTINGS,
+      models: { ...DEFAULT_AI_SETTINGS.models },
+      brandVoice: {
+        ...DEFAULT_AI_SETTINGS.brandVoice,
+        toneWords: [...DEFAULT_AI_SETTINGS.brandVoice.toneWords],
+        bannedWords: [...DEFAULT_AI_SETTINGS.brandVoice.bannedWords],
+      },
+    },
+    auto_negativator: {
+      ...DEFAULT_AUTO_NEG,
+      thresholds: { ...DEFAULT_AUTO_NEG.thresholds },
+    },
+    weekly_briefings: [],
+    next_briefing_id: 1,
+  };
+}
 
 /**
  * Phase M.2 — defensively coerce on-disk seriesOverrides. Drops rows that
@@ -214,24 +281,221 @@ function sanitiseSeriesOverrides(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-function dbFilePath(): string {
+// ============================================================================
+// At-rest encryption (DESKTOP-2)
+// ============================================================================
+//
+// Royalty + AI-key + briefings содержат приватные KDP-числа и секреты, которые
+// по Amazon-TOS и из общих privacy-соображений НЕ должны лежать на диске в
+// открытом виде. Шифруем весь JSON-стейт симметрично через Electron
+// `safeStorage` (OS Keychain / DPAPI / libsecret) — тот же механизм, что уже
+// используется для токенов в `auth-store.ts`. SQLCipher не берём: он тянет
+// native-модуль (better-sqlite3-multiple-ciphers) с пересборкой под Electron
+// ABI + forge-externals + auto-unpack-natives — слишком инвазивно и рискованно
+// для уже работающего store. Симметричное шифрование JSON-файла даёт at-rest
+// приватность без изменения синхронного API `localStore` (read/mutate/reset).
+//
+// Формат на диске:
+//   - `local-db.enc`  — safeStorage-зашифрованный JSON (production / signed).
+//   - `local-db.json` — legacy plaintext. Остаётся как:
+//       (a) источник для one-time миграции plaintext → encrypted при первом
+//           открытии после апдейта (read plaintext → write encrypted → unlink);
+//       (b) fallback, когда safeStorage недоступен (unsigned dev DMG, CI,
+//           Linux без keychain) — тогда пишем plaintext 0o600, как auth-store.
+//
+// Инвариант «не потерять данные»: миграция атомарна (encrypted пишется через
+// temp→fsync→rename ДО unlink plaintext). Если шифрование падает — plaintext
+// НЕ удаляется и продолжает читаться. Чтение enc-файла с fallback на plaintext
+// гарантирует, что повреждение одного источника не теряет другой.
+
+function userDataBase(): string {
   // app.getPath('userData') обычно ~/Library/Application Support/KDPBook (derived from productName).
   // Для тестов / случаев когда app не доступен — fallback на os.tmpdir().
-  let base: string;
   try {
-    base = app.getPath('userData');
+    return app.getPath('userData');
   } catch {
-    base = path.join(os.tmpdir(), 'ads-tracker-desktop');
+    return path.join(os.tmpdir(), 'ads-tracker-desktop');
   }
-  return path.join(base, 'local-db.json');
+}
+
+// Plaintext (legacy / fallback) путь. Имя файла НЕ меняем — старые установки
+// читаются по нему, а filePath() исторически указывает сюда.
+function dbFilePath(): string {
+  return path.join(userDataBase(), 'local-db.json');
+}
+
+// Encrypted путь (primary, когда safeStorage доступен).
+function dbEncFilePath(): string {
+  return path.join(userDataBase(), 'local-db.enc');
+}
+
+// Можно ли шифровать прямо сейчас. Обёрнуто в try/catch: в vitest/CI модуль
+// `electron` мокается частично и `safeStorage` может быть undefined.
+function encryptionAvailable(): boolean {
+  try {
+    return typeof safeStorage?.isEncryptionAvailable === 'function' && safeStorage.isEncryptionAvailable();
+  } catch {
+    return false;
+  }
+}
+
+// Crash-safe запись произвольного буфера: write → fsync → close → rename
+// (та же дисциплина, что у JSON-writer ниже, security-finding #7).
+function atomicWrite(file: string, buf: Buffer): void {
+  const dir = path.dirname(file);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const tmp = `${file}.tmp`;
+  const fd = fs.openSync(tmp, 'w', 0o600);
+  try {
+    fs.writeSync(fd, buf, 0, buf.length, 0);
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+  fs.renameSync(tmp, file);
+}
+
+function parseState(raw: string): LocalDbState {
+  const parsed = JSON.parse(raw) as Partial<LocalDbState>;
+  return normaliseState(parsed);
 }
 
 function readState(): LocalDbState {
-  const file = dbFilePath();
-  if (!fs.existsSync(file)) return { ...EMPTY_STATE };
-  try {
-    const raw = fs.readFileSync(file, 'utf8');
-    const parsed = JSON.parse(raw) as Partial<LocalDbState>;
+  const encFile = dbEncFilePath();
+  const plainFile = dbFilePath();
+
+  // 1) Primary: зашифрованный файл (если есть и шифрование доступно).
+  if (fs.existsSync(encFile) && encryptionAvailable()) {
+    try {
+      const blob = fs.readFileSync(encFile);
+      const raw = safeStorage.decryptString(blob);
+      return parseState(raw);
+    } catch (err) {
+      // Расшифровка/парс не удались. НЕ затираем ничего: падаем на plaintext
+      // (если есть), иначе на пустой стейт — но enc-файл оставляем на диске
+      // для пост-мортема (ключ мог временно отсутствовать в keychain).
+      // eslint-disable-next-line no-console
+      console.error('[local-db] failed to read encrypted store, trying plaintext fallback:', err);
+    }
+  }
+
+  // 2) Plaintext (legacy / fallback). Если присутствует И шифрование доступно —
+  //    это one-time миграция: после успешного чтения пишем encrypted и удаляем
+  //    plaintext (см. ниже). Если шифрование недоступно — просто читаем.
+  if (fs.existsSync(plainFile)) {
+    let state: LocalDbState;
+    try {
+      const raw = fs.readFileSync(plainFile, 'utf8');
+      state = parseState(raw);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[local-db] corrupted plaintext file, using empty state:', err);
+      return freshEmptyState();
+    }
+
+    // Plaintext→encrypted миграция при первом открытии. Безопасна: encrypted
+    // пишется атомарно ПЕРЕД unlink'ом plaintext, и любой сбой оставляет
+    // plaintext нетронутым (данные не теряются).
+    if (encryptionAvailable() && !fs.existsSync(encFile)) {
+      try {
+        const blob = safeStorage.encryptString(JSON.stringify(state, null, 2));
+        atomicWrite(encFile, blob);
+        try {
+          fs.unlinkSync(plainFile);
+        } catch {
+          // ignore: encrypted-копия уже есть, plaintext подчистится при
+          // следующей записи через writeState.
+        }
+        // eslint-disable-next-line no-console
+        console.warn('[local-db] migrated plaintext store → encrypted (local-db.enc)');
+      } catch (err) {
+        // Шифрование упало — оставляем plaintext как есть, ничего не теряем.
+        // eslint-disable-next-line no-console
+        console.error('[local-db] plaintext→encrypted migration failed, keeping plaintext:', err);
+      }
+    }
+    return state;
+  }
+
+  // 3) Ничего нет — свежая установка.
+  return freshEmptyState();
+}
+
+// Phase D-B (schema v4 → v5) — lossless, additive royalty-record migration.
+//
+// v4 rows were flat: { id, upload_id, asin?, book_title?, marketplace,
+// target_month, units, royalty, revenue, currency? }. v5 adds the rich
+// backend-parity field set. We NEVER drop a row or mutate its existing
+// numbers; we only:
+//   - preserve every original field verbatim,
+//   - tag rows that predate `record_type` as 'legacy',
+//   - backfill the new optional fields from whatever the row already has
+//     (e.g. a v5 row written by the new importer already carries them; a v4
+//      row gets null/0 defaults derived from `units`/`royalty`).
+// Already-migrated v5 rows pass through unchanged (idempotent). A non-object
+// or malformed entry is coerced into a minimal valid row rather than thrown
+// away, so a hand-edited file can't lose siblings.
+function migrateRoyaltyRecord(raw: unknown): RoyaltyRecordRow {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<RoyaltyRecordRow>;
+
+  const num = (v: unknown, dflt = 0): number =>
+    typeof v === 'number' && Number.isFinite(v) ? v : dflt;
+  const numOrNull = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null;
+  const strOrUndef = (v: unknown): string | undefined =>
+    typeof v === 'string' ? v : undefined;
+  const strOrNull = (v: unknown): string | null =>
+    typeof v === 'string' ? v : null;
+
+  const units = num(r.units);
+  const royalty = num(r.royalty);
+  // revenue floors to royalty when absent (same rule as the importer), so
+  // legacy rows that never stored revenue stay Dashboard-consistent.
+  const revenue = typeof r.revenue === 'number' && Number.isFinite(r.revenue) ? r.revenue : royalty;
+
+  return {
+    id: num(r.id),
+    upload_id: num(r.upload_id),
+    asin: strOrUndef(r.asin),
+    book_title: strOrUndef(r.book_title),
+    marketplace: typeof r.marketplace === 'string' ? r.marketplace : '',
+    target_month: typeof r.target_month === 'string' ? r.target_month : '',
+    units,
+    royalty,
+    revenue,
+    currency: strOrUndef(r.currency),
+    // Rich fields: keep if present (v5 row), otherwise default. `legacy` marks
+    // pre-v5 rows that lacked a record_type.
+    record_type: (r.record_type as RoyaltyRecordType | undefined) ?? 'legacy',
+    book_id: r.book_id === undefined ? null : (numOrNull(r.book_id) as number | null),
+    author_name: r.author_name === undefined ? null : strOrNull(r.author_name),
+    isbn: r.isbn === undefined ? null : strOrNull(r.isbn),
+    royalty_date: r.royalty_date === undefined ? null : strOrNull(r.royalty_date),
+    order_date: r.order_date === undefined ? null : strOrNull(r.order_date),
+    read_date: r.read_date === undefined ? null : strOrNull(r.read_date),
+    royalty_type: r.royalty_type === undefined ? null : strOrNull(r.royalty_type),
+    transaction_type: r.transaction_type === undefined ? null : strOrNull(r.transaction_type),
+    // units_sold/net_units_sold default to the flat `units` so aggregates that
+    // read the rich fields still see the legacy count.
+    units_sold: typeof r.units_sold === 'number' ? r.units_sold : units,
+    units_refunded: num(r.units_refunded),
+    net_units_sold: typeof r.net_units_sold === 'number' ? r.net_units_sold : units,
+    avg_list_price: r.avg_list_price === undefined ? null : numOrNull(r.avg_list_price),
+    avg_offer_price: r.avg_offer_price === undefined ? null : numOrNull(r.avg_offer_price),
+    avg_file_size_mb: r.avg_file_size_mb === undefined ? null : numOrNull(r.avg_file_size_mb),
+    avg_delivery_cost: r.avg_delivery_cost === undefined ? null : numOrNull(r.avg_delivery_cost),
+    avg_manufacturing_cost:
+      r.avg_manufacturing_cost === undefined ? null : numOrNull(r.avg_manufacturing_cost),
+    kenp_read: num(r.kenp_read),
+    account: r.account === undefined ? null : strOrNull(r.account),
+    file_hash: r.file_hash === undefined ? null : strOrNull(r.file_hash),
+  };
+}
+
+// Нормализация/sanity-check + дефолты для отсутствующих полей. Вынесено из
+// readState чтобы переиспользовать для plaintext и encrypted источников.
+function normaliseState(parsed: Partial<LocalDbState>): LocalDbState {
+  {
     // Sanity-check + миграция дефолтами. v1 → v2 added ai_settings:
     // fall back to DEFAULT_AI_SETTINGS, keep royalty rows unchanged.
     const ai = parsed.ai_settings;
@@ -356,7 +620,9 @@ function readState(): LocalDbState {
     return {
       version: parsed.version ?? SCHEMA_VERSION,
       royalty_uploads: Array.isArray(parsed.royalty_uploads) ? parsed.royalty_uploads : [],
-      royalty_records: Array.isArray(parsed.royalty_records) ? parsed.royalty_records : [],
+      royalty_records: Array.isArray(parsed.royalty_records)
+        ? parsed.royalty_records.map((r) => migrateRoyaltyRecord(r))
+        : [],
       next_upload_id: parsed.next_upload_id ?? 1,
       next_record_id: parsed.next_record_id ?? 1,
       ai_settings: aiSettings,
@@ -366,30 +632,34 @@ function readState(): LocalDbState {
       // Phase N — telemetry consent. Default false → opt-in.
       telemetry_consent: typeof parsed.telemetry_consent === 'boolean' ? parsed.telemetry_consent : false,
     };
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[local-db] corrupted file, using empty state:', err);
-    return { ...EMPTY_STATE };
   }
 }
 
 function writeState(state: LocalDbState): void {
-  const file = dbFilePath();
-  const dir = path.dirname(file);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const tmp = `${file}.tmp`;
-  // Crash-safe запись: write → fsync → close → rename. Без fsync rename
-  // может пройти раньше реального flush, и при power-loss остаётся .tmp с
-  // нулевыми байтами (security-finding #7).
-  const buf = Buffer.from(JSON.stringify(state, null, 2), 'utf8');
-  const fd = fs.openSync(tmp, 'w', 0o600);
-  try {
-    fs.writeSync(fd, buf, 0, buf.length, 0);
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
+  const json = JSON.stringify(state, null, 2);
+  const encFile = dbEncFilePath();
+  const plainFile = dbFilePath();
+
+  // Primary: пишем зашифрованным, если safeStorage доступен. После успешной
+  // записи подчищаем legacy plaintext, чтобы открытые данные не оставались на
+  // диске (тот же принцип, что в auth-store.writeToken — finding #3).
+  if (encryptionAvailable()) {
+    const blob = safeStorage.encryptString(json);
+    atomicWrite(encFile, blob);
+    try {
+      fs.unlinkSync(plainFile);
+    } catch {
+      // ignore: ENOENT в норме (после миграции файла уже нет).
+    }
+    return;
   }
-  fs.renameSync(tmp, file);
+
+  // Fallback: safeStorage недоступен (unsigned dev DMG, CI, Linux без keychain).
+  // Пишем plaintext 0o600 — как auth-store. Когда сборка станет signed и
+  // safeStorage появится, следующий writeState зашифрует и удалит этот файл.
+  // eslint-disable-next-line no-console
+  console.warn('[local-db] safeStorage unavailable — writing plaintext (0o600) local-db.json');
+  atomicWrite(plainFile, Buffer.from(json, 'utf8'));
 }
 
 // Простой fluent-store. Транзакция = mutate + write один раз.
@@ -406,10 +676,14 @@ export const localStore = {
   },
 
   reset(): void {
-    writeState({ ...EMPTY_STATE });
+    writeState(freshEmptyState());
   },
 
+  // Путь к файлу, который РЕАЛЬНО используется сейчас: encrypted если он есть
+  // (или шифрование доступно), иначе legacy plaintext. Диагностика для UI
+  // ("показать в Finder") — должна указывать на актуальный источник.
   filePath(): string {
+    if (fs.existsSync(dbEncFilePath()) || encryptionAvailable()) return dbEncFilePath();
     return dbFilePath();
   },
 };
