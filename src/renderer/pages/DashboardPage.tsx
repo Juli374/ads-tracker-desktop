@@ -20,6 +20,7 @@ import {
   type TopPerformersData,
 } from '../api/metrics';
 import { ApiError } from '../api/client';
+import { localRoyaltyApi } from '../api/localRoyalty';
 import {
   ActiveFiltersBar,
   Card,
@@ -53,6 +54,36 @@ import {
 import { OrganicPaidBlock } from '../components/dashboard/OrganicPaidBlock';
 import { BriefingCard } from '../components/dashboard/BriefingCard';
 
+/**
+ * Enumerate the YYYY-MM months covered by a [from, to] inclusive date range.
+ * Royalty в локальном сторе ключуется по target_month (YYYY-MM), а Dashboard
+ * выбирает диапазон дат — поэтому суммируем по всем месяцам, которые попадают
+ * в окно. from/to приходят из dateRangeFor() в формате YYYY-MM-DD.
+ */
+function monthsInRange(from: string, to: string): string[] {
+  const months: string[] = [];
+  const fromMonth = from.slice(0, 7); // YYYY-MM
+  const toMonth = to.slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(fromMonth) || !/^\d{4}-\d{2}$/.test(toMonth)) {
+    return months;
+  }
+  let [y, m] = fromMonth.split('-').map(Number);
+  const [toY, toM] = toMonth.split('-').map(Number);
+  // Guard against an inverted range (to < from) — нечего перечислять.
+  if (toY < y || (toY === y && toM < m)) return months;
+  // Hard cap to avoid pathological loops on bad input.
+  for (let i = 0; i < 240; i += 1) {
+    months.push(`${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}`);
+    if (y === toY && m === toM) break;
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return months;
+}
+
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation('dashboard');
   const toast = useToast();
@@ -83,6 +114,10 @@ export const DashboardPage: React.FC = () => {
   const [topPerf, setTopPerf] = useState<TopPerformersData | null>(null);
   const [mpSummary, setMpSummary] = useState<MarketplaceSummary | null>(null);
   const [bookSummary, setBookSummary] = useState<BookSummary | null>(null);
+  // Royalty — source of truth = local store (IPC), НЕ бэкенд. Это чинит $0 на
+  // Dashboard и держит royalty приватной (не уходит на Railway). null = ещё не
+  // загружено / IPC недоступен → fallback на бэкендовое значение.
+  const [localRoyalty, setLocalRoyalty] = useState<number | null>(null);
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
 
@@ -131,6 +166,28 @@ export const DashboardPage: React.FC = () => {
       if (bookRes.status === 'fulfilled') setBookSummary(bookRes.value);
       else setBookSummary(null);
 
+      // Royalty читаем из локального стора через IPC, а не с бэкенда.
+      // Локальный royalty ключуется по месяцу — суммируем все месяцы окна.
+      if (localRoyaltyApi.isAvailable()) {
+        try {
+          const months = monthsInRange(from, to);
+          const summaries = await Promise.all(
+            months.map((mo) => localRoyaltyApi.getSummary(mo)),
+          );
+          const sum = summaries.reduce(
+            (acc, s) => acc + (s?.totals?.royalty ?? 0),
+            0,
+          );
+          setLocalRoyalty(sum);
+        } catch {
+          // Локальный store недоступен/повреждён — не валим Dashboard,
+          // оставляем fallback на бэкендовое royalty.
+          setLocalRoyalty(null);
+        }
+      } else {
+        setLocalRoyalty(null);
+      }
+
       // Если упали ОБА главных endpoint'а — это явная проблема, кидаем toast.
       if (ovRes.status === 'rejected' && bookRes.status === 'rejected') {
         const err = bookRes.reason;
@@ -139,14 +196,28 @@ export const DashboardPage: React.FC = () => {
 
       setLoading(false);
     },
-    [filterParams, toast],
+    [filterParams, from, to, toast],
   );
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const cur = overview?.current_period;
+  // Royalty (и зависящий от неё profit) показываем из локального стора, не с
+  // бэкенда. Если локальное значение загружено — подменяем royalty и сдвигаем
+  // profit на дельту (profit = ... + royalty, поэтому корректируем по разнице,
+  // не переписывая всю формулу бэкенда). Остальные KPI остаются как есть.
+  const cur = useMemo(() => {
+    const base = overview?.current_period;
+    if (!base) return base;
+    if (localRoyalty == null) return base;
+    const delta = localRoyalty - (base.royalty ?? 0);
+    return {
+      ...base,
+      royalty: localRoyalty,
+      profit: (base.profit ?? 0) + delta,
+    };
+  }, [overview, localRoyalty]);
   const ch = overview?.changes;
 
   const subtitle = overview
@@ -188,7 +259,9 @@ export const DashboardPage: React.FC = () => {
         <KpiDelta
           label={t('kpi.profit')}
           value={fmtMoney(cur?.profit)}
-          change={ch?.profit}
+          // Profit включает royalty (подменённую локальной), поэтому бэкендовая
+          // дельта profit устаревает при локальном override — скрываем её.
+          change={localRoyalty == null ? ch?.profit : undefined}
           loading={loading && !overview}
           tone={cur && cur.profit < 0 ? 'negative' : 'default'}
           icon={<DollarSign size={14} />}
@@ -220,7 +293,10 @@ export const DashboardPage: React.FC = () => {
         <KpiDelta
           label={t('kpi.royalty')}
           value={fmtMoney(cur?.royalty)}
-          change={ch?.royalty}
+          // Когда royalty взята из локального стора, бэкендовая дельта
+          // (ch.royalty) относится к другому значению — не показываем её,
+          // чтобы не вводить в заблуждение. С fallback на бэкенд — показываем.
+          change={localRoyalty == null ? ch?.royalty : undefined}
           loading={loading && !overview}
           icon={<BookOpen size={14} />}
         />
