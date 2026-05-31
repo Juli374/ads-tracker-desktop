@@ -7,6 +7,7 @@ import {
   localStore,
   type RoyaltyUploadRow,
   type RoyaltyRecordRow,
+  type RoyaltyRecordType,
 } from './index';
 import {
   parseRoyaltyFile,
@@ -31,20 +32,45 @@ export interface RoyaltyMonthSummary {
   }>;
 }
 
+/**
+ * Rich per-record fields (Phase D-B). All optional so legacy/flat callers keep
+ * working: a caller that only supplies units/royalty/revenue still imports
+ * fine, and the persisted row simply carries nulls for the unset rich columns.
+ */
+export interface ImportRecord {
+  asin?: string;
+  book_title?: string;
+  units: number;
+  royalty: number;
+  revenue: number;
+  currency?: string;
+  record_type?: RoyaltyRecordType;
+  book_id?: number | null;
+  author_name?: string | null;
+  isbn?: string | null;
+  royalty_date?: string | null;
+  order_date?: string | null;
+  read_date?: string | null;
+  royalty_type?: string | null;
+  transaction_type?: string | null;
+  units_sold?: number;
+  units_refunded?: number;
+  net_units_sold?: number;
+  avg_list_price?: number | null;
+  avg_offer_price?: number | null;
+  avg_file_size_mb?: number | null;
+  avg_delivery_cost?: number | null;
+  avg_manufacturing_cost?: number | null;
+  kenp_read?: number;
+}
+
 export interface ImportPayload {
   account_id: number;
   account_name?: string;
   marketplace: string;
   target_month: string;
   source_filename?: string;
-  records: Array<{
-    asin?: string;
-    book_title?: string;
-    units: number;
-    royalty: number;
-    revenue: number;
-    currency?: string;
-  }>;
+  records: ImportRecord[];
 }
 
 // Чистим NaN/Infinity и заводим в 0 — эти значения ломают и арифметику в getSummary,
@@ -182,7 +208,7 @@ export const localRoyalty = {
       state.royalty_uploads.push(upload);
 
       for (const r of payload.records) {
-        state.royalty_records.push({
+        const row: RoyaltyRecordRow = {
           id: state.next_record_id,
           upload_id: uploadId,
           asin: r.asin,
@@ -193,7 +219,30 @@ export const localRoyalty = {
           royalty: r.royalty,
           revenue: r.revenue,
           currency: r.currency,
-        });
+          // Phase D-B rich fields. Default record_type to 'legacy' when the
+          // caller didn't classify the row (keeps flat imports valid).
+          record_type: r.record_type ?? 'legacy',
+          book_id: r.book_id ?? null,
+          author_name: r.author_name ?? null,
+          isbn: r.isbn ?? null,
+          royalty_date: r.royalty_date ?? null,
+          order_date: r.order_date ?? null,
+          read_date: r.read_date ?? null,
+          royalty_type: r.royalty_type ?? null,
+          transaction_type: r.transaction_type ?? null,
+          units_sold: typeof r.units_sold === 'number' ? r.units_sold : r.units,
+          units_refunded: typeof r.units_refunded === 'number' ? r.units_refunded : 0,
+          net_units_sold: typeof r.net_units_sold === 'number' ? r.net_units_sold : r.units,
+          avg_list_price: r.avg_list_price ?? null,
+          avg_offer_price: r.avg_offer_price ?? null,
+          avg_file_size_mb: r.avg_file_size_mb ?? null,
+          avg_delivery_cost: r.avg_delivery_cost ?? null,
+          avg_manufacturing_cost: r.avg_manufacturing_cost ?? null,
+          kenp_read: typeof r.kenp_read === 'number' ? r.kenp_read : 0,
+          account: payload.account_name ?? null,
+          file_hash: null,
+        };
+        state.royalty_records.push(row);
         state.next_record_id += 1;
         added += 1;
       }

@@ -21,7 +21,14 @@ import { AutoNegThresholds, DEFAULT_AUTO_NEG_THRESHOLDS } from '../../shared/ipc
 // Schema v4 adds `weekly_briefings` table (Phase M.5 Lane E) — array of past
 // AI-generated weekly briefing records. Forward-only: existing v3 installs
 // migrate to an empty briefings list on first read.
-export const SCHEMA_VERSION = 4;
+// Schema v5 (Phase D-B) enriches `royalty_records` with the full backend-parity
+// field set (record_type, dates, author/isbn, pricing, file/manufacturing
+// costs, royalty_type/transaction_type, units_refunded/net_units_sold, kenp,
+// book_id, account, file_hash). Migration from v4 is LOSSLESS and additive:
+// existing flat rows keep their units/royalty/revenue and gain a synthesised
+// `record_type: 'legacy'` plus null/0 defaults for the new columns — no data
+// dropped. See `migrateRoyaltyRecord` below.
+export const SCHEMA_VERSION = 5;
 
 // Phase J.3 Lane C — AI settings (Claude API key, model slots, brand voice).
 // Stored locally because the personal-use first track does not push secrets to
@@ -81,6 +88,20 @@ export interface RoyaltyUploadRow {
   currency?: string;
 }
 
+/**
+ * Royalty record type (Phase D-B). Distinguishes the six canonical backend
+ * buckets so the desktop can re-derive sales-vs-royalty and per-format views,
+ * plus `legacy` for v4-and-earlier flat rows migrated forward.
+ */
+export type RoyaltyRecordType =
+  | 'ebook_royalty'
+  | 'paperback_sale'
+  | 'paperback_royalty'
+  | 'hardcover_sale'
+  | 'hardcover_royalty'
+  | 'kenp_read'
+  | 'legacy';
+
 export interface RoyaltyRecordRow {
   id: number;
   upload_id: number;
@@ -88,10 +109,37 @@ export interface RoyaltyRecordRow {
   book_title?: string;
   marketplace: string;
   target_month: string;
+  // --- Dashboard-stable aggregate fields (present on every row) ---
+  // `units` mirrors the backend net_units_sold for sales rows (and the legacy
+  // units count for migrated rows); `revenue` has no first-class KDP source so
+  // it floors to `royalty` exactly as the cloud importer did.
   units: number;
   royalty: number;
   revenue: number;
   currency?: string;
+  // --- Phase D-B rich fields (backend parity) -----------------------------
+  // All optional so v4 rows migrate forward without these; new imports always
+  // populate `record_type` and the relevant subset.
+  record_type?: RoyaltyRecordType;
+  book_id?: number | null;
+  author_name?: string | null;
+  isbn?: string | null;
+  royalty_date?: string | null;
+  order_date?: string | null;
+  read_date?: string | null;
+  royalty_type?: string | null;
+  transaction_type?: string | null;
+  units_sold?: number;
+  units_refunded?: number;
+  net_units_sold?: number;
+  avg_list_price?: number | null;
+  avg_offer_price?: number | null;
+  avg_file_size_mb?: number | null;
+  avg_delivery_cost?: number | null;
+  avg_manufacturing_cost?: number | null;
+  kenp_read?: number;
+  account?: string | null;
+  file_hash?: string | null;
 }
 
 /**
@@ -373,6 +421,77 @@ function readState(): LocalDbState {
   return freshEmptyState();
 }
 
+// Phase D-B (schema v4 → v5) — lossless, additive royalty-record migration.
+//
+// v4 rows were flat: { id, upload_id, asin?, book_title?, marketplace,
+// target_month, units, royalty, revenue, currency? }. v5 adds the rich
+// backend-parity field set. We NEVER drop a row or mutate its existing
+// numbers; we only:
+//   - preserve every original field verbatim,
+//   - tag rows that predate `record_type` as 'legacy',
+//   - backfill the new optional fields from whatever the row already has
+//     (e.g. a v5 row written by the new importer already carries them; a v4
+//      row gets null/0 defaults derived from `units`/`royalty`).
+// Already-migrated v5 rows pass through unchanged (idempotent). A non-object
+// or malformed entry is coerced into a minimal valid row rather than thrown
+// away, so a hand-edited file can't lose siblings.
+function migrateRoyaltyRecord(raw: unknown): RoyaltyRecordRow {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<RoyaltyRecordRow>;
+
+  const num = (v: unknown, dflt = 0): number =>
+    typeof v === 'number' && Number.isFinite(v) ? v : dflt;
+  const numOrNull = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null;
+  const strOrUndef = (v: unknown): string | undefined =>
+    typeof v === 'string' ? v : undefined;
+  const strOrNull = (v: unknown): string | null =>
+    typeof v === 'string' ? v : null;
+
+  const units = num(r.units);
+  const royalty = num(r.royalty);
+  // revenue floors to royalty when absent (same rule as the importer), so
+  // legacy rows that never stored revenue stay Dashboard-consistent.
+  const revenue = typeof r.revenue === 'number' && Number.isFinite(r.revenue) ? r.revenue : royalty;
+
+  return {
+    id: num(r.id),
+    upload_id: num(r.upload_id),
+    asin: strOrUndef(r.asin),
+    book_title: strOrUndef(r.book_title),
+    marketplace: typeof r.marketplace === 'string' ? r.marketplace : '',
+    target_month: typeof r.target_month === 'string' ? r.target_month : '',
+    units,
+    royalty,
+    revenue,
+    currency: strOrUndef(r.currency),
+    // Rich fields: keep if present (v5 row), otherwise default. `legacy` marks
+    // pre-v5 rows that lacked a record_type.
+    record_type: (r.record_type as RoyaltyRecordType | undefined) ?? 'legacy',
+    book_id: r.book_id === undefined ? null : (numOrNull(r.book_id) as number | null),
+    author_name: r.author_name === undefined ? null : strOrNull(r.author_name),
+    isbn: r.isbn === undefined ? null : strOrNull(r.isbn),
+    royalty_date: r.royalty_date === undefined ? null : strOrNull(r.royalty_date),
+    order_date: r.order_date === undefined ? null : strOrNull(r.order_date),
+    read_date: r.read_date === undefined ? null : strOrNull(r.read_date),
+    royalty_type: r.royalty_type === undefined ? null : strOrNull(r.royalty_type),
+    transaction_type: r.transaction_type === undefined ? null : strOrNull(r.transaction_type),
+    // units_sold/net_units_sold default to the flat `units` so aggregates that
+    // read the rich fields still see the legacy count.
+    units_sold: typeof r.units_sold === 'number' ? r.units_sold : units,
+    units_refunded: num(r.units_refunded),
+    net_units_sold: typeof r.net_units_sold === 'number' ? r.net_units_sold : units,
+    avg_list_price: r.avg_list_price === undefined ? null : numOrNull(r.avg_list_price),
+    avg_offer_price: r.avg_offer_price === undefined ? null : numOrNull(r.avg_offer_price),
+    avg_file_size_mb: r.avg_file_size_mb === undefined ? null : numOrNull(r.avg_file_size_mb),
+    avg_delivery_cost: r.avg_delivery_cost === undefined ? null : numOrNull(r.avg_delivery_cost),
+    avg_manufacturing_cost:
+      r.avg_manufacturing_cost === undefined ? null : numOrNull(r.avg_manufacturing_cost),
+    kenp_read: num(r.kenp_read),
+    account: r.account === undefined ? null : strOrNull(r.account),
+    file_hash: r.file_hash === undefined ? null : strOrNull(r.file_hash),
+  };
+}
+
 // Нормализация/sanity-check + дефолты для отсутствующих полей. Вынесено из
 // readState чтобы переиспользовать для plaintext и encrypted источников.
 function normaliseState(parsed: Partial<LocalDbState>): LocalDbState {
@@ -501,7 +620,9 @@ function normaliseState(parsed: Partial<LocalDbState>): LocalDbState {
     return {
       version: parsed.version ?? SCHEMA_VERSION,
       royalty_uploads: Array.isArray(parsed.royalty_uploads) ? parsed.royalty_uploads : [],
-      royalty_records: Array.isArray(parsed.royalty_records) ? parsed.royalty_records : [],
+      royalty_records: Array.isArray(parsed.royalty_records)
+        ? parsed.royalty_records.map((r) => migrateRoyaltyRecord(r))
+        : [],
       next_upload_id: parsed.next_upload_id ?? 1,
       next_record_id: parsed.next_record_id ?? 1,
       ai_settings: aiSettings,
