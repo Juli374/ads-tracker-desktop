@@ -1,15 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Calendar, Cloud, FileSpreadsheet, HardDrive, Loader2, Trash2, Upload } from 'lucide-react';
+import { Calendar, FileSpreadsheet, Loader2, Trash2, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { ApiError } from '../../api/client';
-import {
-  royaltiesApi,
-  type RoyaltyUpload,
-  type RoyaltySummary,
-} from '../../api/royalties';
 import {
   localRoyaltyApi,
   type LocalRoyaltyUpload,
+  type LocalRoyaltyMonthSummary,
 } from '../../api/localRoyalty';
 import {
   Card,
@@ -21,8 +16,6 @@ import {
 import { fmtMoney, fmtNumber } from '../../lib/format';
 import { useToast } from '../../contexts/ToastContext';
 import { ImportRoyaltyModal } from './ImportRoyaltyModal';
-
-type Source = 'cloud' | 'local';
 
 interface NormalizedUpload {
   id: number;
@@ -36,10 +29,6 @@ interface NormalizedUpload {
   total_revenue?: number;
 }
 
-const STORAGE_KEY = 'royalties:source';
-const isSource = (s: string): s is Source => s === 'cloud' || s === 'local';
-
-const fromCloud = (u: RoyaltyUpload): NormalizedUpload => u;
 const fromLocal = (u: LocalRoyaltyUpload): NormalizedUpload => u;
 
 function autoSelectMonth(
@@ -57,32 +46,18 @@ function autoSelectMonth(
 export const RoyaltiesTab: React.FC = () => {
   const { t } = useTranslation('royalties');
   const toast = useToast();
-  const [source, setSource] = useState<Source>(() => {
-    if (typeof window === 'undefined') return 'cloud';
-    const stored = window.localStorage?.getItem(STORAGE_KEY);
-    return stored && isSource(stored) ? stored : 'cloud';
-  });
   const [uploads, setUploads] = useState<NormalizedUpload[] | null>(null);
   const [unsupported, setUnsupported] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [, setSummary] = useState<RoyaltySummary | null>(null);
+  const [, setSummary] = useState<LocalRoyaltyMonthSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [filePath, setFilePath] = useState<string>('');
   const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage?.setItem(STORAGE_KEY, source);
-  }, [source]);
-
-  useEffect(() => {
-    if (source !== 'local') {
-      setFilePath('');
-      return;
-    }
     localRoyaltyApi.filePath().then(setFilePath).catch(() => setFilePath(''));
-  }, [source]);
+  }, []);
 
   const loadUploads = useMemo(
     () => async () => {
@@ -91,35 +66,23 @@ export const RoyaltiesTab: React.FC = () => {
       setUploads(null);
       setSelectedMonth(null);
       try {
-        if (source === 'cloud') {
-          const list = await royaltiesApi.listUploads();
-          const arr = Array.isArray(list) ? list.map(fromCloud) : [];
-          setUploads(arr);
-          autoSelectMonth(arr, setSelectedMonth);
-        } else {
-          if (!localRoyaltyApi.isAvailable()) {
-            setUnsupported(true);
-            setUploads([]);
-            return;
-          }
-          const list = await localRoyaltyApi.listUploads();
-          const arr = list.map(fromLocal);
-          setUploads(arr);
-          autoSelectMonth(arr, setSelectedMonth);
-        }
-      } catch (err) {
-        if (err instanceof ApiError && [401, 403, 404].includes(err.status)) {
+        if (!localRoyaltyApi.isAvailable()) {
           setUnsupported(true);
           setUploads([]);
           return;
         }
-        toast.error(err instanceof ApiError ? err.message : t('errors.load'));
+        const list = await localRoyaltyApi.listUploads();
+        const arr = list.map(fromLocal);
+        setUploads(arr);
+        autoSelectMonth(arr, setSelectedMonth);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : t('errors.load'));
         setUploads([]);
       } finally {
         setLoading(false);
       }
     },
-    [source, toast],
+    [toast],
   );
 
   useEffect(() => {
@@ -130,22 +93,14 @@ export const RoyaltiesTab: React.FC = () => {
     if (!selectedMonth) return;
     let cancelled = false;
     setSummaryLoading(true);
-    const fetcher =
-      source === 'cloud'
-        ? royaltiesApi.getSummary(selectedMonth)
-        : localRoyaltyApi.getSummary(selectedMonth);
-    Promise.resolve(fetcher)
+    Promise.resolve(localRoyaltyApi.getSummary(selectedMonth))
       .then((res) => {
         if (cancelled) return;
-        setSummary(res as RoyaltySummary | null);
+        setSummary(res);
       })
       .catch((err) => {
         if (cancelled) return;
-        if (err instanceof ApiError && [401, 403, 404].includes(err.status)) {
-          setSummary(null);
-          return;
-        }
-        toast.error(err instanceof ApiError ? err.message : t('errors.loadSummary'));
+        toast.error(err instanceof Error ? err.message : t('errors.loadSummary'));
       })
       .finally(() => {
         if (!cancelled) setSummaryLoading(false);
@@ -153,7 +108,7 @@ export const RoyaltiesTab: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedMonth, source, toast]);
+  }, [selectedMonth, toast]);
 
   const months = useMemo(() => {
     if (!uploads) return [];
@@ -179,7 +134,6 @@ export const RoyaltiesTab: React.FC = () => {
   }, [monthUploads]);
 
   const handleDelete = async (id: number) => {
-    if (source !== 'local') return;
     if (!confirm(t('row.deleteConfirm'))) return;
     try {
       await localRoyaltyApi.delete(id);
@@ -191,7 +145,6 @@ export const RoyaltiesTab: React.FC = () => {
   };
 
   const handleSeed = async () => {
-    if (source !== 'local') return;
     const month = new Date().toISOString().slice(0, 7);
     try {
       await localRoyaltyApi.import({
@@ -220,22 +173,18 @@ export const RoyaltiesTab: React.FC = () => {
 
   return (
     <div className="space-y-6" data-testid="settings-royalties-tab">
-      {unsupported && source === 'cloud' && (
-        <ErrorBanner message={t('errors.cloudUnavailable')} />
-      )}
-      {unsupported && source === 'local' && (
+      {unsupported && (
         <ErrorBanner message={t('errors.localUnavailable')} />
       )}
 
-      {!unsupported && source === 'local' && filePath && (
+      {!unsupported && filePath && (
         <div className="text-[11px] text-zinc-400 font-mono px-1">
           {t('localDbPrefix', { path: filePath })}
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2">
-        <SourceToggle value={source} onChange={setSource} />
-        {months.length > 0 && (
+      {months.length > 0 && (
+        <div className="flex items-center justify-end gap-2">
           <select
             value={selectedMonth ?? ''}
             onChange={(e) => setSelectedMonth(e.target.value)}
@@ -252,8 +201,8 @@ export const RoyaltiesTab: React.FC = () => {
               </option>
             ))}
           </select>
-        )}
-      </div>
+        </div>
+      )}
 
       {!unsupported && (
         <>
@@ -286,29 +235,27 @@ export const RoyaltiesTab: React.FC = () => {
               </span>
             }
             rightSlot={
-              source === 'local' ? (
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setImportOpen(true)}
-                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium text-white bg-zinc-900 hover:bg-zinc-800 transition-colors"
-                    title={t('card.importTitle')}
-                    data-testid="royalty-import-btn"
-                  >
-                    <FileSpreadsheet size={11} />
-                    {t('card.import')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSeed}
-                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
-                    title={t('card.demoSeedTitle')}
-                  >
-                    <Upload size={11} />
-                    {t('card.demoSeed')}
-                  </button>
-                </div>
-              ) : null
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setImportOpen(true)}
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium text-white bg-zinc-900 hover:bg-zinc-800 transition-colors"
+                  title={t('card.importTitle')}
+                  data-testid="royalty-import-btn"
+                >
+                  <FileSpreadsheet size={11} />
+                  {t('card.import')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSeed}
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium text-zinc-700 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
+                  title={t('card.demoSeedTitle')}
+                >
+                  <Upload size={11} />
+                  {t('card.demoSeed')}
+                </button>
+              </div>
             }
           >
             {loading && !uploads ? (
@@ -316,7 +263,7 @@ export const RoyaltiesTab: React.FC = () => {
             ) : monthUploads.length === 0 ? (
               <EmptyState
                 title={t('empty.title')}
-                hint={source === 'cloud' ? t('empty.hintCloud') : t('empty.hintLocal')}
+                hint={t('empty.hintLocal')}
               />
             ) : (
               <table className="w-full text-sm table-sticky-head">
@@ -328,7 +275,7 @@ export const RoyaltiesTab: React.FC = () => {
                     <th className="text-right px-3 py-2 font-medium">{t('th.royalty')}</th>
                     <th className="text-right px-3 py-2 font-medium">{t('th.revenue')}</th>
                     <th className="text-right px-3 py-2 font-medium">{t('th.uploadedAt')}</th>
-                    {source === 'local' && <th className="px-5 py-2 w-10"></th>}
+                    <th className="px-5 py-2 w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -352,23 +299,21 @@ export const RoyaltiesTab: React.FC = () => {
                       <td className="px-3 py-2.5 text-[10px] text-zinc-500 text-right">
                         {(u.uploaded_at ?? '').slice(0, 10)}
                       </td>
-                      {source === 'local' && (
-                        <td className="px-5 py-2.5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(u.id)}
-                            className="
-                              h-6 w-6 flex items-center justify-center rounded
-                              text-zinc-400 hover:text-red-600 hover:bg-red-50
-                              opacity-0 group-hover:opacity-100 transition-opacity
-                            "
-                            aria-label={t('row.deleteAria', { id: u.id })}
-                            title={t('row.deleteTitle')}
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </td>
-                      )}
+                      <td className="px-5 py-2.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(u.id)}
+                          className="
+                            h-6 w-6 flex items-center justify-center rounded
+                            text-zinc-400 hover:text-red-600 hover:bg-red-50
+                            opacity-0 group-hover:opacity-100 transition-opacity
+                          "
+                          aria-label={t('row.deleteAria', { id: u.id })}
+                          title={t('row.deleteTitle')}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -388,48 +333,6 @@ export const RoyaltiesTab: React.FC = () => {
           }}
         />
       )}
-    </div>
-  );
-};
-
-const SourceToggle: React.FC<{
-  value: Source;
-  onChange: (v: Source) => void;
-}> = ({ value, onChange }) => {
-  const { t } = useTranslation('royalties');
-  return (
-    <div
-      role="radiogroup"
-      aria-label={t('source.ariaLabel')}
-      className="inline-flex items-center bg-zinc-100 rounded-md p-0.5"
-    >
-      {(
-        [
-          { id: 'cloud' as const, label: t('sourceLabel.cloud'), icon: Cloud },
-          { id: 'local' as const, label: t('sourceLabel.local'), icon: HardDrive },
-        ]
-      ).map((opt) => {
-        const Icon = opt.icon;
-        const active = value === opt.id;
-        return (
-          <button
-            key={opt.id}
-            role="radio"
-            aria-checked={active}
-            aria-label={t('source.aria', { label: opt.label })}
-            type="button"
-            onClick={() => onChange(opt.id)}
-            className={`
-              inline-flex items-center gap-1.5 px-2.5 h-6 text-[11px] font-medium rounded
-              transition-colors
-              ${active ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'}
-            `}
-          >
-            <Icon size={11} />
-            {opt.label}
-          </button>
-        );
-      })}
     </div>
   );
 };
