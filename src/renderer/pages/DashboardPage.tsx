@@ -21,6 +21,7 @@ import {
 } from '../api/metrics';
 import { ApiError } from '../api/client';
 import { localRoyaltyApi } from '../api/localRoyalty';
+import { amazonAdsApi } from '../api/amazonAds';
 import {
   ActiveFiltersBar,
   Card,
@@ -53,6 +54,7 @@ import {
 } from '../components/dashboard/QuickPeriodSegment';
 import { OrganicPaidBlock } from '../components/dashboard/OrganicPaidBlock';
 import { BriefingCard } from '../components/dashboard/BriefingCard';
+import { OnboardingEmptyState } from '../components/dashboard/OnboardingEmptyState';
 
 /**
  * Enumerate the YYYY-MM months covered by a [from, to] inclusive date range.
@@ -118,6 +120,13 @@ export const DashboardPage: React.FC = () => {
   // Dashboard и держит royalty приватной (не уходит на Railway). null = ещё не
   // загружено / IPC недоступен → fallback на бэкендовое значение.
   const [localRoyalty, setLocalRoyalty] = useState<number | null>(null);
+  // Blocker #6 — Amazon Ads connection signal, used ONLY to decide whether to
+  // show the new-user onboarding panel. `getTokenInfo().has_refresh_token` is
+  // the cheapest reliable signal (single GET). null = unknown (not yet loaded
+  // or the call failed) — we treat unknown conservatively as "не подтверждено
+  // подключение", and the onboarding gate additionally requires "no books", so
+  // a failed token-info check can never hide a real user's dashboard.
+  const [amazonConnected, setAmazonConnected] = useState<boolean | null>(null);
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
 
@@ -203,6 +212,25 @@ export const DashboardPage: React.FC = () => {
     load();
   }, [load]);
 
+  // Blocker #6 — fetch the Amazon connection signal once on mount. Independent
+  // of the period filters (connection isn't date-scoped), so it lives in its
+  // own effect and is NOT re-run on range changes. Failure → leave `null`
+  // (unknown); the onboarding gate stays conservative.
+  useEffect(() => {
+    let cancelled = false;
+    amazonAdsApi
+      .getTokenInfo()
+      .then((info) => {
+        if (!cancelled) setAmazonConnected(!!info.has_refresh_token);
+      })
+      .catch(() => {
+        if (!cancelled) setAmazonConnected(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Royalty (и зависящий от неё profit) показываем из локального стора, не с
   // бэкенда. Если локальное значение загружено — подменяем royalty и сдвигаем
   // profit на дельту (profit = ... + royalty, поэтому корректируем по разнице,
@@ -233,6 +261,39 @@ export const DashboardPage: React.FC = () => {
         window: bookSummary.attribution_window,
       })
     : t('subtitle.loading');
+
+  // Blocker #6 — "brand-new user" gate for the onboarding empty-state.
+  //
+  // Show onboarding ONLY when the user genuinely has nothing. Both conditions
+  // must hold:
+  //   (a) no books — neither the app-wide BooksContext list nor the period's
+  //       by-book summary has any rows. `booksList` is the source of truth
+  //       (loaded once at app level, NOT date-scoped), so a transient empty
+  //       period can't make a 41-book owner look new. We also check
+  //       `bookSummary` so we never flash onboarding before the list resolves.
+  //   (b) Amazon NOT connected — `amazonConnected === false` (confirmed no
+  //       refresh token). `null` (unknown / token-info call failed) does NOT
+  //       satisfy this, so a failed signal can never hide a real dashboard.
+  //
+  // We also wait for `!loading` so the panel never flashes during initial load.
+  const hasBooks =
+    booksList.length > 0 || (bookSummary != null && bookSummary.books.length > 0);
+  const isBrandNewUser =
+    !loading && !hasBooks && amazonConnected === false;
+
+  if (isBrandNewUser) {
+    return (
+      <div className="space-y-6" data-testid="dashboard-page">
+        <PageHeader
+          title={t('title')}
+          subtitle={t('subtitle.onboarding', {
+            defaultValue: 'Set up your account to start tracking',
+          })}
+        />
+        <OnboardingEmptyState />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
