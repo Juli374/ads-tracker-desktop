@@ -3,7 +3,8 @@
 // Covers:
 //   1. Mode toggle is present and renders both tabs.
 //   2. Switching to Co-pilot loads targets, analyse → table renders.
-//   3. Selecting subset + Apply → bulk endpoints called with correct ids.
+//   3. Selecting subset + Apply → POST /api/amazon-ads/targets/bulk-update with
+//      correct { updates } (pause as state:'PAUSED', lower as absolute bid).
 //   4. Locked state (tier=start) renders upgrade nudge instead of co-pilot UI.
 //
 // We use installMockApi for the entitlements wiring and stub ai.generate +
@@ -146,11 +147,34 @@ describe('AIAdvisorPanel Co-pilot mode', () => {
       if (payload.path.startsWith('/api/ai-advisor/campaign/')) {
         return historyResponse;
       }
-      if (payload.path === '/api/targets/bulk-pause') {
-        return { ok: true, status: 200, data: { updated: 1, message: 'OK' } };
-      }
-      if (payload.path === '/api/targets/bulk-update-bid') {
-        return { ok: true, status: 200, data: { updated: 1, message: 'OK' } };
+      // Real bulk route — POST /api/amazon-ads/targets/bulk-update with body
+      // { updates: [{ target_id, bid?, state? }] }. Echo each update back as a
+      // success in `results` so the BulkUpdateResponse shape is honoured (the
+      // hook branches on `failed`/`errors`, never the top-level `success`).
+      if (payload.path === '/api/amazon-ads/targets/bulk-update') {
+        const updates =
+          (payload.body as { updates?: Array<{ target_id: number; bid?: number; state?: string }> })
+            ?.updates ?? [];
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            success: true,
+            total: updates.length,
+            succeeded: updates.length,
+            failed: 0,
+            results: updates.map((u) => ({
+              target_id: u.target_id,
+              old_bid: null,
+              new_bid: u.bid ?? null,
+              old_status: 'enabled',
+              new_state: u.state ?? null,
+              campaign_id: 100,
+              name: `#${u.target_id}`,
+            })),
+            errors: [],
+          },
+        };
       }
       return { ok: false, status: 404, data: null, error: 'Not mocked' };
     });
@@ -223,7 +247,7 @@ describe('AIAdvisorPanel Co-pilot mode', () => {
     expect(screen.getByTestId('copilot-badge-raise')).toBeInTheDocument();
   });
 
-  it('applies selected rows and calls the correct bulk endpoints', async () => {
+  it('applies selected rows via POST /api/amazon-ads/targets/bulk-update', async () => {
     setup({ tier: 'pro' });
     const user = userEvent.setup();
     render(
@@ -252,24 +276,44 @@ describe('AIAdvisorPanel Co-pilot mode', () => {
     expect(screen.getByTestId('copilot-confirm')).toBeInTheDocument();
     await user.click(screen.getByTestId('copilot-confirm-apply'));
 
+    // Pause (applyState) and bid (applyBids) may post as SEPARATE calls to the
+    // same route, so flatten `updates` across every bulk-update POST and assert
+    // the resolved items appear somewhere in the union.
+    type Upd = { target_id: number; bid?: number; state?: 'ENABLED' | 'PAUSED' };
+    const allUpdates = (): Upd[] =>
+      apiCalls
+        .filter((c) => c.path === '/api/amazon-ads/targets/bulk-update')
+        .flatMap((c) => ((c.body as { updates?: Upd[] })?.updates ?? []));
+
+    // At least one POST must hit the real bulk route (and ONLY that route).
     await waitFor(() => {
-      // bulk-pause for 5001
-      const pauseCall = apiCalls.find(
-        (c) => c.path === '/api/targets/bulk-pause',
-      );
-      expect(pauseCall).toBeDefined();
-      expect((pauseCall!.body as { target_ids: number[] }).target_ids).toEqual([5001]);
+      expect(
+        apiCalls.some((c) => c.path === '/api/amazon-ads/targets/bulk-update'),
+      ).toBe(true);
     });
+
+    // Pause advice (5001) → state-only update { target_id, state:'PAUSED' }.
     await waitFor(() => {
-      // bulk-update-bid for 5000 with multiplier 0.8
-      const bidCall = apiCalls.find(
-        (c) => c.path === '/api/targets/bulk-update-bid',
-      );
-      expect(bidCall).toBeDefined();
-      const body = bidCall!.body as { target_ids: number[]; multiplier?: number; delta?: number };
-      expect(body.target_ids).toEqual([5000]);
-      expect(body.multiplier).toBe(0.8);
+      const pause = allUpdates().find((u) => u.target_id === 5001);
+      expect(pause).toBeDefined();
+      expect(pause!.state).toBe('PAUSED');
+      expect(pause!.bid).toBeUndefined();
     });
+
+    // Lower advice (5000, ×0.8) → absolute rounded bid 0.5 * 0.8 = 0.40, NO state.
+    await waitFor(() => {
+      const bid = allUpdates().find((u) => u.target_id === 5000);
+      expect(bid).toBeDefined();
+      expect(bid!.bid).toBe(0.4);
+      expect(bid!.state).toBeUndefined();
+    });
+
+    // The deselected 'raise' row (5002) must NOT be applied.
+    expect(allUpdates().some((u) => u.target_id === 5002)).toBe(false);
+
+    // Old per-action routes must never be hit.
+    expect(apiCalls.some((c) => c.path === '/api/targets/bulk-pause')).toBe(false);
+    expect(apiCalls.some((c) => c.path === '/api/targets/bulk-update-bid')).toBe(false);
   });
 
   it('renders upgrade nudge when ai.bid_copilot is locked (tier=start)', async () => {

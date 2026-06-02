@@ -14,8 +14,15 @@
  *  - Inline bid edit: PUT /api/amazon-ads/targets/:id/bid (amazonAdsApi.setTargetBid) —
  *    реально доходит до Amazon, не откатывается следующим sync'ом.
  *  - Status toggle: PUT /api/amazon-ads/targets/:id/state (amazonAdsApi).
- *  - Bulk pause/resume/×N/+$N/move/add-negative — единичные POST'ы через
- *    targetsApi.bulk* (см. src/renderer/api/targets.ts).
+ *  - Bulk ×N / +$N / pause / resume — через useBatchBidApply: resolve абсолютных
+ *    бидов client-side → один batch POST (amazonAdsApi.setTargetBidsBatch) →
+ *    reconcile через onReload(). Этот компонент reload-based (нет локального
+ *    row-state), поэтому revert — тоже просто onReload().
+ *  - Add-negative — реальный negatives client: campaign-level
+ *    negativesApi.addBulkToCampaign (POST /api/campaigns/:id/negatives,
+ *    sync_to_amazon) либо negativeListsApi.addItems (negative list).
+ *  - Move-to-ad-group — DEFERRED: backend bulk-move route отсутствует, а
+ *    match-type на Amazon неизменяем; кнопка disabled.
  *
  * Если backend ещё не выкатан bulk-endpoint — POST вернёт 404, мы показываем
  * toast.error из caller'а (caller получает rejected promise).
@@ -25,9 +32,12 @@ import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { EditableNumber, EmptyState, LoadingRow } from '../ui';
 import { ApiError } from '../../api/client';
-import { targetsApi, type Target } from '../../api/targets';
+import { type Target } from '../../api/targets';
 import { amazonAdsApi } from '../../api/amazonAds';
 import { negativeListsApi, type NegativeList } from '../../api/negativeLists';
+import { negativesApi, type NegativeMatchType } from '../../api/negatives';
+import { useBatchBidApply } from '../../lib/useBatchBidApply';
+import type { BidEditSpec } from '../../lib/resolveBids';
 import { fmtMoney } from '../../lib/format';
 import { useToast } from '../../contexts/ToastContext';
 import type { AdGroup } from '../../api/adGroups';
@@ -43,12 +53,14 @@ interface Props {
   onReload(): void;
 }
 
-type ModalKind = 'delta' | 'move' | 'negative';
+type ModalKind = 'delta' | 'negative';
 
 export const KeywordsTable: React.FC<Props> = ({
   campaignId,
   targets,
-  adGroups,
+  // `adGroups` is still part of the public prop contract (the parent passes it)
+  // but is no longer consumed here — the bulk move-to-ad-group action is
+  // DEFERRED (no backend bulk-move route; match-type is immutable on Amazon).
   loading,
   onReload,
 }) => {
@@ -56,7 +68,6 @@ export const KeywordsTable: React.FC<Props> = ({
   const toast = useToast();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bidMultiplier, setBidMultiplier] = useState('1.10');
-  const [bulkBusy, setBulkBusy] = useState(false);
   const [modal, setModal] = useState<ModalKind | null>(null);
 
   // ====== Inline operations (single-row) ======
@@ -84,6 +95,22 @@ export const KeywordsTable: React.FC<Props> = ({
     }
   };
 
+  // Bulk bid×/+/pause/resume route through the shared batch-apply hook, which
+  // resolves to absolute bids client-side, POSTs the batch to Amazon, and
+  // reconciles. This component is reload-based (no local row state), so reload
+  // does the reconcile and revert is also just a reload.
+  const { applyBids, applyState, busy: batchBusy } = useBatchBidApply({
+    reload: onReload,
+    revert: onReload,
+  });
+
+  // Selected rows shaped as the resolver's BidTargetInput. Target.id IS the
+  // backend target_id.
+  const selectedRows = () =>
+    (targets ?? [])
+      .filter((tg) => selected.has(tg.id))
+      .map((tg) => ({ target_id: tg.id, bid: tg.bid, state: tg.state }));
+
   // ====== Selection ======
 
   const allSelected = !!targets && targets.length > 0 && selected.size === targets.length;
@@ -108,38 +135,49 @@ export const KeywordsTable: React.FC<Props> = ({
 
   const ids = () => Array.from(selected);
 
-  // Generic bulk runner. Передаём готовые success/fail messages — это
-  // обходит strict-keyed t() и позволяет caller'у использовать любые
-  // ICU-форматированные строки.
-  const runBulk = async (
-    fn: () => Promise<{ updated?: number; added?: number; message?: string }>,
-    successMsg: (count: number) => string,
-    failMsg: string,
-  ) => {
-    setBulkBusy(true);
+  // Bulk pause/resume via state-only batch update (uppercase ENABLED/PAUSED).
+  const runBulkState = async (state: 'ENABLED' | 'PAUSED') => {
+    if (selected.size === 0) return;
     try {
-      const res = await fn();
-      const count = res.updated ?? res.added ?? selected.size;
-      toast.success(successMsg(count));
-      setSelected(new Set());
-      setModal(null);
+      const r = await applyState(selectedRows(), state);
+      toast.success(
+        t('details.targets.bulk.resultDetailed', {
+          applied: r.applied,
+          failed: r.failed,
+          skipped: r.skipped,
+        }),
+      );
+      if (r.failed === 0) setSelected(new Set());
       onReload();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : failMsg);
-    } finally {
-      setBulkBusy(false);
+      toast.error(err instanceof ApiError ? err.message : t('details.targets.bulk.failed'));
     }
   };
 
-  const appliedMsg = (count: number) => t('details.targets.bulk.applied', { count });
-  const movedMsg = (count: number) => t('details.targets.bulk.moved', { count });
-  const negAddedMsg = (count: number) => t('details.targets.bulk.addNegativeAdded', { count });
+  const bulkPause = () => runBulkState('PAUSED');
+  const bulkResume = () => runBulkState('ENABLED');
 
-  const bulkPause = () =>
-    runBulk(() => targetsApi.bulkPause(ids()), appliedMsg, t('details.targets.bulk.failed'));
-
-  const bulkResume = () =>
-    runBulk(() => targetsApi.bulkResume(ids()), appliedMsg, t('details.targets.bulk.failed'));
+  // Single entry point for the ×multiplier action and the delta modal.
+  const applyBidSpec = async (spec: BidEditSpec) => {
+    if (selected.size === 0) return;
+    try {
+      const r = await applyBids(selectedRows(), spec);
+      toast.success(
+        t('details.targets.bulk.resultDetailed', {
+          applied: r.applied,
+          failed: r.failed,
+          skipped: r.skipped,
+        }),
+      );
+      if (r.failed === 0) {
+        setSelected(new Set());
+        setModal(null);
+      }
+      onReload();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('details.targets.bulk.failed'));
+    }
+  };
 
   const bulkBidMultiplier = () => {
     const mult = parseFloat(bidMultiplier);
@@ -147,11 +185,50 @@ export const KeywordsTable: React.FC<Props> = ({
       toast.error(t('details.targets.bulk.multiplierPositive'));
       return;
     }
-    return runBulk(
-      () => targetsApi.bulkUpdateBid(ids(), { multiplier: mult }),
-      appliedMsg,
-      t('details.targets.bulk.failed'),
-    );
+    return applyBidSpec({ kind: 'multiply', factor: mult });
+  };
+
+  // Resolve keyword strings from selected targets that carry keyword_text.
+  // ASIN/category targets have no keyword to negate, so they're skipped.
+  const selectedKeywords = () =>
+    (targets ?? [])
+      .filter((tg) => selected.has(tg.id))
+      .map((tg) => tg.keyword_text)
+      .filter((kw): kw is string => typeof kw === 'string' && kw.trim().length > 0);
+
+  // Add-negative: route keyword strings to the REAL negatives client — either
+  // campaign-level negatives (POST /api/campaigns/:id/negatives with
+  // sync_to_amazon) or a negative list. matchType arrives Title-case.
+  const applyNegative = async (
+    target: { listId: number } | { campaignId: number },
+    matchType: NegativeMatchType,
+  ) => {
+    const keywords = selectedKeywords();
+    if (keywords.length === 0) {
+      toast.error(t('details.targets.bulk.addNegativeNoKeywords'));
+      return;
+    }
+    try {
+      if ('campaignId' in target) {
+        await negativesApi.addBulkToCampaign(target.campaignId, keywords, matchType);
+      } else {
+        await negativeListsApi.addItems(
+          target.listId,
+          keywords.map((keyword) => ({
+            keyword,
+            matchType: matchType.toLowerCase() as 'exact' | 'phrase',
+          })),
+        );
+      }
+      toast.success(t('details.targets.bulk.addNegativeAdded', { count: keywords.length }));
+      setSelected(new Set());
+      setModal(null);
+      onReload();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : t('details.targets.bulk.addNegativeFailed'),
+      );
+    }
   };
 
   // ====== Render ======
@@ -191,7 +268,7 @@ export const KeywordsTable: React.FC<Props> = ({
             <button
               type="button"
               onClick={bulkBidMultiplier}
-              disabled={bulkBusy}
+              disabled={batchBusy}
               data-testid="targets-bulk-apply-multiplier"
               className="h-6 px-2 text-[11px] rounded bg-white border border-zinc-200 hover:bg-zinc-100 disabled:opacity-50"
             >
@@ -203,7 +280,7 @@ export const KeywordsTable: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setModal('delta')}
-            disabled={bulkBusy}
+            disabled={batchBusy}
             data-testid="targets-bulk-open-delta"
             title={t('details.targets.bulk.deltaTitle')}
             className="h-6 px-2 text-[11px] rounded bg-white border border-zinc-200 hover:bg-zinc-100 disabled:opacity-50"
@@ -211,14 +288,14 @@ export const KeywordsTable: React.FC<Props> = ({
             {t('details.targets.bulk.delta')}
           </button>
 
-          {/* Move to ad group — modal */}
+          {/* Move to ad group — DEFERRED: no backend bulk-move route and the
+              match-type is immutable on Amazon, so the button is disabled. */}
           <button
             type="button"
-            onClick={() => setModal('move')}
-            disabled={bulkBusy || adGroups.length === 0}
+            disabled
             data-testid="targets-bulk-open-move"
-            title={t('details.targets.bulk.moveTitle')}
-            className="h-6 px-2 text-[11px] rounded bg-white border border-zinc-200 hover:bg-zinc-100 disabled:opacity-50"
+            title={t('details.targets.bulk.moveDeferredTitle')}
+            className="h-6 px-2 text-[11px] rounded bg-white border border-zinc-200 opacity-50 cursor-not-allowed"
           >
             {t('details.targets.bulk.moveButton')}
           </button>
@@ -227,7 +304,7 @@ export const KeywordsTable: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setModal('negative')}
-            disabled={bulkBusy}
+            disabled={batchBusy}
             data-testid="targets-bulk-open-negative"
             title={t('details.targets.bulk.addNegativeTitle')}
             className="h-6 px-2 text-[11px] rounded bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 disabled:opacity-50"
@@ -239,7 +316,7 @@ export const KeywordsTable: React.FC<Props> = ({
           <button
             type="button"
             onClick={bulkPause}
-            disabled={bulkBusy}
+            disabled={batchBusy}
             data-testid="targets-bulk-pause"
             className="h-6 px-2 text-[11px] rounded bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-50"
           >
@@ -248,7 +325,7 @@ export const KeywordsTable: React.FC<Props> = ({
           <button
             type="button"
             onClick={bulkResume}
-            disabled={bulkBusy}
+            disabled={batchBusy}
             data-testid="targets-bulk-enable"
             className="h-6 px-2 text-[11px] rounded bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-50"
           >
@@ -344,44 +421,19 @@ export const KeywordsTable: React.FC<Props> = ({
       {modal === 'delta' && (
         <BulkDeltaModal
           ids={ids()}
-          busy={bulkBusy}
+          busy={batchBusy}
           onClose={() => setModal(null)}
-          onApply={(delta) =>
-            runBulk(
-              () => targetsApi.bulkUpdateBid(ids(), { delta }),
-              appliedMsg,
-              t('details.targets.bulk.failed'),
-            )
-          }
-        />
-      )}
-      {modal === 'move' && (
-        <BulkMoveModal
-          ids={ids()}
-          adGroups={adGroups}
-          busy={bulkBusy}
-          onClose={() => setModal(null)}
-          onApply={(adGroupId) =>
-            runBulk(
-              () => targetsApi.bulkMove(ids(), adGroupId),
-              movedMsg,
-              t('details.targets.bulk.moveFailed'),
-            )
-          }
+          onApply={(delta) => applyBidSpec({ kind: 'delta', amount: delta })}
         />
       )}
       {modal === 'negative' && (
         <BulkNegativeModal
           ids={ids()}
           campaignId={campaignId}
-          busy={bulkBusy}
+          busy={batchBusy}
           onClose={() => setModal(null)}
           onApply={(payload, matchType) =>
-            runBulk(
-              () => targetsApi.bulkAddNegative(ids(), payload, matchType),
-              negAddedMsg,
-              t('details.targets.bulk.addNegativeFailed'),
-            )
+            applyNegative(payload, matchType === 'phrase' ? 'Phrase' : 'Exact')
           }
         />
       )}
@@ -501,72 +553,6 @@ const BulkDeltaModal: React.FC<{
           data-testid="bulk-delta-input"
           className="flex-1 h-7 px-2 text-xs border border-zinc-200 rounded text-right tabular-nums"
         />
-      </label>
-    </ModalShell>
-  );
-};
-
-const BulkMoveModal: React.FC<{
-  ids: number[];
-  adGroups: AdGroup[];
-  busy: boolean;
-  onClose(): void;
-  onApply(adGroupId: number): void;
-}> = ({ ids, adGroups, busy, onClose, onApply }) => {
-  const { t } = useTranslation('campaigns');
-  const [adGroupId, setAdGroupId] = useState<number | ''>(adGroups[0]?.id ?? '');
-
-  const submit = () => {
-    if (typeof adGroupId !== 'number') return;
-    onApply(adGroupId);
-  };
-
-  return (
-    <ModalShell
-      title={t('details.targets.bulk.moveTitle')}
-      testId="bulk-move-modal"
-      busy={busy}
-      onClose={onClose}
-      footer={
-        <>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="h-7 px-3 text-xs rounded-md border border-zinc-200 text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-          >
-            {t('details.targets.bulk.modalCancel')}
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={busy || typeof adGroupId !== 'number'}
-            data-testid="bulk-move-apply"
-            className="h-7 px-3 text-xs rounded-md bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
-          >
-            {t('details.targets.bulk.moveButton')}
-          </button>
-        </>
-      }
-    >
-      <p className="text-xs text-zinc-500">
-        {t('details.targets.bulk.selected', { count: ids.length })}
-      </p>
-      <label className="flex items-center gap-2 text-xs text-zinc-700">
-        <span className="w-32 text-zinc-500">{t('details.targets.bulk.moveSelectGroup')}</span>
-        <select
-          value={adGroupId}
-          onChange={(e) => setAdGroupId(e.target.value ? Number(e.target.value) : '')}
-          data-testid="bulk-move-select"
-          className="flex-1 h-7 px-2 text-xs border border-zinc-200 rounded bg-white"
-        >
-          <option value="">—</option>
-          {adGroups.map((ag) => (
-            <option key={ag.id} value={ag.id}>
-              {ag.name}
-            </option>
-          ))}
-        </select>
       </label>
     </ModalShell>
   );

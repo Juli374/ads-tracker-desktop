@@ -1,15 +1,18 @@
 /**
- * Phase J.2 Lane B — bulk-action tests for CampaignDetailsPage TargetsTab.
+ * Phase J.2 Lane B (rewired for #4 "bulk edits reach Amazon") — bulk-action
+ * tests for CampaignDetailsPage TargetsTab (KeywordsTable).
  *
- * Цели:
- *  - Убедиться, что select-all + ×N приводит к одному POST'у на bulk endpoint.
- *  - Bulk delta-modal POSTит { delta } а не { multiplier }.
- *  - Bulk move-modal POSTит { ad_group_id }.
- *  - Bulk add-negative POSTит { campaign_id } или { list_id }.
- *  - CampaignPlacements рендерит editor + при наличии данных — таблицу.
+ * The old /api/targets/bulk-* contract is GONE. The real wiring now is:
+ *  - ×N multiplier  → resolveBids turns it into ABSOLUTE per-target bids, then
+ *    ONE POST /api/amazon-ads/targets/bulk-update with body
+ *    { updates: [{ target_id, bid }] }. No multiplier/delta field, no state.
+ *  - +$N delta      → same route, body.updates carries absolute current+amount.
+ *  - move-to-ad-group → DEFERRED. The button renders disabled and fires no call.
+ *  - add-negative   → real campaign route POST /api/campaigns/:id/negatives via
+ *    negativesApi.addBulkToCampaign, body { keywords:[...], match_type:'Exact' }.
  *
- * Каждый тест мокает несколько keywords (3+) чтобы select-all + bulk
- * был осмысленным.
+ * Bids in the fixture (0.5/0.5/0.6/0.7/0.4) are chosen so every ×0.8 result is a
+ * real change (no 'no-change' skips), keeping the resolved payload deterministic.
  */
 import { describe, it, beforeEach, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -25,7 +28,14 @@ import { GlobalFiltersProvider } from '../../contexts/GlobalFiltersContext';
 import { installMockApi, mockApiResponses } from '../../../test/mockApi';
 import type { ApiRequestPayload, ApiResponse, DesktopApi } from '../../../shared/ipc';
 
-// Build a custom mockResponses pack that exposes 5 keywords + ad-groups.
+// Real bulk-update route + the per-item success shape the hook reads
+// (succeeded/failed/results/errors). The spy below returns this for the POST so
+// the optimistic-apply path completes and the success toast/reload fire.
+const BULK_UPDATE_PATH = '/api/amazon-ads/targets/bulk-update';
+const CAMPAIGN_NEGATIVES_PATH = '/api/campaigns/100/negatives';
+
+// Build a custom mockResponses pack that exposes 5 keywords + ad-groups, plus
+// success responses for the real Amazon-bulk + campaign-negatives routes.
 const buildResponses = () => {
   const base = mockApiResponses();
   return {
@@ -41,6 +51,12 @@ const buildResponses = () => {
       { id: 5003, ad_group_id: 1000, campaign_id: 100, keyword_text: 'kw4', match_type: 'broad', bid: 0.7, state: 'enabled' },
       { id: 5004, ad_group_id: 1000, campaign_id: 100, keyword_text: 'kw5', match_type: 'exact', bid: 0.4, state: 'enabled' },
     ],
+    // POST /api/amazon-ads/targets/bulk-update — every selected item "succeeds".
+    // succeeded/failed are recomputed by the hook from results/errors lengths,
+    // but we return a benign success envelope so nothing reverts.
+    [BULK_UPDATE_PATH]: { success: true, total: 5, succeeded: 5, failed: 0, results: [], errors: [] },
+    // POST /api/campaigns/100/negatives — bulk add success.
+    [CAMPAIGN_NEGATIVES_PATH]: { success: true, results: [] },
   };
 };
 
@@ -91,8 +107,14 @@ const goToTargetsTab = async (user: ReturnType<typeof userEvent.setup>) => {
   await screen.findByTestId('targets-select-all');
 };
 
+// Helper: collect every POST body to the bulk-update route.
+const bulkUpdateBodies = (spy: ReqSpy) =>
+  spy.mock.calls
+    .filter((c) => c[0].path === BULK_UPDATE_PATH)
+    .map((c) => c[0].body as { updates: Array<{ target_id: number; bid?: number; state?: string }> });
+
 describe('CampaignDetailsPage bulk operations', () => {
-  it('select-all + apply ×0.8 multiplier hits /api/targets/bulk-update-bid once', async () => {
+  it('select-all + apply ×0.8 sends ONE bulk-update with absolute resolved bids', async () => {
     const spy = installSpyApi(buildResponses());
     const user = userEvent.setup();
     renderApp();
@@ -109,23 +131,36 @@ describe('CampaignDetailsPage bulk operations', () => {
     await user.click(screen.getByTestId('targets-bulk-apply-multiplier'));
 
     await waitFor(() => {
-      const bulkCalls = spy.mock.calls.filter(
-        (c) => c[0].path === '/api/targets/bulk-update-bid',
-      );
-      expect(bulkCalls).toHaveLength(1);
-      const body = bulkCalls[0][0].body as { target_ids: number[]; multiplier: number };
-      expect(body.target_ids).toHaveLength(5);
-      expect(body.multiplier).toBeCloseTo(0.8);
+      const bodies = bulkUpdateBodies(spy);
+      expect(bodies).toHaveLength(1);
     });
+
+    const body = bulkUpdateBodies(spy)[0];
+    // current × 0.8, rounded to cents: 0.5→0.40, 0.6→0.48, 0.7→0.56, 0.4→0.32.
+    const byId = new Map(body.updates.map((u) => [u.target_id, u]));
+    expect(body.updates).toHaveLength(5);
+    expect(byId.get(5000)?.bid).toBeCloseTo(0.4);
+    expect(byId.get(5001)?.bid).toBeCloseTo(0.4);
+    expect(byId.get(5002)?.bid).toBeCloseTo(0.48);
+    expect(byId.get(5003)?.bid).toBeCloseTo(0.56);
+    expect(byId.get(5004)?.bid).toBeCloseTo(0.32);
+    // Each item is a pure { target_id, bid } — no state, no multiplier leakage.
+    for (const u of body.updates) {
+      expect(u.state).toBeUndefined();
+      expect(Object.keys(u).sort()).toEqual(['bid', 'target_id']);
+    }
+    // Old contract must be fully gone.
+    expect((body as Record<string, unknown>).multiplier).toBeUndefined();
+    expect((body as Record<string, unknown>).target_ids).toBeUndefined();
   });
 
-  it('bulk delta-modal POSTs { delta } to /api/targets/bulk-update-bid', async () => {
+  it('bulk delta-modal sends absolute current+amount to bulk-update (no state)', async () => {
     const spy = installSpyApi(buildResponses());
     const user = userEvent.setup();
     renderApp();
     await goToTargetsTab(user);
 
-    // select first 2 rows
+    // select first 2 rows (both bid 0.5)
     await user.click(screen.getByTestId('targets-row-checkbox-5000'));
     await user.click(screen.getByTestId('targets-row-checkbox-5001'));
     await user.click(screen.getByTestId('targets-bulk-open-delta'));
@@ -137,71 +172,80 @@ describe('CampaignDetailsPage bulk operations', () => {
     await user.click(screen.getByTestId('bulk-delta-apply'));
 
     await waitFor(() => {
-      const calls = spy.mock.calls.filter((c) => c[0].path === '/api/targets/bulk-update-bid');
-      expect(calls.length).toBeGreaterThanOrEqual(1);
-      const body = calls[calls.length - 1][0].body as {
-        target_ids: number[];
-        delta?: number;
-        multiplier?: number;
-      };
-      expect(body.target_ids).toEqual([5000, 5001]);
-      expect(body.delta).toBeCloseTo(0.1);
-      expect(body.multiplier).toBeUndefined();
+      expect(bulkUpdateBodies(spy).length).toBeGreaterThanOrEqual(1);
     });
+
+    const bodies = bulkUpdateBodies(spy);
+    const body = bodies[bodies.length - 1];
+    // 0.5 + 0.10 = 0.60 for both rows; payload is absolute, not a delta.
+    expect(body.updates).toEqual([
+      { target_id: 5000, bid: 0.6 },
+      { target_id: 5001, bid: 0.6 },
+    ]);
+    for (const u of body.updates) expect(u.state).toBeUndefined();
+    expect((body as Record<string, unknown>).delta).toBeUndefined();
+    expect((body as Record<string, unknown>).multiplier).toBeUndefined();
   });
 
-  it('bulk move-modal POSTs { ad_group_id } to /api/targets/bulk-move', async () => {
+  it('bulk move-to-ad-group is deferred: button is disabled and fires no call', async () => {
     const spy = installSpyApi(buildResponses());
     const user = userEvent.setup();
     renderApp();
     await goToTargetsTab(user);
 
     await user.click(screen.getByTestId('targets-row-checkbox-5002'));
-    await user.click(screen.getByTestId('targets-bulk-open-move'));
+    await screen.findByTestId('targets-bulk-bar');
 
-    const select = (await screen.findByTestId('bulk-move-select')) as HTMLSelectElement;
-    await user.selectOptions(select, '1001');
-    await user.click(screen.getByTestId('bulk-move-apply'));
+    // Move is not shipped yet — the button renders disabled, no modal/route.
+    const moveBtn = screen.getByTestId('targets-bulk-open-move') as HTMLButtonElement;
+    expect(moveBtn).toBeDisabled();
 
-    await waitFor(() => {
-      const calls = spy.mock.calls.filter((c) => c[0].path === '/api/targets/bulk-move');
-      expect(calls).toHaveLength(1);
-      const body = calls[0][0].body as { target_ids: number[]; ad_group_id: number };
-      expect(body.target_ids).toEqual([5002]);
-      expect(body.ad_group_id).toBe(1001);
-    });
+    // Clicking a disabled button is a no-op; assert nothing reached the network.
+    await user.click(moveBtn);
+    expect(screen.queryByTestId('bulk-move-modal')).not.toBeInTheDocument();
+    expect(spy.mock.calls.some((c) => c[0].path === '/api/targets/bulk-move')).toBe(false);
+    // And it must not sneak a move through the bulk-update route either.
+    expect(bulkUpdateBodies(spy)).toHaveLength(0);
   });
 
-  it('bulk add-negative (campaign-level) POSTs { campaign_id } to /api/targets/bulk-add-negative', async () => {
+  it('bulk add-negative POSTs keywords to the campaign-negatives route', async () => {
     const spy = installSpyApi(buildResponses());
     const user = userEvent.setup();
     renderApp();
     await goToTargetsTab(user);
 
+    // rows 5003 (kw4) + 5004 (kw5)
     await user.click(screen.getByTestId('targets-row-checkbox-5003'));
     await user.click(screen.getByTestId('targets-row-checkbox-5004'));
     await user.click(screen.getByTestId('targets-bulk-open-negative'));
 
     await screen.findByTestId('bulk-negative-modal');
-    // Default scope = 'campaign' radio; just submit.
+    // Default scope = 'campaign', default match = exact; just submit.
     await user.click(screen.getByTestId('bulk-negative-apply'));
 
     await waitFor(() => {
-      const calls = spy.mock.calls.filter(
-        (c) => c[0].path === '/api/targets/bulk-add-negative',
-      );
+      const calls = spy.mock.calls.filter((c) => c[0].path === CAMPAIGN_NEGATIVES_PATH);
       expect(calls).toHaveLength(1);
-      const body = calls[0][0].body as {
-        target_ids: number[];
-        campaign_id?: number;
-        list_id?: number;
-        match_type: string;
-      };
-      expect(body.target_ids).toEqual([5003, 5004]);
-      expect(body.campaign_id).toBe(100);
-      expect(body.list_id).toBeUndefined();
-      expect(body.match_type).toBe('exact');
     });
+
+    const call = spy.mock.calls.find((c) => c[0].path === CAMPAIGN_NEGATIVES_PATH)!;
+    const body = call[0].body as {
+      keywords: string[];
+      match_type: string;
+      sync_to_amazon?: boolean;
+    };
+    // Real bulk route is negativesApi.addBulkToCampaign → body { keywords,
+    // match_type }. Keywords come from the selected targets' keyword_text;
+    // match_type is Title-case ('Exact'/'Phrase') per NegativeMatchType.
+    expect(body.keywords).toEqual(['kw4', 'kw5']);
+    expect(body.match_type).toBe('Exact');
+    // NOTE: the bulk campaign-negatives body carries no `sync_to_amazon` flag
+    // (single-add negativesApi.add does; the bulk variant omits it and the
+    // backend syncs campaign negatives by default). Assert it is NOT a stray
+    // truthy field rather than asserting a value the client never sends.
+    expect(body.sync_to_amazon).toBeUndefined();
+    // The dead bulk route must never be hit.
+    expect(spy.mock.calls.some((c) => c[0].path === '/api/targets/bulk-add-negative')).toBe(false);
   });
 
   it('CampaignPlacements editor renders 3 inputs and per-week table from mock', async () => {

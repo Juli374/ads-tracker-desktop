@@ -136,15 +136,51 @@ export const amazonAdsApi = {
     );
   },
 
-  bulkUpdateTargets(payload: {
-    target_ids: number[];
-    state?: 'enabled' | 'paused';
-    bid_multiplier?: number;
-    bid?: number;
-  }): Promise<{ updated: number; message?: string }> {
-    return apiClient.post<{ updated: number; message?: string }>(
+  // ──────────────────────────────────────────────────────────────────────
+  // Bulk target bid/state → Amazon (batched).
+  //
+  // Real backend route: POST /api/amazon-ads/targets/bulk-update
+  //   body { updates: [{ target_id, bid?, state? }] }
+  //   - bid is ABSOLUTE (no multiplier/delta server-side — resolveBids.ts
+  //     turns multiply/delta into absolute before calling here).
+  //   - state MUST be uppercase ENABLED/PAUSED/ARCHIVED (forwarded raw to
+  //     Amazon; lowercase is silently rejected per-item). See resolveBids.normState.
+  //   - per-item: successes land in `results`, failures in `errors`.
+  //     `success:true` is returned even when every item failed — caller MUST
+  //     branch on `failed`/`errors`, never the top-level `success` flag.
+  // backend gate: can_manage_bids.
+  setTargetBidsBatch(
+    updates: Array<{ target_id: number; bid?: number; state?: 'ENABLED' | 'PAUSED' | 'ARCHIVED' }>,
+  ): Promise<BulkUpdateResponse> {
+    return apiClient.post<BulkUpdateResponse>(
       '/api/amazon-ads/targets/bulk-update',
-      payload,
+      { updates },
     );
   },
 };
+
+// Real response shape of POST /api/amazon-ads/targets/bulk-update
+// (backend updates.py:1076,1159-1166). NOTE: results[] has NO `ok` field —
+// presence in `results` == success, presence in `errors` == failure.
+export interface BulkUpdateResultItem {
+  target_id: number;
+  old_bid: number | null;
+  new_bid: number | null;
+  old_status: string;
+  new_state: string | null;
+  campaign_id: number;
+  name: string;
+}
+export interface BulkUpdateErrorItem {
+  target_id: number;
+  error: string;
+  deleted?: boolean;
+}
+export interface BulkUpdateResponse {
+  success: boolean;   // "route ran" — NOT "all succeeded". Never branch on this.
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: BulkUpdateResultItem[];
+  errors: BulkUpdateErrorItem[];
+}

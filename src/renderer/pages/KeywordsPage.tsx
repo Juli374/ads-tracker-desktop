@@ -8,8 +8,9 @@ import {
   type KeywordAnalyticsItem,
   type KeywordSummary,
 } from '../api/metrics';
-import { targetsApi } from '../api/targets';
 import { amazonAdsApi } from '../api/amazonAds';
+import { useBatchBidApply } from '../lib/useBatchBidApply';
+import type { BidEditSpec } from '../lib/resolveBids';
 import { ReverseAsinPanel } from '../components/keywords/ReverseAsinPanel';
 import { LockedFeature } from '../components/LockedFeature';
 import {
@@ -122,7 +123,6 @@ export const KeywordsPage: React.FC = () => {
   // bulk endpoints accept target_ids. Selection lives outside `persisted`
   // because it's intentionally per-session, not cross-session.
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [bulkBusy, setBulkBusy] = useState(false);
   const [bidModalOpen, setBidModalOpen] = useState(false);
 
   const { from, to } = useMemo(() => dateRangeFor(range), [range]);
@@ -264,6 +264,40 @@ export const KeywordsPage: React.FC = () => {
     }
   };
 
+  // Optimistic local bid patch for the batch-apply hook: rewrite each row's
+  // bid where its target_id is in the resolved map. Keyed by target_id (not
+  // keyword_id) because that's what the resolver/batch endpoint speak.
+  const patchBids = (byId: Map<number, number>) => {
+    setSummary((prev) =>
+      prev
+        ? {
+            ...prev,
+            keywords: prev.keywords.map((k) =>
+              k.target_id != null && byId.has(k.target_id)
+                ? { ...k, bid: byId.get(k.target_id)! }
+                : k,
+            ),
+          }
+        : prev,
+    );
+  };
+
+  const { applyBids, applyState, busy: batchBusy } = useBatchBidApply({
+    patchBids,
+    revert: () => load(),
+    reload: () => load(),
+  });
+
+  // Rows the user selected, shaped as the resolver's BidTargetInput. Only
+  // rows with a target_id are selectable, but we filter defensively anyway.
+  const selectedRows = useMemo(
+    () =>
+      (summary?.keywords ?? [])
+        .filter((k) => k.target_id != null && selected.has(k.target_id))
+        .map((k) => ({ target_id: k.target_id, bid: k.bid, status: k.status })),
+    [summary, selected],
+  );
+
   // ──────────────────────────────────────────────────────────────────────
   // Bulk-action helpers.
   //
@@ -302,45 +336,37 @@ export const KeywordsPage: React.FC = () => {
 
   const runBulk = async (op: 'pause' | 'resume') => {
     if (selected.size === 0) return;
-    setBulkBusy(true);
     try {
-      const ids = Array.from(selected);
-      const result =
-        op === 'pause'
-          ? await targetsApi.bulkPause(ids)
-          : await targetsApi.bulkResume(ids);
-      toast.success(t('bulk.result', { count: result.updated ?? ids.length }));
-      setSelected(new Set());
-      await load();
+      const { applied, failed, skipped } = await applyState(
+        selectedRows,
+        op === 'pause' ? 'PAUSED' : 'ENABLED',
+      );
+      toast.success(t('bulk.resultDetailed', { applied, failed, skipped }));
+      if (failed === 0) setSelected(new Set());
     } catch (err) {
       toast.error(
         t('bulk.error', {
           message: err instanceof ApiError ? err.message : String(err),
         }),
       );
-    } finally {
-      setBulkBusy(false);
     }
   };
 
-  const runBidChange = async (op: { multiplier: number } | { delta: number }) => {
+  const runBidChange = async (spec: BidEditSpec) => {
     if (selected.size === 0) return;
-    setBulkBusy(true);
     try {
-      const ids = Array.from(selected);
-      const result = await targetsApi.bulkUpdateBid(ids, op);
-      toast.success(t('bulk.result', { count: result.updated ?? ids.length }));
-      setSelected(new Set());
-      setBidModalOpen(false);
-      await load();
+      const { applied, failed, skipped } = await applyBids(selectedRows, spec);
+      toast.success(t('bulk.resultDetailed', { applied, failed, skipped }));
+      if (failed === 0) {
+        setSelected(new Set());
+        setBidModalOpen(false);
+      }
     } catch (err) {
       toast.error(
         t('bulk.error', {
           message: err instanceof ApiError ? err.message : String(err),
         }),
       );
-    } finally {
-      setBulkBusy(false);
     }
   };
 
@@ -508,7 +534,7 @@ export const KeywordsPage: React.FC = () => {
         {selected.size > 0 && (
           <BulkToolbar
             count={selected.size}
-            busy={bulkBusy}
+            busy={batchBusy}
             onPause={() => runBulk('pause')}
             onResume={() => runBulk('resume')}
             onChangeBid={() => setBidModalOpen(true)}
@@ -564,7 +590,7 @@ export const KeywordsPage: React.FC = () => {
       {bidModalOpen && (
         <ChangeBidModal
           count={selected.size}
-          busy={bulkBusy}
+          busy={batchBusy}
           onApply={runBidChange}
           onClose={() => setBidModalOpen(false)}
         />
@@ -1030,19 +1056,22 @@ const BulkButton: React.FC<{
 const ChangeBidModal: React.FC<{
   count: number;
   busy: boolean;
-  onApply: (op: { multiplier: number } | { delta: number }) => Promise<void>;
+  onApply: (spec: BidEditSpec) => Promise<void> | void;
   onClose: () => void;
 }> = ({ count, busy, onApply, onClose }) => {
   const { t } = useTranslation('keywords');
-  const [mode, setMode] = useState<'multiplier' | 'delta'>('multiplier');
+  const [mode, setMode] = useState<'multiplier' | 'delta' | 'set'>('multiplier');
   const [multiplier, setMultiplier] = useState(1.0);
   const [delta, setDelta] = useState(0.05);
+  const [setValue, setSetValue] = useState(0.5);
 
   const apply = () => {
     if (mode === 'multiplier') {
-      onApply({ multiplier });
+      onApply({ kind: 'multiply', factor: multiplier });
+    } else if (mode === 'delta') {
+      onApply({ kind: 'delta', amount: delta });
     } else {
-      onApply({ delta });
+      onApply({ kind: 'set', value: setValue });
     }
   };
 
@@ -1070,6 +1099,13 @@ const ChangeBidModal: React.FC<{
           >
             {t('bulk.modal.modeDelta')}
           </button>
+          <button
+            type="button"
+            onClick={() => setMode('set')}
+            className={`flex-1 h-8 text-xs rounded-md border ${mode === 'set' ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-700 border-zinc-200'}`}
+          >
+            {t('bulk.modal.modeSet')}
+          </button>
         </div>
         {mode === 'multiplier' ? (
           <label className="block text-[11px] text-zinc-500 mb-1">
@@ -1085,7 +1121,7 @@ const ChangeBidModal: React.FC<{
               data-testid="bulk-bid-multiplier"
             />
           </label>
-        ) : (
+        ) : mode === 'delta' ? (
           <label className="block text-[11px] text-zinc-500 mb-1">
             {t('bulk.modal.deltaLabel')}
             <input
@@ -1095,6 +1131,19 @@ const ChangeBidModal: React.FC<{
               onChange={(e) => setDelta(parseFloat(e.target.value) || 0)}
               className="mt-1 w-full h-8 px-2 text-xs rounded-md border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
               data-testid="bulk-bid-delta"
+            />
+          </label>
+        ) : (
+          <label className="block text-[11px] text-zinc-500 mb-1">
+            {t('bulk.modal.setLabel')}
+            <input
+              type="number"
+              value={setValue}
+              min={0.02}
+              step={0.01}
+              onChange={(e) => setSetValue(parseFloat(e.target.value) || 0)}
+              className="mt-1 w-full h-8 px-2 text-xs rounded-md border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+              data-testid="bulk-bid-set"
             />
           </label>
         )}

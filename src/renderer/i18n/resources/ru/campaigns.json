@@ -1,1 +1,15 @@
-{}
+{
+  "details": {
+    "targets": {
+      "bulk": {
+        "moveButton": "Перенести",
+        "failed": "Массовое действие не удалось",
+        "addNegativeAdded": "Добавлено {count} минус-слов",
+        "addNegativeFailed": "Не удалось добавить минус-слова",
+        "resultDetailed": "{applied} применено · {failed} ошибок · {skipped} пропущено",
+        "moveDeferredTitle": "Перенос в группу пока недоступен (скоро)",
+        "addNegativeNoKeywords": "В выборке нет keyword-таргетов для добавления в минус-слова"
+      }
+    }
+  }
+}

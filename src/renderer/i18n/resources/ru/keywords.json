@@ -1,1 +1,10 @@
-{}
+{
+  "bulk": {
+    "resultDetailed": "{applied} применено · {failed} ошибок · {skipped} пропущено",
+    "error": "Массовое действие не удалось: {message}",
+    "modal": {
+      "modeSet": "Задать ($)",
+      "setLabel": "Новая ставка"
+    }
+  }
+}

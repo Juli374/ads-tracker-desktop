@@ -12,6 +12,8 @@ import {
   type CoPilotAdviceItem,
 } from '../../api/ai';
 import { targetsApi, type Target } from '../../api/targets';
+import { useBatchBidApply } from '../../lib/useBatchBidApply';
+import type { BidTargetInput } from '../../lib/resolveBids';
 import { useEntitlement } from '../../hooks/useEntitlement';
 import { useToast } from '../../contexts/ToastContext';
 import { CoPilotTable, type CoPilotRow } from './CoPilotTable';
@@ -63,6 +65,29 @@ export const AIAdvisorPanel: React.FC<Props> = ({ campaign, onClose }) => {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // Optimistic patch: replace bids in-place for the given target ids.
+  const patchTargetBids = useCallback((byId: Map<number, number>) => {
+    setTargets((prev) =>
+      prev ? prev.map((tg) => (byId.has(tg.id) ? { ...tg, bid: byId.get(tg.id)! } : tg)) : prev,
+    );
+  }, []);
+
+  // Reconcile with server truth after a batch settles. Errors are non-fatal.
+  const reloadTargets = useCallback(async () => {
+    try {
+      const fresh = await targetsApi.listByCampaign(campaign.campaign_id);
+      setTargets(fresh);
+    } catch {
+      // Non-fatal; user can manually re-analyse.
+    }
+  }, [campaign.campaign_id]);
+
+  const { applyBids, applyState } = useBatchBidApply({
+    patchBids: patchTargetBids,
+    revert: reloadTargets,
+    reload: reloadTargets,
+  });
+
   // Scroll to latest message.
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -95,7 +120,10 @@ export const AIAdvisorPanel: React.FC<Props> = ({ campaign, onClose }) => {
       setHistoryError(msg);
       setState('history-error');
     }
-  }, [campaign.campaign_id, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` identity churns each
+    // render (react-i18next), which re-fired this fetch in an infinite loop; the catch
+    // fallback string does not need a fresh `t`. Stable on campaign id only.
+  }, [campaign.campaign_id]);
 
   useEffect(() => {
     loadHistory();
@@ -309,76 +337,68 @@ export const AIAdvisorPanel: React.FC<Props> = ({ campaign, onClose }) => {
     if (selectedIds.size === 0) return;
     setConfirmOpen(false);
     setCopilotState('applying');
-    // Group advice by action so we can call the correct bulk endpoint per group.
-    // For bid changes we further bucket by multiplier/delta value (backend takes
-    // a single op for the whole batch).
-    const selectedAdvice = advice.filter((a) => selectedIds.has(a.target_id));
-    const pauseIds: number[] = [];
-    const multiplierBuckets = new Map<number, number[]>();
-    const deltaBuckets = new Map<number, number[]>();
 
-    for (const item of selectedAdvice) {
-      if (item.action === 'pause') {
-        pauseIds.push(item.target_id);
-        continue;
-      }
-      // 'lower' and 'raise' both end up as a bid adjustment.
-      if (typeof item.multiplier === 'number' && Number.isFinite(item.multiplier)) {
-        const bucket = multiplierBuckets.get(item.multiplier) ?? [];
-        bucket.push(item.target_id);
-        multiplierBuckets.set(item.multiplier, bucket);
-      } else if (typeof item.delta === 'number' && Number.isFinite(item.delta)) {
-        const bucket = deltaBuckets.get(item.delta) ?? [];
-        bucket.push(item.target_id);
-        deltaBuckets.set(item.delta, bucket);
+    // Resolve each selected advice row against its live target, then group into
+    // pause rows + one batch per distinct multiplier/delta value. The bid math
+    // (multiply/delta → absolute, MIN_BID floor, UPPERCASE state) happens inside
+    // useBatchBidApply via resolveBids.
+    const byId = new Map(targets?.map((tg) => [tg.id, tg]) ?? []);
+    const push = <K,>(m: Map<K, BidTargetInput[]>, k: K, v: BidTargetInput) => {
+      const a = m.get(k) ?? [];
+      a.push(v);
+      m.set(k, a);
+    };
+
+    const pauseRows: BidTargetInput[] = [];
+    const multByVal = new Map<number, BidTargetInput[]>();
+    const deltaByVal = new Map<number, BidTargetInput[]>();
+
+    for (const a of advice) {
+      if (!selectedIds.has(a.target_id)) continue;
+      const tg = byId.get(a.target_id);
+      const row: BidTargetInput = { target_id: a.target_id, bid: tg?.bid ?? null, state: tg?.state };
+      if (a.action === 'pause') {
+        pauseRows.push(row);
+      } else if (typeof a.multiplier === 'number' && Number.isFinite(a.multiplier)) {
+        push(multByVal, a.multiplier, row);
+      } else if (typeof a.delta === 'number' && Number.isFinite(a.delta)) {
+        push(deltaByVal, a.delta, row);
       }
     }
 
     let applied = 0;
-    const failures: string[] = [];
+    let failed = 0;
+    const accrue = async (run: () => Promise<{ applied: number; failed: number }>) => {
+      try {
+        const res = await run();
+        applied += res.applied;
+        failed += res.failed;
+      } catch {
+        failed += 1;
+      }
+    };
 
-    if (pauseIds.length > 0) {
-      try {
-        const res = await targetsApi.bulkPause(pauseIds);
-        applied += res.updated ?? pauseIds.length;
-      } catch (err) {
-        failures.push(err instanceof Error ? err.message : String(err));
-      }
+    if (pauseRows.length > 0) {
+      await accrue(() => applyState(pauseRows, 'PAUSED'));
     }
-    for (const [mult, ids] of multiplierBuckets) {
-      try {
-        const res = await targetsApi.bulkUpdateBid(ids, { multiplier: mult });
-        applied += res.updated ?? ids.length;
-      } catch (err) {
-        failures.push(err instanceof Error ? err.message : String(err));
-      }
+    for (const [factor, rows] of multByVal) {
+      await accrue(() => applyBids(rows, { kind: 'multiply', factor }));
     }
-    for (const [delta, ids] of deltaBuckets) {
-      try {
-        const res = await targetsApi.bulkUpdateBid(ids, { delta });
-        applied += res.updated ?? ids.length;
-      } catch (err) {
-        failures.push(err instanceof Error ? err.message : String(err));
-      }
+    for (const [amount, rows] of deltaByVal) {
+      await accrue(() => applyBids(rows, { kind: 'delta', amount }));
     }
 
     setCopilotState('idle');
-    if (failures.length > 0) {
+    if (failed > 0 && applied === 0) {
       toast.error(t('details.advisor.coPilot.errors.apply'));
     } else {
       toast.success(t('details.advisor.coPilot.applied', { count: applied }));
-      // Clear advice after success — caller can re-run analyse for next pass.
-      setAdvice([]);
-      setSelectedIds(new Set());
-      // Re-fetch targets so bids reflect the new state.
-      try {
-        const fresh = await targetsApi.listByCampaign(campaign.campaign_id);
-        setTargets(fresh);
-      } catch {
-        // Non-fatal; user can manually re-analyse.
-      }
     }
-  }, [selectedIds, advice, toast, t, campaign.campaign_id]);
+    // Clear advice + selection; reload so bids reflect the new server state.
+    setAdvice([]);
+    setSelectedIds(new Set());
+    await reloadTargets();
+  }, [selectedIds, advice, targets, applyBids, applyState, reloadTargets, toast, t]);
 
   const copilotRows: CoPilotRow[] = useMemo(() => {
     if (!targets) return [];
