@@ -143,8 +143,9 @@ export interface SnoozeResult {
 }
 
 /**
- * Pause: «отложить keyword/target до конкретной даты, потом вернуть в inbox».
- * Параллельно может pause-аить связанный ad-targeting.
+ * Pause: локальная «remind-me-later» полка. Откладывает search-term в
+ * `archived_pause` и автоматически возвращает его в inbox через N дней.
+ * Никакого Amazon-вызова — реклама не паузится.
  */
 export interface PauseTargetsRequest {
   statusIds: number[];
@@ -155,7 +156,6 @@ export interface PauseTargetsRequest {
 
 export interface PauseTargetsResult {
   updated: number;
-  pausedTargets: number;
 }
 
 /**
@@ -170,9 +170,16 @@ export interface MoveTargetsRequest {
   addNegative?: boolean;
 }
 
+/**
+ * Backend move response shape (POST /api/search-terms/move).
+ * `succeeded` is the authoritative moved-count; `results` is per-item detail.
+ */
 export interface MoveTargetsResult {
-  moved: number;
+  success: boolean;
+  total: number;
+  succeeded: number;
   failed: number;
+  results?: unknown[];
   errors?: string[];
 }
 
@@ -281,24 +288,38 @@ export const searchTermsApi = {
    * `until_date`.
    */
   snooze(req: SnoozeRequest): Promise<SnoozeResult> {
-    return apiClient.post<SnoozeResult>('/api/search-terms/snooze', {
+    // Backend wants `snoozed_days` (1..30), NOT an absolute date. If the
+    // request carries `untilDate`, convert it to integer days from today
+    // client-side (ceil so an end-of-day target still counts as a full day).
+    let snoozedDays = req.days;
+    if (snoozedDays == null && req.untilDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const until = new Date(`${req.untilDate}T00:00:00`);
+      const diffDays = Math.ceil(
+        (until.getTime() - today.getTime()) / 86_400_000,
+      );
+      snoozedDays = diffDays > 0 ? diffDays : 1;
+    }
+    return apiClient.post<SnoozeResult>('/api/search-terms/status', {
       status_ids: req.statusIds,
-      days: req.days,
-      until_date: req.untilDate,
-      reason: req.reason,
+      status: 'snoozed',
+      snoozed_days: snoozedDays,
+      snooze_reason: req.reason,
     });
   },
 
   /**
-   * Bulk pause: переводит выбранные search-terms в `archived_pause` со сроком
-   * автоматического возврата в inbox. Также пытается paused-нуть связанные
-   * targets (`paused_targets` в response).
+   * Bulk pause: переводит выбранные search-terms в `archived_pause` с
+   * автоматическим возвратом в inbox через `return_days`. Локальная полка —
+   * Amazon-реклама НЕ паузится.
    */
   pauseTargets(req: PauseTargetsRequest): Promise<PauseTargetsResult> {
-    return apiClient.post<PauseTargetsResult>('/api/search-terms/pause', {
+    return apiClient.post<PauseTargetsResult>('/api/search-terms/status', {
       status_ids: req.statusIds,
-      days: req.days,
-      reason: req.reason,
+      status: 'archived_pause',
+      return_days: req.days,
+      snooze_reason: req.reason,
     });
   },
 
@@ -321,9 +342,9 @@ export const searchTermsApi = {
    * ввода»: done, inbox (return), archived_final.
    */
   bulkUpdateInboxStatus(req: BulkInboxUpdateRequest): Promise<BulkInboxUpdateResult> {
-    return apiClient.post<BulkInboxUpdateResult>('/api/search-terms/bulk-status', {
+    return apiClient.post<BulkInboxUpdateResult>('/api/search-terms/status', {
       status_ids: req.statusIds,
-      new_status: req.newStatus,
+      status: req.newStatus,
     });
   },
 

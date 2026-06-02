@@ -56,11 +56,14 @@ export const SnoozeModal: React.FC<Props> = ({ statusIds, onClose, onDone }) => 
         untilDate: preset === 'custom' ? customDate : undefined,
         reason: reason.trim() || undefined,
       });
-      // backend may not echo `updated` in mock — fallback to count of selected.
-      const updated = typeof res.updated === 'number' && res.updated > 0
-        ? res.updated
-        : statusIds.length;
-      toast.success(t('bulk.results.snoozed', { count: updated }));
+      // Trust the server count. 0/absent → neutral info toast, not a false
+      // success.
+      const updated = typeof res.updated === 'number' ? res.updated : 0;
+      if (updated > 0) {
+        toast.success(t('bulk.results.snoozed', { count: updated }));
+      } else {
+        toast.info(t('bulk.results.snoozedNone'));
+      }
       onDone(updated);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t('errors.snooze'));

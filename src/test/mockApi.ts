@@ -698,10 +698,21 @@ export function mockApiResponses(): Record<string, unknown> {
     },
     // Phase J.1 Lane A — bulk action endpoints (default success shape).
     // Tests can override via installMockApi({responses: {...}}).
-    '/api/search-terms/snooze': { updated: 0 },
-    '/api/search-terms/pause': { updated: 0, pausedTargets: 0 },
-    '/api/search-terms/move': { moved: 0, failed: 0 },
-    '/api/search-terms/bulk-status': { updated: 0 },
+    // snooze/pause/bulk-status all POST to the same `/api/search-terms/status`
+    // endpoint (discriminated by the `status` field in the body, which the mock
+    // ignores — it matches by path only), so one shared `{ updated }` covers all
+    // three. Use a positive count so the renderer's success-toast branch fires
+    // (it trusts the server count; 0/absent → neutral info toast).
+    '/api/search-terms/status': { updated: 1 },
+    // moveTargets() returns the backend shape; MoveModal reads `succeeded`.
+    '/api/search-terms/move': {
+      success: true,
+      total: 1,
+      succeeded: 1,
+      failed: 0,
+      results: [],
+      errors: [],
+    },
     '/api/metrics/summary/overview': {
       date_from: '2026-05-01',
       date_to: '2026-05-15',

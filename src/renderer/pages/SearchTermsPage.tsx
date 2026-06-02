@@ -265,10 +265,14 @@ export const SearchTermsPage: React.FC = () => {
         statusIds: selectedIds,
         newStatus,
       });
-      const updated = typeof res.updated === 'number' && res.updated > 0
-        ? res.updated
-        : selectedIds.length;
-      toast.success(t('bulk.results.marked', { count: updated }));
+      // Trust the server count. If it reports 0 (or doesn't echo one), show a
+      // neutral info toast instead of falsely claiming success.
+      const updated = typeof res.updated === 'number' ? res.updated : 0;
+      if (updated > 0) {
+        toast.success(t('bulk.results.marked', { count: updated }));
+      } else {
+        toast.info(t('bulk.results.markedNone'));
+      }
       setSelected(new Set());
       setReloadTick((n) => n + 1);
     } catch (err) {

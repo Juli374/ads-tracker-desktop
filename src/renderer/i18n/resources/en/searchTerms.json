@@ -104,9 +104,13 @@
     },
     "results": {
       "snoozed": "Snoozed {count}",
+      "snoozedNone": "No terms were snoozed.",
       "paused": "Paused {count}",
+      "pausedNone": "No terms were paused.",
       "moved": "Moved {count}",
-      "marked": "Updated {count}"
+      "movedNone": "No terms were moved.",
+      "marked": "Updated {count}",
+      "markedNone": "No terms were updated."
     }
   },
   "snooze": {
@@ -134,7 +138,7 @@
   "pause": {
     "title": "Pause",
     "subtitle": "{count, plural, one {# term} other {# terms}}",
-    "info": "Pause is for keywords that aren't working now but might be useful later. After the period they will return to inbox automatically.",
+    "info": "This is a local reminder shelf — it does NOT pause the Amazon ad. Terms you set aside here disappear from the inbox and return automatically after the chosen period.",
     "presetLabel": "Return after",
     "preset": {
       "30d": "30 days",
