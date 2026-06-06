@@ -120,9 +120,12 @@ export const AIAdvisorPanel: React.FC<Props> = ({ campaign, onClose }) => {
       setHistoryError(msg);
       setState('history-error');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` identity churns each
+    // NOTE: deliberately depend on campaign id only. `t` identity churns each
     // render (react-i18next), which re-fired this fetch in an infinite loop; the catch
     // fallback string does not need a fresh `t`. Stable on campaign id only.
+    // (No eslint-disable needed: the react-hooks plugin is not configured in this
+    // project, so exhaustive-deps never fires here — and an explicit disable for an
+    // unregistered rule is itself an ESLint error that breaks `npm run lint`.)
   }, [campaign.campaign_id]);
 
   useEffect(() => {
