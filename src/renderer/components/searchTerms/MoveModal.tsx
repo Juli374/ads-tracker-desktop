@@ -126,10 +126,14 @@ export const MoveModal: React.FC<Props> = ({
         bid: Number.isFinite(bidNum) && bidNum > 0 ? bidNum : undefined,
         addNegative,
       });
-      const moved = typeof res.moved === 'number' && res.moved > 0
-        ? res.moved
-        : statusIds.length;
-      toast.success(t('bulk.results.moved', { count: moved }));
+      // Trust the server count (`succeeded`). 0/absent → neutral info toast,
+      // not a false success.
+      const moved = typeof res.succeeded === 'number' ? res.succeeded : 0;
+      if (moved > 0) {
+        toast.success(t('bulk.results.moved', { count: moved }));
+      } else {
+        toast.info(t('bulk.results.movedNone'));
+      }
       onDone(moved);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t('errors.move'));

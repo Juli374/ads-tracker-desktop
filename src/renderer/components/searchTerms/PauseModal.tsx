@@ -45,10 +45,14 @@ export const PauseModal: React.FC<Props> = ({ statusIds, onClose, onDone }) => {
         days: PRESET_DAYS[preset],
         reason: reason.trim() || undefined,
       });
-      const updated = typeof res.updated === 'number' && res.updated > 0
-        ? res.updated
-        : statusIds.length;
-      toast.success(t('bulk.results.paused', { count: updated }));
+      // Trust the server count. 0/absent → neutral info toast, not a false
+      // success.
+      const updated = typeof res.updated === 'number' ? res.updated : 0;
+      if (updated > 0) {
+        toast.success(t('bulk.results.paused', { count: updated }));
+      } else {
+        toast.info(t('bulk.results.pausedNone'));
+      }
       onDone(updated);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t('errors.pause'));
