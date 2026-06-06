@@ -168,6 +168,7 @@
     "redirectUriPrefix": "redirect_uri: {uri}",
     "fallbackProfile": "Profile #{id}",
     "syncSuccess": "Sync started",
+    "syncedCount": "{count} profile(s) synced",
     "syncFailed": "Failed to sync",
     "openHint": "Open the browser and confirm access. Come back to this window.",
     "errors": {

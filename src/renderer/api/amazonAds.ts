@@ -50,12 +50,18 @@ export const amazonAdsApi = {
   },
 
   // Запускает OAuth — backend возвращает URL для открытия в браузере.
-  // redirect_uri должен указывать на ads-tracker-desktop://callback.
+  // redirect_uri теперь HTTPS-страница (https://kdpbook.click/callback),
+  // которая re-emit'ит deep-link ads-tracker-desktop://callback обратно в апп.
+  // Бэкенд отдаёт ключ `auth_url` (oauth.py:140); интерфейс обещает `url`,
+  // поэтому нормализуем здесь: url ?? auth_url. Без этого openExternal(undefined)
+  // падает и браузер не открывается.
   startOAuth(redirectUri: string): Promise<OAuthAuthorizeResponse> {
-    return apiClient.post<OAuthAuthorizeResponse>(
-      '/api/amazon-ads/oauth/authorize',
-      { redirect_uri: redirectUri },
-    );
+    return apiClient
+      .post<{ auth_url?: string; url?: string; state: string }>(
+        '/api/amazon-ads/oauth/authorize',
+        { redirect_uri: redirectUri },
+      )
+      .then((r) => ({ url: r.url ?? r.auth_url ?? '', state: r.state }));
   },
 
   // Завершает OAuth: передаём code+state, backend меняет на refresh-token.

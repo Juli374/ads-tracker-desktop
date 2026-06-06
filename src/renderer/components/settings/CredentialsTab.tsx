@@ -7,7 +7,7 @@ import { Card } from '../ui';
 import { useToast } from '../../contexts/ToastContext';
 import { useDeepLink } from '../../lib/useDeepLink';
 
-const REDIRECT_URI = 'ads-tracker-desktop://callback';
+const REDIRECT_URI = 'https://kdpbook.click/callback';
 
 /**
  * Генерим CSRF state локально и сохраняем в main через IPC. Фоллбек на
@@ -29,6 +29,12 @@ export const CredentialsTab: React.FC = () => {
   const toast = useToast();
   const [connecting, setConnecting] = useState(false);
   const [completing, setCompleting] = useState(false);
+  // After a successful connect we auto-sync profiles; remember the outcome so
+  // the user sees the freshly-synced count (or a non-fatal sync error) without
+  // manually opening the Profiles tab. A sync failure here is NOT a connect
+  // failure — the refresh-token is already stored.
+  const [syncedCount, setSyncedCount] = useState<number | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // === Deeplink callback handler ===
   // Когда юзер вернулся из браузера — main → renderer присылает deeplink-event.
@@ -83,9 +89,35 @@ export const CredentialsTab: React.FC = () => {
         }
 
         setCompleting(true);
+        setSyncError(null);
+        setSyncedCount(null);
         try {
           await amazonAdsApi.completeOAuth(code, state, REDIRECT_URI);
           toast.success(t('amazonAds.connected'));
+
+          // A freshly connected account has 0 profiles in our DB until we pull
+          // them. Chain a profile sync so the user lands ready-to-use instead of
+          // on an empty Profiles tab. The token exchange already succeeded, so a
+          // sync problem must NOT flip the connect to "failed".
+          //
+          // IMPORTANT: the backend returns HTTP 400 when the account simply has
+          // no advertising profiles yet (profiles.py:128-133) — a plausible,
+          // benign outcome for a brand-new connect. Treat 400 as "nothing to
+          // sync yet" (neutral, no red error toast), and only surface real
+          // (non-400) sync failures, and even then without failing the connect.
+          try {
+            const res = await amazonAdsApi.syncProfiles();
+            setSyncedCount(typeof res.count === 'number' ? res.count : null);
+            toast.success(t('amazonAds.syncSuccess'));
+          } catch (syncErr) {
+            setSyncedCount(null);
+            setSyncError(
+              syncErr instanceof ApiError && syncErr.status !== 400
+                ? syncErr.message
+                : null,
+            );
+            // Do NOT toast.error here — the connect itself succeeded.
+          }
         } catch (err) {
           toast.error(
             err instanceof ApiError ? err.message : t('amazonAds.errors.callbackFailed'),
@@ -158,6 +190,14 @@ export const CredentialsTab: React.FC = () => {
             ? t('amazonAds.connecting')
             : t('amazonAds.connect')}
         </button>
+        {syncedCount !== null && (
+          <div className="text-[11px] text-emerald-600">
+            {t('amazonAds.syncedCount', { count: syncedCount })}
+          </div>
+        )}
+        {syncError && (
+          <div className="text-[11px] text-rose-600">{syncError}</div>
+        )}
         <div className="text-[10px] text-zinc-400 font-mono">
           {t('amazonAds.redirectUriPrefix', { uri: REDIRECT_URI })}
         </div>
