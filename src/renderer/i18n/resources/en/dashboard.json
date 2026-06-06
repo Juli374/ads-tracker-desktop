@@ -2,7 +2,29 @@
   "title": "Overview",
   "subtitle": {
     "withDates": "{from} → {to} · attribution window {window}",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "onboarding": "Set up your account to start tracking"
+  },
+  "onboarding": {
+    "eyebrow": "Getting started",
+    "headline": "Welcome to KDPBook — let's get your data flowing",
+    "subtext": "Connect your Amazon Ads account and upload a royalty report to see profit, ACOS, and TACoS across all your books.",
+    "connect": {
+      "title": "Connect Amazon Ads",
+      "description": "Authorize your seller account to pull campaigns, spend, and sales automatically.",
+      "cta": "Open Credentials"
+    },
+    "royalty": {
+      "title": "Upload royalty report",
+      "description": "Drop in your KDP royalty export to unlock true profit and TACoS — it stays on your device.",
+      "cta": "Go to Royalties"
+    },
+    "books": {
+      "title": "Add your first book",
+      "description": "Set break-even ACOS and royalty per book so every metric reflects your real margins.",
+      "cta": "Go to Books"
+    },
+    "footnote": "This panel disappears as soon as you connect Amazon or add a book."
   },
   "loadFailed": "Failed to load data",
   "quickPeriod": {
