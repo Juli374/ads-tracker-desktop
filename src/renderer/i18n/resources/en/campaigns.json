@@ -201,7 +201,10 @@
         "addNegativeAdded": "Added {count} negatives",
         "addNegativeFailed": "Failed to add negatives",
         "moveFailed": "Failed to move targets",
-        "modalCancel": "Cancel"
+        "modalCancel": "Cancel",
+        "resultDetailed": "{applied} applied · {failed} failed · {skipped} skipped",
+        "moveDeferredTitle": "Move-to-ad-group isn't available yet (coming soon)",
+        "addNegativeNoKeywords": "Selection has no keyword targets to add as negatives"
       }
     },
     "searchTerms": {

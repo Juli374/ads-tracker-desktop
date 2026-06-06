@@ -761,7 +761,12 @@ export function mockApiResponses(): Record<string, unknown> {
         state: 'enabled',
       },
     ],
-    '/api/campaigns/100/negatives': [],
+    // Campaign-level negatives — real route negativesApi.add* POSTs to (#4
+    // bulk add-negative). Mock matches by PATH only, so this one fixture serves
+    // both the POST-add (KeywordsTable bulk add-negative reads `success`) and
+    // the GET-list (CampaignDetailsPage uses Array.isArray() ?? [] — a non-array
+    // gracefully renders an empty negatives tab).
+    '/api/campaigns/100/negatives': { success: true, results: [], synced_to_amazon: true },
     '/api/metrics/summary/by-keyword': {
       date_from: '2026-05-01',
       date_to: '2026-05-15',
@@ -980,14 +985,31 @@ export function mockApiResponses(): Record<string, unknown> {
         publication_date: null,
       },
     ],
-    // Phase J.2 Lane B — bulk targets endpoints. Caller передаёт
-    // target_ids[] + payload; mock возвращает { updated: count } чтобы
-    // KeywordsTable показал toast «Updated N targets».
-    '/api/targets/bulk-pause': { updated: 1, message: 'OK' },
-    '/api/targets/bulk-resume': { updated: 1, message: 'OK' },
-    '/api/targets/bulk-update-bid': { updated: 1, message: 'OK' },
-    '/api/targets/bulk-move': { updated: 1, message: 'OK' },
-    '/api/targets/bulk-add-negative': { added: 1, message: 'OK' },
+    // #4 Bulk edits reach Amazon — real route. amazonAdsApi.setTargetBidsBatch
+    // POSTs target updates here; KeywordsTable / useBatchBidApply read the
+    // BulkUpdateResponse shape (success/total/succeeded/failed/results/errors)
+    // back to compute the {applied,failed,skipped} toast.
+    '/api/amazon-ads/targets/bulk-update': {
+      success: true,
+      total: 1,
+      succeeded: 1,
+      failed: 0,
+      results: [
+        {
+          target_id: 5000,
+          old_bid: 0.5,
+          new_bid: 0.4,
+          old_status: 'enabled',
+          new_state: 'ENABLED',
+          campaign_id: 100,
+          name: 'kw1',
+        },
+      ],
+      errors: [],
+    },
+    // Negative-list bulk add — real route negativeListsApi.addItems POSTs to.
+    // ReverseAsinPanel reads `added` to show the success toast.
+    '/api/negative-lists/1/items': { added: 1, message: 'OK' },
     // Phase J.2 Lane B — per-week placement breakdown. Если backend
     // не выкатан, getPlacementHistory вернёт null (тест проверяет 404
     // через path: '/api/campaigns/100/placement-history' отсутствует).

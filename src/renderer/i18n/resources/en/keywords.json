@@ -55,13 +55,16 @@
       "title": "Change bid for {count, plural, one {# target} other {# targets}}",
       "modeMultiplier": "Multiply (×N)",
       "modeDelta": "Add ($)",
+      "modeSet": "Set ($)",
       "multiplierLabel": "Multiplier",
       "deltaLabel": "Delta",
+      "setLabel": "New bid",
       "apply": "Apply",
       "cancel": "Cancel",
       "preview": "Preview: {first} → {newFirst}"
     },
     "result": "Updated {count, plural, one {# target} other {# targets}}",
+    "resultDetailed": "{applied} applied · {failed} failed · {skipped} skipped",
     "error": "Bulk action failed: {message}"
   },
   "th": {
