@@ -6,31 +6,13 @@ import React, {
   useState,
 } from 'react';
 
-export type ViewId =
-  | 'dashboard'
-  | 'books'
-  | 'search_terms'
-  | 'campaigns'
-  | 'campaign_details'
-  | 'keywords'
-  | 'reports'
-  | 'comparison'
-  | 'negatives'
-  | 'action_center'
-  | 'automation'
-  | 'alerts'
-  | 'royalties'
-  | 'pnl'
-  | 'operations'
-  | 'accounting'
-  | 'profile'
-  // Phase L Lane A — AI-assisted listing rewrite (Pro tier).
-  | 'listing_studio'
-  // Phase M.1 — Niche Explorer / Research page (Pro tier).
-  | 'research'
-  // Phase M.5 Lane E — Weekly Author Briefing page (Pro tier).
-  | 'briefing'
-  | 'settings';
+// ViewId now lives in src/shared/views.ts so the module-activation registry
+// (src/shared/modules.ts) can reference it without a renderer→shared import
+// cycle. Re-exported here so existing
+//   import { ViewId } from '../contexts/NavContext'
+// call sites keep working unchanged.
+import type { ViewId } from '../../shared/views';
+export type { ViewId };
 
 // Filters passed during drill-down between pages.
 // The receiving page decides what to apply and when to reset.

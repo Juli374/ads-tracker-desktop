@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { EntitlementsProvider } from './contexts/EntitlementsContext';
+import { FeatureActivationProvider } from './contexts/FeatureActivationContext';
 import { MarketplacesProvider } from './contexts/MarketplacesContext';
 import { BooksProvider } from './contexts/BooksContext';
 import { GlobalFiltersProvider } from './contexts/GlobalFiltersContext';
@@ -67,15 +68,17 @@ export const App: React.FC = () => (
         <ToastProvider>
           <AuthProvider>
             <EntitlementsProvider>
-              <MarketplacesProvider>
-                <BooksProvider>
-                  <GlobalFiltersProvider>
-                    <WeeksFilterProvider>
-                      <Gate />
-                    </WeeksFilterProvider>
-                  </GlobalFiltersProvider>
-                </BooksProvider>
-              </MarketplacesProvider>
+              <FeatureActivationProvider>
+                <MarketplacesProvider>
+                  <BooksProvider>
+                    <GlobalFiltersProvider>
+                      <WeeksFilterProvider>
+                        <Gate />
+                      </WeeksFilterProvider>
+                    </GlobalFiltersProvider>
+                  </BooksProvider>
+                </MarketplacesProvider>
+              </FeatureActivationProvider>
             </EntitlementsProvider>
           </AuthProvider>
         </ToastProvider>

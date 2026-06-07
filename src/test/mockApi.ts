@@ -25,6 +25,7 @@ import type {
   LocalRoyaltyUpload,
   MediaUploadPayload,
   MediaUploadResponse,
+  ModuleActivationState,
   UpdateStatus,
   WeeklyBriefing,
 } from '../shared/ipc';
@@ -35,6 +36,7 @@ import {
   type FeatureState,
   type Tier,
 } from '../shared/entitlements';
+import { ALL_MODULE_IDS } from '../shared/modules';
 
 interface MockApiOptions {
   responses?: Record<string, unknown>;
@@ -207,6 +209,13 @@ export function installMockApi(options: MockApiOptions = {}): void {
     ...(options.entitlements?.features
       ? { features: { ...baseFeatures, ...options.entitlements.features } }
       : {}),
+  };
+
+  const mockModuleActivation: ModuleActivationState = {
+    modules: Object.fromEntries(
+      ALL_MODULE_IDS.map((id) => [id, { enabled: true, activatedAt: null, source: 'default' }]),
+    ),
+    newModuleIds: [],
   };
 
   (window as unknown as { api: DesktopApi }).api = {
@@ -450,6 +459,18 @@ export function installMockApi(options: MockApiOptions = {}): void {
     telemetry: {
       getConsent: vi.fn(async () => false),
       setConsent: vi.fn(async () => undefined),
+    },
+    // Phase R — module activation. Default: everything enabled (so tests that
+    // render pages via installMockApi still see full nav). A test can override
+    // by stubbing window.api.featureActivation after install if it needs a
+    // specific activation state.
+    featureActivation: {
+      get: vi.fn(async (): Promise<ModuleActivationState> => mockModuleActivation),
+      set: vi.fn(async (): Promise<ModuleActivationState> => mockModuleActivation),
+      setMany: vi.fn(async (): Promise<ModuleActivationState> => mockModuleActivation),
+      reset: vi.fn(async (): Promise<ModuleActivationState> => mockModuleActivation),
+      markSeen: vi.fn(async (): Promise<ModuleActivationState> => mockModuleActivation),
+      onChange: vi.fn(() => () => undefined),
     },
   };
 }

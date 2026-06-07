@@ -47,6 +47,7 @@ export type {
   ModalBodyProps,
   ModalFooterProps,
 } from './Modal';
+export { Switch } from './Switch';
 export { SegmentedControl } from './SegmentedControl';
 export type {
   SegmentedControlOption,

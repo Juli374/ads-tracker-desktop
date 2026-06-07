@@ -22,6 +22,7 @@ import {
   Loader2,
   Compass,
   Mail,
+  Plus,
 } from 'lucide-react';
 
 // Eagerly loaded — самые посещаемые страницы (стартовый экран).
@@ -104,8 +105,10 @@ import { GlobalAttributionToggle } from './GlobalAttributionToggle';
 import { NotificationsBell } from './NotificationsBell';
 import { UserMenu } from './UserMenu';
 import { useEntitlement } from '../hooks/useEntitlement';
+import { useModuleActivation } from '../hooks/useModuleActivation';
 import type { FeatureKey } from '../../shared/entitlements';
 import { NavItem as UINavItem } from './ui/NavItem';
+import { useToast } from '../contexts/ToastContext';
 
 interface NavItem {
   id: ViewId;
@@ -212,6 +215,8 @@ function isTypingTarget(target: EventTarget | null): boolean {
 const Layout: React.FC = () => {
   const { t } = useTranslation('nav');
   const { page, navigate } = useNav();
+  const { isViewVisible } = useModuleActivation();
+  const toast = useToast();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const pendingG = useRef(false);
   const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -246,7 +251,18 @@ const Layout: React.FC = () => {
 
       if (pendingG.current && HOTKEY_MAP[key]) {
         e.preventDefault();
-        navigate(HOTKEY_MAP[key]);
+        const target = HOTKEY_MAP[key];
+        // Phase R — don't silently land on a hidden module via a memorised
+        // hotkey; nudge the user to Settings → Modules instead.
+        if (isViewVisible(target)) {
+          navigate(target);
+        } else {
+          toast.info(
+            t('hotkeyModuleOff', {
+              defaultValue: 'That module is off — enable it in Settings → Modules.',
+            }),
+          );
+        }
         pendingG.current = false;
         if (pendingTimer.current) clearTimeout(pendingTimer.current);
       }
@@ -256,7 +272,7 @@ const Layout: React.FC = () => {
       window.removeEventListener('keydown', handler);
       if (pendingTimer.current) clearTimeout(pendingTimer.current);
     };
-  }, [navigate]);
+  }, [navigate, isViewVisible, toast, t]);
 
   const renderContent = () => {
     switch (page) {
@@ -363,25 +379,58 @@ const Layout: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-56 flex-shrink-0 border-r border-zinc-200 bg-white flex flex-col">
           <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-            <div className="px-3 pb-1.5 pt-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-              {t('sections.analytics')}
-            </div>
-            {mainNav.map(renderNavItem)}
+            {/* Phase R — each section renders only when it has at least one
+                visible item; an empty group must not leave an orphan header. */}
+            {mainNav.some((i) => isViewVisible(i.id)) && (
+              <>
+                <div className="px-3 pb-1.5 pt-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  {t('sections.analytics')}
+                </div>
+                {mainNav.filter((i) => isViewVisible(i.id)).map(renderNavItem)}
+              </>
+            )}
 
-            <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-              {t('sections.actions')}
-            </div>
-            {actionsNav.map(renderNavItem)}
+            {actionsNav.some((i) => isViewVisible(i.id)) && (
+              <>
+                <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  {t('sections.actions')}
+                </div>
+                {actionsNav.filter((i) => isViewVisible(i.id)).map(renderNavItem)}
+              </>
+            )}
 
-            <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-              {t('sections.ai', { defaultValue: 'AI' })}
-            </div>
-            {aiNav.map(renderNavItem)}
+            {aiNav.some((i) => isViewVisible(i.id)) && (
+              <>
+                <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  {t('sections.ai', { defaultValue: 'AI' })}
+                </div>
+                {aiNav.filter((i) => isViewVisible(i.id)).map(renderNavItem)}
+              </>
+            )}
 
-            <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-              {t('sections.finance')}
-            </div>
-            {financeNav.map(renderNavItem)}
+            {financeNav.some((i) => isViewVisible(i.id)) && (
+              <>
+                <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  {t('sections.finance')}
+                </div>
+                {financeNav.filter((i) => isViewVisible(i.id)).map(renderNavItem)}
+              </>
+            )}
+
+            {/* Phase R — progressive-disclosure entry point: always-present scent
+                that more features exist, deep-linking to the Modules catalog. */}
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '#settings/modules';
+                navigate('settings');
+              }}
+              data-testid="nav-more-features"
+              className="w-full mt-2 flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-medium text-zinc-400 hover:text-zinc-700 hover:bg-zinc-50 transition-colors"
+            >
+              <Plus size={13} />
+              {t('moreFeatures', { defaultValue: 'More features' })}
+            </button>
           </nav>
 
           <div className="p-2 border-t border-zinc-100 space-y-0.5">

@@ -7,6 +7,7 @@
   "tabs": {
     "ariaLabel": "Settings tab: {label}",
     "application": "Application",
+    "modules": "Modules",
     "books": "Books",
     "credentials": "Credentials",
     "profiles": "Profiles",
@@ -19,17 +20,78 @@
     "stream": "Stream",
     "privacy": "Privacy"
   },
+  "modules": {
+    "title": "Modules & features",
+    "subtitle": "Turn optional modules on as you need them — start simple and add power as you grow. Core modules are always on.",
+    "search": "Search modules…",
+    "enableAll": "Enable all",
+    "enabledAll": "All available modules enabled.",
+    "resetRecommended": "Reset to recommended",
+    "resetConfirm": "Reset all modules to the recommended starter set?",
+    "resetConfirmYes": "Reset",
+    "cancel": "Cancel",
+    "resetDone": "Modules reset to the recommended set.",
+    "alwaysOn": "Always on",
+    "recommended": "Recommended",
+    "new": "New",
+    "tierPro": "Pro",
+    "tierBusiness": "Business",
+    "lockedHint": "Available on {tier}",
+    "empty": "No modules match your search.",
+    "groups": {
+      "core": "Core",
+      "ads": "Ads",
+      "analytics": "Analytics",
+      "ai": "AI",
+      "publishing": "Publishing"
+    },
+    "items": {
+      "core": {
+        "label": "Core workspace",
+        "hint": "Dashboard, Books, Campaigns, Keywords and Settings — always available."
+      },
+      "ads_core": {
+        "label": "Search terms & negatives",
+        "hint": "The daily Ads workflow on top of your campaigns."
+      },
+      "ads_advanced": {
+        "label": "Automation & operations",
+        "hint": "Bid rules, bulk operations and the action center."
+      },
+      "analytics": {
+        "label": "Reports & comparison",
+        "hint": "Deeper analysis beyond the dashboard."
+      },
+      "alerts": {
+        "label": "Monitoring",
+        "hint": "Alerts when your metrics move."
+      },
+      "ai": {
+        "label": "AI assistant",
+        "hint": "Listing studio, weekly briefing and niche research."
+      },
+      "finance_royalty": {
+        "label": "Royalty",
+        "hint": "Your true KDP royalty — sales plus KENP pages read."
+      },
+      "finance_advanced": {
+        "label": "P&L & accounting",
+        "hint": "Profit/loss and bookkeeping on top of royalty."
+      }
+    }
+  },
   "privacy": {
     "title": "Privacy & telemetry",
-    "intro": "KDPBook runs entirely on your machine. The only data that leaves your computer goes to Amazon Advertising, Anthropic (only when you use AI features), and our optional crash/usage telemetry — which is OFF by default.",
-    "consentLabel": "Send anonymous usage and crash reports",
-    "consentHint": "Helps us catch crashes and prioritise features. Never includes book titles, ad copy, API keys, or any account identifiers. Toggle off at any time.",
-    "statusLabel": "Status",
-    "statusOn": "Telemetry enabled (opted in).",
-    "statusOff": "Telemetry disabled (opt-in only).",
-    "transportStub": "Phase N stub: consent is persisted locally. No transport is wired yet, so no data leaves your machine regardless of this toggle. The hook will be enabled in a later release with a clear release note.",
-    "optedIn": "Telemetry enabled.",
-    "optedOut": "Telemetry disabled.",
+    "intro": "KDPBook runs on your machine. The only data that ever leaves it goes to Amazon Advertising, Anthropic (only when you use AI features), and — to help us improve the product — the anonymous, PII-free analytics described below.",
+    "essentialNote": "Feature-usage analytics: we record which optional modules you turn on and off, so we can see what's useful and decide what to build next. This contains no personal data — never your books, royalties, titles, ad copy, API keys, or account identifiers — and is always on.",
+    "consentLabel": "Also send optional crash & diagnostic reports",
+    "consentHint": "Extra technical reports that help us catch crashes faster. Off by default, opt-in, and you can turn it back off any time. Never includes book data, royalties, or account identifiers.",
+    "statusLabel": "Crash & diagnostic reports",
+    "statusOn": "Enabled (opted in).",
+    "statusOff": "Disabled (opt-in only).",
+    "transportStub": "The crash/diagnostics transport is still being wired up; your choice here is saved now and takes effect when it ships. Feature-usage analytics above are already active.",
+    "optedIn": "Crash & diagnostic reports enabled.",
+    "optedOut": "Crash & diagnostic reports disabled.",
     "saveFailed": "Could not update telemetry preference."
   },
   "booksTab": {

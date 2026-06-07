@@ -134,6 +134,15 @@ export const IpcChannel = {
   // it in local-db and forwards to telemetry module's runtime gate.
   TelemetryGetConsent: 'telemetry:getConsent',
   TelemetrySetConsent: 'telemetry:setConsent',
+  // Phase R — user-controlled module activation (progressive disclosure).
+  // Local-only second axis on top of entitlements; get/set/setMany/reset/markSeen
+  // + push-on-change. See src/shared/modules.ts for the module taxonomy.
+  FeatureActivationGet: 'featureActivation:get',
+  FeatureActivationSet: 'featureActivation:set',
+  FeatureActivationSetMany: 'featureActivation:setMany',
+  FeatureActivationReset: 'featureActivation:reset',
+  FeatureActivationMarkSeen: 'featureActivation:markSeen',
+  FeatureActivationChanged: 'featureActivation:changed',
 } as const;
 
 export type IpcChannelValue = typeof IpcChannel[keyof typeof IpcChannel];
@@ -781,6 +790,22 @@ export interface BriefingRunResult {
 }
 
 // API, который выставляется в renderer через contextBridge как window.api
+/**
+ * Phase R — user-controlled module activation snapshot (progressive disclosure).
+ * `modules` is keyed by ModuleId (see src/shared/modules.ts); `newModuleIds` =
+ * ALL_MODULE_IDS − seen, driving the "New" badge. Local-only; never server-issued.
+ */
+export interface ModuleActivationStateRow {
+  enabled: boolean;
+  activatedAt: string | null;
+  source: string;
+}
+
+export interface ModuleActivationState {
+  modules: Record<string, ModuleActivationStateRow>;
+  newModuleIds: string[];
+}
+
 export interface DesktopApi {
   app: {
     getInfo(): Promise<AppInfo>;
@@ -1009,5 +1034,19 @@ export interface DesktopApi {
   telemetry: {
     getConsent(): Promise<boolean>;
     setConsent(consent: boolean): Promise<void>;
+  };
+  /**
+   * Phase R — user-controlled module activation (progressive disclosure).
+   * Local-only second axis on top of entitlements. get() reads current state;
+   * set/setMany/reset mutate it; markSeen() clears the "New" badge; onChange()
+   * pushes updates so sidebar / command palette / settings stay in sync.
+   */
+  featureActivation: {
+    get(): Promise<ModuleActivationState>;
+    set(moduleId: string, enabled: boolean, source?: string): Promise<ModuleActivationState>;
+    setMany(moduleIds: string[], enabled: boolean, source?: string): Promise<ModuleActivationState>;
+    reset(): Promise<ModuleActivationState>;
+    markSeen(): Promise<ModuleActivationState>;
+    onChange(handler: (state: ModuleActivationState) => void): () => void;
   };
 }

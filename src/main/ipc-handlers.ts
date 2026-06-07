@@ -34,6 +34,7 @@ import {
   BriefingRunResult,
   CoverQAPayload,
   CoverQAReport,
+  ModuleActivationState,
 } from '../shared/ipc';
 import {
   clearToken,
@@ -75,6 +76,13 @@ import { getAutoNegativator } from './automation';
 import { getWeeklyBriefer } from './briefing';
 import { analyzeCover } from './cover-qa';
 import { setConsent as telemetrySetConsent } from './telemetry';
+import {
+  getActivation,
+  setActivationModule,
+  setActivationMany,
+  resetActivation,
+  markActivationSeen,
+} from './feature-activation';
 
 // 10 MB cap for any single file going through media:upload. The Railway
 // backend has its own 16MB body limit, but we want a clear UX-side error
@@ -1429,5 +1437,52 @@ export function registerIpcHandlers(): void {
       });
       telemetrySetConsent(consent);
     },
+  );
+
+  // ====== Phase R: user-controlled module activation (progressive disclosure) ======
+  // Local-only second axis on top of entitlements. Every setter validates its
+  // args (a compromised renderer must not poison local-db); the store rejects
+  // core-module toggles + unknown ids and broadcasts state to all windows.
+  ipcMain.handle(
+    IpcChannel.FeatureActivationGet,
+    async (): Promise<ModuleActivationState> => getActivation(),
+  );
+
+  ipcMain.handle(
+    IpcChannel.FeatureActivationSet,
+    async (_evt, moduleId: unknown, enabled: unknown, source: unknown): Promise<ModuleActivationState> => {
+      if (typeof moduleId !== 'string') {
+        throw new Error('featureActivation:set expects a string moduleId');
+      }
+      if (typeof enabled !== 'boolean') {
+        throw new Error('featureActivation:set expects a boolean enabled');
+      }
+      const src = source === 'enable_all' || source === 'reset' ? source : 'user';
+      return setActivationModule(moduleId, enabled, src);
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.FeatureActivationSetMany,
+    async (_evt, moduleIds: unknown, enabled: unknown, source: unknown): Promise<ModuleActivationState> => {
+      if (!Array.isArray(moduleIds) || !moduleIds.every((m) => typeof m === 'string')) {
+        throw new Error('featureActivation:setMany expects a string[] of moduleIds');
+      }
+      if (typeof enabled !== 'boolean') {
+        throw new Error('featureActivation:setMany expects a boolean enabled');
+      }
+      const src = source === 'reset' ? 'reset' : 'enable_all';
+      return setActivationMany(moduleIds as string[], enabled, src);
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.FeatureActivationReset,
+    async (): Promise<ModuleActivationState> => resetActivation(),
+  );
+
+  ipcMain.handle(
+    IpcChannel.FeatureActivationMarkSeen,
+    async (): Promise<ModuleActivationState> => markActivationSeen(),
   );
 }

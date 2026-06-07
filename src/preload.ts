@@ -34,6 +34,7 @@ import type {
   BriefingRunResult,
   CoverQAPayload,
   CoverQAReport,
+  ModuleActivationState,
 } from './shared/ipc';
 import type { Entitlements } from './shared/entitlements';
 
@@ -240,6 +241,36 @@ const api: DesktopApi = {
     getConsent: () => ipcRenderer.invoke(IpcChannel.TelemetryGetConsent) as Promise<boolean>,
     setConsent: (consent: boolean) =>
       ipcRenderer.invoke(IpcChannel.TelemetrySetConsent, consent) as Promise<void>,
+  },
+  // Phase R — user-controlled module activation (progressive disclosure).
+  // Local-only second axis on top of entitlements; get() on mount + onChange()
+  // push so the sidebar / command palette / settings catalog stay in sync.
+  featureActivation: {
+    get: () =>
+      ipcRenderer.invoke(IpcChannel.FeatureActivationGet) as Promise<ModuleActivationState>,
+    set: (moduleId: string, enabled: boolean, source?: string) =>
+      ipcRenderer.invoke(
+        IpcChannel.FeatureActivationSet,
+        moduleId,
+        enabled,
+        source,
+      ) as Promise<ModuleActivationState>,
+    setMany: (moduleIds: string[], enabled: boolean, source?: string) =>
+      ipcRenderer.invoke(
+        IpcChannel.FeatureActivationSetMany,
+        moduleIds,
+        enabled,
+        source,
+      ) as Promise<ModuleActivationState>,
+    reset: () =>
+      ipcRenderer.invoke(IpcChannel.FeatureActivationReset) as Promise<ModuleActivationState>,
+    markSeen: () =>
+      ipcRenderer.invoke(IpcChannel.FeatureActivationMarkSeen) as Promise<ModuleActivationState>,
+    onChange: (handler) => {
+      const wrapped = (_e: IpcRendererEvent, state: ModuleActivationState) => handler(state);
+      ipcRenderer.on(IpcChannel.FeatureActivationChanged, wrapped);
+      return () => ipcRenderer.off(IpcChannel.FeatureActivationChanged, wrapped);
+    },
   },
 };
 
