@@ -94,11 +94,11 @@ jobs:
       GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
       APPLE_CERT_BASE64_PRESENT: ${{ secrets.APPLE_CERT_BASE64 != '' }}
       WIN_CSC_LINK_PRESENT: ${{ secrets.WIN_CSC_LINK != '' }}
-      # Marker (same pattern as APPLE/WIN above): true when the fine-grained PAT
-      # that can read the private scraper repo is configured. When false the
+      # Marker (same pattern as APPLE/WIN above): true when the read-only deploy
+      # key that can read the private scraper repo is configured. When false the
       # whole sidecar-build block is skipped and the app builds without the
-      # embedded scraper binary — the build does NOT fail on a missing token.
-      SCRAPER_TOKEN_PRESENT: ${{ secrets.SCRAPER_REPO_TOKEN != '' }}
+      # embedded scraper binary — the build does NOT fail on a missing key.
+      SCRAPER_KEY_PRESENT: ${{ secrets.SCRAPER_DEPLOY_KEY != '' }}
       # Always true now thanks to the GITHUB_TOKEN fallback above. Kept as
       # an env marker so the `if:` on the publish step reads consistently
       # with the APPLE/WIN presence checks; the real gate is the tag prefix.
@@ -173,9 +173,9 @@ jobs:
       # The client-side BSR/ratings scraper ships as a PyInstaller --onefile
       # binary inside the app (Resources/scraper-sidecar/<os>/...). It is built
       # here, per runner OS (PyInstaller does NOT cross-compile), from the
-      # private repo Juli374/amazon-scrapers checked out via SCRAPER_REPO_TOKEN.
+      # private repo Juli374/amazon-scrapers checked out via SCRAPER_DEPLOY_KEY.
       #
-      # The ENTIRE block is gated on SCRAPER_TOKEN_PRESENT. With no token the
+      # The ENTIRE block is gated on SCRAPER_KEY_PRESENT. With no token the
       # steps are skipped and the app builds WITHOUT the embedded sidecar — a
       # missing token must NOT fail the release (the app degrades to "binary not
       # found" and re-arms at runtime). The resources/scraper-sidecar dir is
@@ -184,31 +184,31 @@ jobs:
       # The explicit log step below fires only in the no-token case so the
       # reason is obvious in the run output; when the token IS present GitHub
       # simply renders this log step as "skipped".
-      - name: Sidecar — note skipped (no SCRAPER_REPO_TOKEN)
-        if: env.SCRAPER_TOKEN_PRESENT != 'true'
+      - name: Sidecar — note skipped (no SCRAPER_DEPLOY_KEY)
+        if: env.SCRAPER_KEY_PRESENT != 'true'
         shell: bash
         run: |
-          echo "SCRAPER_REPO_TOKEN is not set — skipping the scraper sidecar build."
+          echo "SCRAPER_DEPLOY_KEY is not set — skipping the scraper sidecar build."
           echo "The app will be packaged WITHOUT the embedded scraper binary."
-          echo "Set the secret (gh secret set SCRAPER_REPO_TOKEN -R Juli374/ads-tracker-desktop)"
+          echo "Set the secret (read-only deploy key for Juli374/amazon-scrapers)"
           echo "to enable it on the next tagged release."
 
       - name: Sidecar — checkout private scraper repo
-        if: env.SCRAPER_TOKEN_PRESENT == 'true'
+        if: env.SCRAPER_KEY_PRESENT == 'true'
         uses: actions/checkout@v4
         with:
           repository: Juli374/amazon-scrapers
-          token: ${{ secrets.SCRAPER_REPO_TOKEN }}
+          ssh-key: ${{ secrets.SCRAPER_DEPLOY_KEY }}
           path: amazon-scrapers
 
       - name: Sidecar — setup Python
-        if: env.SCRAPER_TOKEN_PRESENT == 'true'
+        if: env.SCRAPER_KEY_PRESENT == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Sidecar — install PyInstaller + runtime deps
-        if: env.SCRAPER_TOKEN_PRESENT == 'true'
+        if: env.SCRAPER_KEY_PRESENT == 'true'
         shell: bash
         run: |
           python -m pip install --upgrade pip
@@ -221,7 +221,7 @@ jobs:
       # shell: bash). Then copy the produced binary into the per-OS resources
       # subfolder the runtime resolver probes.
       - name: Sidecar — build (PyInstaller) and stage per-OS
-        if: env.SCRAPER_TOKEN_PRESENT == 'true'
+        if: env.SCRAPER_KEY_PRESENT == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -244,7 +244,7 @@ jobs:
       # the same Developer ID or notarization of the bundle that contains it
       # fails. codesign-sidecar-macos.sh reuses assets/entitlements.plist.
       - name: Sidecar — codesign (macOS, signed builds only)
-        if: runner.os == 'macOS' && env.SCRAPER_TOKEN_PRESENT == 'true' && env.APPLE_CERT_BASE64_PRESENT == 'true'
+        if: runner.os == 'macOS' && env.SCRAPER_KEY_PRESENT == 'true' && env.APPLE_CERT_BASE64_PRESENT == 'true'
         shell: bash
         run: |
           set -euo pipefail
