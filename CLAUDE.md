@@ -1,146 +1,125 @@
 # CLAUDE.md — KDPBook Desktop (Ads Tracker)
 
-> **Что это:** Electron desktop-клиент **KDPBook** (модуль Ads Tracker). **Только клиент.** Бэкенд (Flask + Railway PostgreSQL) живёт в `Juli374/ads-tracker` и сюда не входит.
+> **Что это:** Electron desktop-клиент **KDPBook** — это **ПРОДУКТ, который мы продаём** (Mac + Windows). Только клиент. Бэкенд (Flask + Railway PostgreSQL) живёт в `Juli374/ads-tracker` и сюда не входит — мы ходим к нему по HTTPS.
+> Корневая карта всего бизнеса: [`../CLAUDE.md`](../CLAUDE.md). Текущее состояние/блокеры: `../STATUS-2026-06-07-blocker-audit.md`.
 >
-> **Brand:** surface = "KDPBook · Ads Tracker" (hybrid wordmark per Phase Q). HTML title / dock / native dialogs = "KDPBook". `appBundleId`, URL scheme `ads-tracker-desktop://`, GitHub repo `Juli374/ads-tracker-desktop` — НЕ менять, ломает auto-update + signed installs.
+> **Версия:** `package.json` = **3.5.0** (релиз live, Mac+Win, UNSIGNED — подпись = отдельная команда).
+> **Brand:** surface = "KDPBook · Ads Tracker". `appBundleId`, URL scheme `ads-tracker-desktop://`, repo `Juli374/ads-tracker-desktop` — НЕ менять (ломает auto-update).
 
 ---
 
-## 🗺️ Карта репозитория
+## 🎯 Трек: продаваемый продукт (НЕ personal-use)
+
+Это полноценное приложение для пользователей. Роялти хранится **локально** на машине автора (Amazon ToS: роялти нельзя отдавать третьим лицам) — это и есть причина существования десктопа. Подписка/лицензирование — через backend entitlements (платёжная часть = отдельная команда).
+
+---
+
+## 🗺️ Карта `src/` (Electron app)
 
 ```
-ads-tracker-desktop/
-├── src/                       # Electron app (main + renderer + preload)
-├── docs/electron-migration/   # план + certificates + open-questions
-├── electron-knowledge-base/   # KB по Electron 2026 (атлас, build-kit, шаблоны)
-├── forge.config.ts            # Electron Forge конфиг
-├── webpack.*.config.ts        # webpack для main/renderer/plugins/rules
-├── tailwind.config.js         # Tailwind 3
-├── package.json               # name: ads-tracker-desktop, Electron 41, React 18
-└── Запустить Ads Tracker (dev).command   # dev launcher для macOS
+src/
+├── index.ts            # main entry: BrowserWindow (contextIsolation:true, sandbox:true)
+├── preload.ts          # contextBridge bootstrap
+├── renderer.tsx        # renderer entry
+├── shared/             # типы IPC-контракта (renderer ↔ main)
+├── main/               # Electron main process (см. таблицу ниже)
+└── renderer/           # React 18 UI: pages/ components/ api/ contexts/
 ```
 
-### `src/` — Electron app
+### `src/main/` — процессы main
 
-| Подпапка | Что |
+| Модуль | Что |
 |---|---|
-| `src/index.ts` | main entry, создаёт BrowserWindow с `contextIsolation: true`, `sandbox: true` |
-| `src/preload.ts` | contextBridge bootstrap |
-| `src/renderer.tsx` | renderer entry |
-| `src/main/api-client.ts` | `net.fetch` к `https://ads-tracker-production.up.railway.app`, Bearer-токен |
-| `src/main/auth-store.ts` | `safeStorage` (OS Keychain / DPAPI) для токена |
-| `src/main/ipc-handlers.ts` | регистрация IPC-обработчиков |
-| `src/shared/ipc.ts` | типы IPC-контракта (renderer ↔ main) |
-| `src/renderer/App.tsx` | корень React |
-| `src/renderer/components/` | `MainLayout`, `TokenPasteScreen`, `PagePlaceholder` |
-| `src/renderer/contexts/AuthContext.tsx` | auth context |
-| `src/renderer/api/` | клиентские обёртки: `client.ts`, `auth.ts`, `metrics.ts` |
-| `src/renderer/pages/` | `Dashboard`, `Books`, `Campaigns`, `SearchTerms`, `Reports`, `Settings` |
+| `api-client.ts` | `net.fetch` к `https://ads-tracker-production.up.railway.app`, Bearer-токен (override `ADS_TRACKER_API_URL`) |
+| `auth-store.ts` | токен в `safeStorage` (OS Keychain / DPAPI) |
+| `local-db/` | **локальная роялти** — `royalty.ts` + `xlsxParser.ts` (импорт KDP XLSX, шифрование); `index.ts` = local settings (вкл. AI model defaults) |
+| `scraper/` | **клиентский sidecar** BSR/ratings (PyInstaller-бинарь из `amazon-scrapers`, кладётся CI в `resources/scraper-sidecar/<os>/`); шлёт на backend `/api/scrape/*` (LIVE в проде, PR #7) |
+| `ai/` | вызовы Anthropic API (BYOK) для advisor / title-gen / reverse-ASIN / niche / listing / briefing |
+| `automation/` | PPC-автоматизация (рекомендации) |
+| `briefing/` | weekly briefing |
+| `cover-qa/` | проверка обложек |
+| `entitlements.ts` · `licensing.ts` | tier/лицензия (⚠ `licensing.ts` сейчас STUB → всегда `pro`; реальный гейт = backend; payments carve-out) |
+| `ipc-handlers.ts` | регистрация typed IPC |
+| `updater.ts` | electron-updater + GitHub Releases |
+| `logger.ts` · `telemetry.ts` | логи/телеметрия |
+
+### `src/renderer/pages/` — 21 страница
+
+`Dashboard` · `Books` · `Campaigns` · `CampaignDetails` · `Keywords` · `SearchTerms` · `Negatives` · `Reports` · `Royalties` · `PnL` · `Accounting` · `Comparison` · `ActionCenter` · `OperationsCenter` · `Automation` · `Alerts` · `Briefing` · `Research` · `ListingStudio` · `Profile` · `Settings`
+
+### `src/renderer/components/` (ключевое)
+
+`MainLayout` · `LoginScreen` · `SignupScreen` · `CommandPalette` · `UpgradeModal` · `UpdateChecker`/`UpdatePill` · `GlobalAttributionToggle` · `GlobalFilters` · модальные (`AddCampaignModal`, `EditCampaignModal`, `AddTargetModal`, `AddAdGroupModal`, `AddEventModal`) · подпапки: `auth/ automation/ books/ campaigns/ dashboard/ keywords/ listing/ niche/ operations/ pnl/ reports/ searchTerms/ settings/ ui/`
+
+> ⚠ **TokenPasteScreen / PagePlaceholder УДАЛЕНЫ** — больше не существуют. Не ссылаться.
 
 ---
 
-## 🎯 Текущий трек: personal-use first
+## 🔐 Аутентификация (3 пути)
 
-Решение от 2026-05-07. Сначала рабочая версия для собственного использования, без публичного релиза. Royalty продолжает храниться в Railway (для своих данных Amazon TOS не нарушается). Public release — отложен, фазы 1, 3, 5, 6 возвращаются перед запуском.
+1. **Email/пароль** — `SignupScreen` / `LoginScreen` (Supabase IdP через backend).
+2. **SSO «войти через браузер»** — handoff: логин на сайте `book-platform` → deep-link `ads-tracker-desktop://` → редим токена. ⚠ split-brain хостов: `LoginScreen.tsx:44` `SITE_BASE_URL` = vercel-preview, а `CredentialsTab.tsx:10` OAuth = `kdpbook.click` — надо унифицировать (открытый блокер).
+3. **Amazon Ads OAuth** — `CredentialsTab` → `kdpbook.click/callback`. ⚠ backend `/token-info` пока не отдаёт `has_refresh_token` → Dashboard показывает «не подключено» (открытый блокер).
 
-Что делаем сейчас:
-- Electron-обёртка в **новом визуальном стиле** (Tailwind + lucide-react, **без Cloudscape**)
-- Использует существующий Railway backend (`/Juli374/ads-tracker`)
-- Auth через JWT-токен, который юзер вставляет в `TokenPasteScreen` при первом запуске
-- Срок до полной функциональности — ~1–2 недели
-
-См. полный план: [docs/electron-migration/README.md](docs/electron-migration/README.md).
+Токен — в `safeStorage`, не в .env/файле.
 
 ---
 
 ## 🔌 Связь с backend
 
-**Только HTTPS.** Никакого shared-кода с `ads-tracker`.
+**Только HTTPS, никакого shared-кода с `ads-tracker`.** Base URL хардкод в `src/main/api-client.ts` (override `ADS_TRACKER_API_URL`). API-контракт должен совпадать с `Juli374/ads-tracker/backend/routes/*`. Если backend меняет endpoint — правки в обоих репо; координатор — пользователь.
 
-| Что | Где |
-|---|---|
-| Base URL | `https://ads-tracker-production.up.railway.app` (хардкод в `src/main/api-client.ts:5`, override через `ADS_TRACKER_API_URL`) |
-| Auth | `Authorization: Bearer <token>` — токен лежит в `safeStorage`, читается в `auth-store.ts` |
-| HTTP клиент | `net.fetch` (proxy-aware, не node-fetch) |
-| API-контракт | Должен совпадать с `Juli374/ads-tracker/backend/routes/*` |
+---
 
-Если backend меняет endpoint — изменения нужны в обоих репо. Координатор изменений — пользователь, не Claude.
+## ⚠️ Известные открытые блокеры (десктоп-сторона, на 2026-06-07)
+
+См. полный список в `../STATUS-2026-06-07-blocker-audit.md` + карте транспарентности L3. Десктопные:
+- **AI model picker** — `AITab.tsx:47-50` содержит несуществующий `claude-sonnet-4-7` + снятые `claude-3-5-*-latest` → все AI-фичи 404. Валидные id: `claude-opus-4-8 / claude-opus-4-7 / claude-sonnet-4-6 / claude-haiku-4-5`.
+- **Toggle статуса** — `renderer/api/amazonAds.ts:86,123` шлёт lowercase `enabled/paused`, бэкенд требует UPPERCASE → 400 (фикс: `.toUpperCase()`).
+- **BooksPage royalty=$0** — `BooksPage.tsx` не читает local royalty store (Royalty/TACoS колонки $0 после импорта).
+- ⚠ Любой десктоп-фикс дойдёт до юзеров только через **подписанный** авто-апдейт (подпись = отдельная команда).
 
 ---
 
 ## 📚 База знаний по Electron
 
-`electron-knowledge-base/` — **рядом, не в node_modules**. 2026-актуальная KB, на которую опирается весь план миграции.
-
-Главные точки входа:
-- [`atlas/00-INDEX.md`](electron-knowledge-base/atlas/00-INDEX.md) — главный индекс
-- [`atlas/core/03-security.md`](electron-knowledge-base/atlas/core/03-security.md) — security checklist (17 пунктов, обязательный baseline)
-- [`atlas/core/05-packaging-and-signing.md`](electron-knowledge-base/atlas/core/05-packaging-and-signing.md) — Forge vs builder, notarization, EV certs
-- [`atlas/core/07-auto-update.md`](electron-knowledge-base/atlas/core/07-auto-update.md) — каналы, staged rollouts
-- [`atlas/core/09-backend-connectivity.md`](electron-knowledge-base/atlas/core/09-backend-connectivity.md) — auth, safeStorage, offline
-- [`build-kit/checklist.md`](electron-knowledge-base/build-kit/checklist.md) — 88-пунктовый чеклист в 13 фазах
-- [`build-kit/templates/02-ipc-contract.md`](electron-knowledge-base/build-kit/templates/02-ipc-contract.md) — typed IPC шаблон
-- [`build-kit/templates/05-railway-backend-client.md`](electron-knowledge-base/build-kit/templates/05-railway-backend-client.md) — auth + offline для Railway, **прямой шаблон под нашу архитектуру**
-- [`atlas/case-studies/04-1password.md`](electron-knowledge-base/atlas/case-studies/04-1password.md) — паттерн «локальный core + remote backend», ближайший аналог
-
-Всё что в `electron-knowledge-base/` — read-only справочник. **Не редактируем при работе над приложением.**
+`electron-knowledge-base/` — read-only справочник (2026-актуальный). **Не редактируем при работе над приложением.** Точки входа: `atlas/00-INDEX.md`, `atlas/core/03-security.md` (security baseline), `atlas/core/05-packaging-and-signing.md`, `atlas/core/07-auto-update.md`, `build-kit/checklist.md`.
 
 ---
 
 ## 🚦 Правила работы
 
-1. **Никаких backend-изменений отсюда.** Если нужен новый endpoint — это задача в `Juli374/ads-tracker`, не здесь.
-2. **Security baseline неприкосновенен** — `contextIsolation: true`, `sandbox: true`, никаких `nodeIntegration`, никаких `webSecurity: false`. Перед изменениями в `index.ts` — проверить `electron-knowledge-base/atlas/core/03-security.md`.
-3. **IPC только typed** — все новые каналы добавляются в `src/shared/ipc.ts` сначала, потом handler в `src/main/ipc-handlers.ts`, потом expose в `src/preload.ts`. Шаблон: `electron-knowledge-base/build-kit/templates/02-ipc-contract.md`.
-4. **Все HTTP — через `src/main/api-client.ts`**, не из renderer'а напрямую. Renderer вызывает IPC-каналы, main делает запрос.
-5. **Перед коммитом** — проверить, что не утекли секреты, токены, dev-URL'ы.
+1. **Никаких backend-изменений отсюда.** Новый endpoint → задача в `Juli374/ads-tracker`.
+2. **Security baseline неприкосновенен** — `contextIsolation:true`, `sandbox:true`, без `nodeIntegration`, без `webSecurity:false`.
+3. **IPC только typed** — сначала `src/shared/ipc.ts`, потом handler в `src/main/ipc-handlers.ts`, потом expose в `src/preload.ts`.
+4. **Все HTTP — через `src/main/api-client.ts`**, не из renderer напрямую.
+5. **Перед коммитом** — проверить, что не утекли секреты/токены/dev-URL.
 
 ---
 
 ## 🛠️ Команды
 
 ```bash
-# Установка
 npm install
-
-# Dev
-npm start          # или: открыть "Запустить Ads Tracker (dev).command"
-
-# Сборка пакета (Forge)
+npm start          # dev (или "Запустить Ads Tracker (dev).command")
 npm run package    # неподписанная сборка для проверки
 npm run make       # инсталляторы (DMG / ZIP / NSIS)
-npm run publish    # релиз (нужны signing креды + GitHub Releases токен)
-
-# Lint
+npm run publish    # релиз (нужны signing-креды + GitHub token)
 npm run lint
+npm test           # ⚠ vitest сейчас зависает без summary (открытый P2)
 ```
 
 ---
 
-## 🔗 Окружение
+## 🎨 Дизайн-система
 
-| Переменная | Что | Где |
-|---|---|---|
-| `ADS_TRACKER_API_URL` | Override base URL для API | `src/main/api-client.ts:6` (опц.) |
-
-Token хранится в OS Keychain через `safeStorage` — **не в .env, не в файле**.
+Источник истины — `book-platform/design-dna.json` (KDPBook brand DNA), адаптация — `DESIGN.md` в корне репо. Шрифты: Inter (UI), Playfair Display 700 (wordmark/H1), JetBrains Mono (метрики). Accent: emerald `#10b981`. Палитра модулей: ads=emerald, analytics=blue, publishing=purple, ai=amber, marketplace=rose. Цвета — через семантические токены в `tailwind.config.js`.
 
 ---
 
 ## История
 
-- **2026-04-30** — desktop/ создан внутри `ads-tracker` как Electron Forge скаффолд
-- **2026-05-07** — принят трек "personal-use first" (см. `docs/electron-migration/README.md`)
-- **2026-05-08** — `desktop/` вынесен в этот отдельный репо `Juli374/ads-tracker-desktop`. В исходном `ads-tracker/desktop/` пока остаётся как safety net
-- **2026-05-16** — Phase Q (Design Pass): KDPBook visual identity. Emerald accent, Playfair Display wordmark + PageHeader, JetBrains Mono on metrics. ~10 new UI primitives (`Modal`, `SegmentedControl`, `Select`, `Textarea`, `Field`, `MetricNumber`, `DisplayHeading`, `Tabs`, `LockedFeatureCard`, `GradientArea`). Global attribution toggle in topbar (was hardcoded "14d" on 4 pages). Sidebar split: Actions / AI / Finance. См. [`docs/electron-migration/design-audit-2026-05-16/`](docs/electron-migration/design-audit-2026-05-16/).
-
-## 🎨 Дизайн-система (Phase Q+)
-
-Источник истины — `book-platform/design-dna.json` (KDPBook brand DNA). Адаптация под desktop — `DESIGN.md` в корне репо. Ключевое:
-
-- **Шрифты:** Inter (UI body), Playfair Display 700 (wordmark + PageHeader H1 only), JetBrains Mono (metrics, table numbers, chart axes).
-- **Accent:** emerald `#10b981` (focus ring, sidebar active, "Live"/"Active" pills, high-emphasis CTAs).
-- **Module palette:** ads=emerald, analytics=blue, publishing=purple, ai=amber, marketplace=rose.
-- **Primary actions:** `bg-zinc-900` (black) для form submits в модалках; emerald для high-emphasis CTA (Upgrade, Sync now, Run briefing).
-- **Token-driven:** все цвета через семантические токены (`accent`, `surface`, `fg-muted`, `success-soft` и т.д.) в `tailwind.config.js`. Старые `bg-zinc-*` ещё в ходу — Phase R может довести codemod.
-- **Out of scope:** Lenis smooth scroll, framer-motion entrances, mesh gradients, magnetic buttons, mobile responsive — это марк-сайт, не desktop power tool.
+- **2026-04-30** — Electron Forge скаффолд (внутри `ads-tracker/desktop/`).
+- **2026-05-08** — вынесен в отдельный репо `Juli374/ads-tracker-desktop`.
+- **2026-05-16** — Phase Q (KDPBook visual identity).
+- **2026-06-07** — v3.4.0 → **v3.5.0** (live, Mac+Win, unsigned): добавлен клиентский BSR/ratings scraper-sidecar; backend `/api/scrape/*` влит в прод (PR #7).
