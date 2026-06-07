@@ -67,7 +67,7 @@ describe('AITab', () => {
     const arg = (window.api.ai.setSettings as ReturnType<typeof vi.fn>).mock
       .calls[0][0];
     expect(arg.claudeKey).toBe('sk-ant-test-12345');
-    expect(arg.models.completion).toBe('claude-opus-4-7');
+    expect(arg.models.completion).toBe('claude-opus-4-8');
     expect(arg.brandVoice.toneWords).toEqual([]);
   });
 

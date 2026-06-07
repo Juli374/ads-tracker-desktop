@@ -43,11 +43,10 @@ const SLOT_KEYS: Array<keyof AiSettings['models']> = [
  * and we want the dropdown to render before the user even pastes a key.
  */
 const MODEL_CHOICES: ReadonlyArray<string> = [
+  'claude-opus-4-8',
   'claude-opus-4-7',
-  'claude-sonnet-4-7',
+  'claude-sonnet-4-6',
   'claude-haiku-4-5',
-  'claude-3-5-sonnet-latest',
-  'claude-3-5-haiku-latest',
 ];
 
 function maskKey(key: string): string {
@@ -125,10 +124,10 @@ export const AITab: React.FC = () => {
   const [keyValue, setKeyValue] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [models, setModels] = useState<AiSettings['models']>({
-    completion: 'claude-opus-4-7',
-    vision: 'claude-opus-4-7',
+    completion: 'claude-opus-4-8',
+    vision: 'claude-opus-4-8',
     fast: 'claude-haiku-4-5',
-    advisor: 'claude-opus-4-7',
+    advisor: 'claude-opus-4-8',
   });
   const [pov, setPov] = useState('');
   const [toneText, setToneText] = useState('');

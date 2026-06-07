@@ -324,10 +324,10 @@ export function installMockApi(options: MockApiOptions = {}): void {
       getSettings: vi.fn(async (): Promise<AiSettings> => ({
         claudeKey: '',
         models: {
-          completion: 'claude-opus-4-7',
-          vision: 'claude-opus-4-7',
+          completion: 'claude-opus-4-8',
+          vision: 'claude-opus-4-8',
           fast: 'claude-haiku-4-5',
-          advisor: 'claude-opus-4-7',
+          advisor: 'claude-opus-4-8',
         },
         brandVoice: { pov: '', toneWords: [], bannedWords: [] },
         ...options.aiSettings,

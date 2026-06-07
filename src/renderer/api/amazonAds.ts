@@ -83,11 +83,13 @@ export const amazonAdsApi = {
 
   setCampaignState(
     campaignId: number,
-    state: 'enabled' | 'paused',
+    state: 'enabled' | 'paused' | 'ENABLED' | 'PAUSED',
   ): Promise<{ message: string }> {
+    // Backend requires UPPERCASE state (forwarded raw to Amazon; lowercase is
+    // rejected with 400). Normalize here so callers can keep passing lowercase.
     return apiClient.put<{ message: string }>(
       `/api/amazon-ads/campaigns/${campaignId}/state`,
-      { state },
+      { state: state.toUpperCase() },
     );
   },
 
@@ -120,11 +122,13 @@ export const amazonAdsApi = {
 
   setTargetState(
     targetId: number,
-    state: 'enabled' | 'paused',
+    state: 'enabled' | 'paused' | 'ENABLED' | 'PAUSED',
   ): Promise<{ message: string }> {
+    // Backend requires UPPERCASE state (forwarded raw to Amazon; lowercase is
+    // rejected with 400). Normalize here so callers can keep passing lowercase.
     return apiClient.put<{ message: string }>(
       `/api/amazon-ads/targets/${targetId}/state`,
-      { state },
+      { state: state.toUpperCase() },
     );
   },
 
