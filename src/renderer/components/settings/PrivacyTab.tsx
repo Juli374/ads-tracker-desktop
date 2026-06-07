@@ -57,6 +57,13 @@ export const PrivacyTab: React.FC = () => {
             <span>{t('privacy.intro')}</span>
           </p>
 
+          <p
+            className="text-[11px] text-zinc-500 leading-relaxed rounded-md border border-zinc-200 bg-zinc-50/50 p-3"
+            data-testid="settings-privacy-essential-note"
+          >
+            {t('privacy.essentialNote')}
+          </p>
+
           <div className="rounded-md border border-zinc-200 bg-zinc-50/50 p-3">
             <label
               htmlFor="privacy-consent"

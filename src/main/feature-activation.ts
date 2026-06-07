@@ -7,11 +7,12 @@
 // (module_activation + modules_seen); this module is the main-process gateway
 // the IPC handlers call.
 //
-// Telemetry: every activate/deactivate emits via the existing consent-gated
-// track() seam (a no-op today). The real activation-analytics pipeline
-// (→ backend DB → ads-tracker-admin) is a separate, deferred task; emitting here
-// means the call sites are already in place when transport lands. Props are
-// PII-free (module id + source + timestamp only).
+// Telemetry: every activate/deactivate emits via the track() seam. These are
+// ESSENTIAL, PII-free product analytics (module id + source + timestamp only) —
+// sent regardless of the optional crash-reporting consent (see telemetry.ts):
+//   track() → POST /api/events → backend product_events → ads-tracker-admin.
+// The account is attributed server-side from the auth token; nothing personal
+// (no royalty, titles, or identifiers) is ever transmitted.
 
 import { BrowserWindow } from 'electron';
 import { localStore, ModuleActivationRow, ModuleActivationSource } from './local-db';
