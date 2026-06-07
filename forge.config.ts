@@ -124,7 +124,16 @@ const config: ForgeConfig = {
     // this file (electron-builder does), so we author it by hand. updater.ts
     // also calls autoUpdater.setFeedURL programmatically as primary path;
     // this file is the documented fallback when setFeedURL is unavailable.
-    extraResource: ['./build/app-update.yml'],
+    // Ship the per-OS PyInstaller scraper sidecar under Resources/scraper-sidecar.
+    // The binary is populated in CI (release.yml) per runner OS before
+    // package/make; scraperSidecar.ts resolves <resources>/scraper-sidecar/<os>/
+    // <exe> at runtime. The binary is NOT committed (built only in CI), but the
+    // directory IS (resources/scraper-sidecar/README.md) — Forge's extraResource
+    // copy (fs-extra.copy) throws ENOENT on a missing path, so the dir must
+    // exist even in a local `npm run package` or a CI run without the build
+    // token. When the binary is absent the app still runs (the scheduler logs
+    // "binary not found" and re-arms on the next cycle).
+    extraResource: ['./build/app-update.yml', './resources/scraper-sidecar'],
     // Кастомный protocol regstered at install-time (macOS plist).
     protocols: [
       {

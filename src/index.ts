@@ -6,6 +6,7 @@ import { initAutoUpdater } from './main/updater';
 import { startEntitlementsTracking, subscribe as subscribeEntitlements } from './main/entitlements';
 import { getAutoNegativator } from './main/automation';
 import { getWeeklyBriefer } from './main/briefing';
+import { getScraperScheduler } from './main/scraper/scraperScheduler';
 import { IpcChannel, DeepLinkEvent } from './shared/ipc';
 
 // Initialise the file logger before any other module that might want to log.
@@ -331,6 +332,18 @@ app.on('ready', () => {
     subscribeEntitlements((e) => {
       maybeStart(e.tier);
     });
+  }
+
+  // Client-side scraper sidecar. Scrapes the signed-in user's active ASINs
+  // (BSR + rating + review_count) on the USER's own machine/IP every 6h while
+  // the app is open, and syncs results to the backend (account-scoped server
+  // side). No entitlement gate — available to every signed-in user. Gated on
+  // app.isPackaged for the SAME reason as the other schedulers: a dev
+  // `npm start` must not hit prod-Railway with real scrape POSTs. The scheduler
+  // tolerates being started while logged out (each cycle just 401s, logs, and
+  // re-arms), so no auth-transition wiring is needed here.
+  if (app.isPackaged) {
+    getScraperScheduler().start();
   }
 });
 

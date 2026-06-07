@@ -94,6 +94,11 @@ jobs:
       GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
       APPLE_CERT_BASE64_PRESENT: ${{ secrets.APPLE_CERT_BASE64 != '' }}
       WIN_CSC_LINK_PRESENT: ${{ secrets.WIN_CSC_LINK != '' }}
+      # Marker (same pattern as APPLE/WIN above): true when the fine-grained PAT
+      # that can read the private scraper repo is configured. When false the
+      # whole sidecar-build block is skipped and the app builds without the
+      # embedded scraper binary — the build does NOT fail on a missing token.
+      SCRAPER_TOKEN_PRESENT: ${{ secrets.SCRAPER_REPO_TOKEN != '' }}
       # Always true now thanks to the GITHUB_TOKEN fallback above. Kept as
       # an env marker so the `if:` on the publish step reads consistently
       # with the APPLE/WIN presence checks; the real gate is the tag prefix.
@@ -163,6 +168,98 @@ jobs:
           # the next steps expect (after this step writes to $GITHUB_ENV,
           # WIN_CSC_LINK == absolute pfx path, not the base64 blob).
           WIN_CSC_BASE64: ${{ secrets.WIN_CSC_LINK }}
+
+      # ===== Scraper sidecar (PyInstaller) — built from the PRIVATE repo ======
+      # The client-side BSR/ratings scraper ships as a PyInstaller --onefile
+      # binary inside the app (Resources/scraper-sidecar/<os>/...). It is built
+      # here, per runner OS (PyInstaller does NOT cross-compile), from the
+      # private repo Juli374/amazon-scrapers checked out via SCRAPER_REPO_TOKEN.
+      #
+      # The ENTIRE block is gated on SCRAPER_TOKEN_PRESENT. With no token the
+      # steps are skipped and the app builds WITHOUT the embedded sidecar — a
+      # missing token must NOT fail the release (the app degrades to "binary not
+      # found" and re-arms at runtime). The resources/scraper-sidecar dir is
+      # committed (with a README) so Forge's extraResource copy never ENOENTs.
+      #
+      # The explicit log step below fires only in the no-token case so the
+      # reason is obvious in the run output; when the token IS present GitHub
+      # simply renders this log step as "skipped".
+      - name: Sidecar — note skipped (no SCRAPER_REPO_TOKEN)
+        if: env.SCRAPER_TOKEN_PRESENT != 'true'
+        shell: bash
+        run: |
+          echo "SCRAPER_REPO_TOKEN is not set — skipping the scraper sidecar build."
+          echo "The app will be packaged WITHOUT the embedded scraper binary."
+          echo "Set the secret (gh secret set SCRAPER_REPO_TOKEN -R Juli374/ads-tracker-desktop)"
+          echo "to enable it on the next tagged release."
+
+      - name: Sidecar — checkout private scraper repo
+        if: env.SCRAPER_TOKEN_PRESENT == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: Juli374/amazon-scrapers
+          token: ${{ secrets.SCRAPER_REPO_TOKEN }}
+          path: amazon-scrapers
+
+      - name: Sidecar — setup Python
+        if: env.SCRAPER_TOKEN_PRESENT == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Sidecar — install PyInstaller + runtime deps
+        if: env.SCRAPER_TOKEN_PRESENT == 'true'
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller curl_cffi beautifulsoup4 lxml
+
+      # build-sidecar.sh resolves its own repo root (the amazon-scrapers
+      # checkout) and emits dist/amazon-scraper-sidecar[.exe]. PYTHON points it
+      # at the setup-python interpreter so it doesn't look for a repo venv.
+      # `python` resolves to the runner's Python on every OS (incl. Windows via
+      # shell: bash). Then copy the produced binary into the per-OS resources
+      # subfolder the runtime resolver probes.
+      - name: Sidecar — build (PyInstaller) and stage per-OS
+        if: env.SCRAPER_TOKEN_PRESENT == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON="$(command -v python)" sh amazon-scrapers/integration/packaging/build-sidecar.sh
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            mkdir -p resources/scraper-sidecar/win32
+            cp amazon-scrapers/dist/amazon-scraper-sidecar.exe resources/scraper-sidecar/win32/amazon-scraper-sidecar.exe
+            ls -la resources/scraper-sidecar/win32
+          else
+            mkdir -p resources/scraper-sidecar/darwin
+            cp amazon-scrapers/dist/amazon-scraper-sidecar resources/scraper-sidecar/darwin/amazon-scraper-sidecar
+            chmod +x resources/scraper-sidecar/darwin/amazon-scraper-sidecar
+            ls -la resources/scraper-sidecar/darwin
+          fi
+
+      # macOS only, and ONLY when the Apple cert is present (otherwise leave the
+      # sidecar unsigned — the whole app is unsigned in that case anyway). Forge
+      # signs the .app's own Mach-O but NOT extraResource files, so the sidecar
+      # (a Mach-O embedding curl_cffi's libcurl dylibs) must be signed here with
+      # the same Developer ID or notarization of the bundle that contains it
+      # fails. codesign-sidecar-macos.sh reuses assets/entitlements.plist.
+      - name: Sidecar — codesign (macOS, signed builds only)
+        if: runner.os == 'macOS' && env.SCRAPER_TOKEN_PRESENT == 'true' && env.APPLE_CERT_BASE64_PRESENT == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # codesign-sidecar-macos.sh auto-discovers the app's entitlements at
+          # <amazon-scrapers>/../ads-tracker-desktop/assets/entitlements.plist.
+          # In CI the desktop repo IS the workspace root (not a sibling named
+          # ads-tracker-desktop), so stage a copy at that expected path; else
+          # the script silently falls back to minimal hardened-runtime signing
+          # WITHOUT the app's allow-jit entitlement.
+          mkdir -p "${GITHUB_WORKSPACE}/ads-tracker-desktop/assets"
+          cp "${GITHUB_WORKSPACE}/assets/entitlements.plist" \
+             "${GITHUB_WORKSPACE}/ads-tracker-desktop/assets/entitlements.plist"
+          APPLE_DEVELOPER_ID="${APPLE_DEVELOPER_ID}" \
+            sh amazon-scrapers/integration/packaging/codesign-sidecar-macos.sh \
+            "$(pwd)/resources/scraper-sidecar/darwin/amazon-scraper-sidecar"
 
       # ----- Build -----------------------------------------------------------
       # `package` produces the unpacked .app/.exe bundle. Used as a smoke
