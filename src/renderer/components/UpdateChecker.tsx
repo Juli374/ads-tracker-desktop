@@ -9,44 +9,16 @@ import {
   Rocket,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Card } from './ui';
+import { Card, Switch } from './ui';
 import { useToast } from '../contexts/ToastContext';
 import type { UpdateStatus } from '../../shared/ipc';
 
 /**
- * Phase Q.5+ — small toggle for an updater preference (e.g. autoDownload).
- * Wired to a controlled boolean; emits onChange on click.
+ * Phase Q.5+ — updater preference toggle. Phase R extracted the switch into the
+ * shared ui/Switch primitive; SettingToggle is kept as a local alias so the call
+ * site below stays unchanged.
  */
-const SettingToggle: React.FC<{
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  disabled?: boolean;
-  testId?: string;
-}> = ({ checked, onChange, disabled = false, testId }) => (
-  <button
-    type="button"
-    role="switch"
-    aria-checked={checked}
-    disabled={disabled}
-    onClick={() => onChange(!checked)}
-    data-testid={testId}
-    className={`
-      relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full
-      transition-colors duration-fast ease-smooth
-      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40
-      disabled:opacity-50 disabled:cursor-not-allowed
-      ${checked ? 'bg-emerald-500' : 'bg-zinc-300'}
-    `}
-  >
-    <span
-      className={`
-        inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm
-        transition-transform duration-fast ease-smooth
-        ${checked ? 'translate-x-[18px]' : 'translate-x-[3px]'}
-      `}
-    />
-  </button>
-);
+const SettingToggle = Switch;
 
 /**
  * UI авто-апдейтера. Подписывается на push-обновления state из main и

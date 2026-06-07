@@ -26,6 +26,8 @@
     "briefing": "Briefing",
     "settings": "Settings"
   },
+  "moreFeatures": "More features",
+  "hotkeyModuleOff": "That module is off — enable it in Settings → Modules.",
   "topbar": {
     "openCommandPalette": "Open command palette",
     "search": "Search",

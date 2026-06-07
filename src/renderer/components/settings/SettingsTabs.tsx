@@ -7,6 +7,7 @@ import {
   Cpu,
   FileSearch,
   KeyRound,
+  LayoutGrid,
   RefreshCw,
   Server,
   Shield,
@@ -16,6 +17,7 @@ import {
 
 export type SettingsTabId =
   | 'application'
+  | 'modules'
   | 'books'
   | 'credentials'
   | 'profiles'
@@ -34,6 +36,7 @@ interface TabSpec {
 
 const TABS: TabSpec[] = [
   { id: 'application', icon: Cpu },
+  { id: 'modules', icon: LayoutGrid },
   { id: 'books', icon: BookOpen },
   { id: 'credentials', icon: Server },
   { id: 'profiles', icon: Users },

@@ -15,6 +15,12 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { AutoNegThresholds, DEFAULT_AUTO_NEG_THRESHOLDS } from '../../shared/ipc';
+import {
+  ALL_MODULE_IDS,
+  DEFAULT_ACTIVE_MODULES,
+  moduleById,
+  type ModuleId,
+} from '../../shared/modules';
 
 // Schema v3 adds `auto_negativator` row (Phase L.2 Lane B). Migration from v2
 // is forward-only and additive — old uploads/ai_settings/etc остаются on disk.
@@ -193,6 +199,20 @@ export interface WeeklyBriefingRow {
   model?: string;
 }
 
+/**
+ * Phase R — one row of the user-controlled module-activation map. `enabled` is
+ * the toggle; `activatedAt` records when it was last turned on (null when off);
+ * `source` distinguishes a deliberate user toggle from a bulk/default action
+ * (kept for diagnostics + the deferred activation-telemetry pipeline).
+ */
+export type ModuleActivationSource = 'default' | 'user' | 'enable_all' | 'reset';
+
+export interface ModuleActivationRow {
+  enabled: boolean;
+  activatedAt: string | null;
+  source: ModuleActivationSource;
+}
+
 export interface LocalDbState {
   version: number;
   royalty_uploads: RoyaltyUploadRow[];
@@ -211,6 +231,16 @@ export interface LocalDbState {
   // Phase N — Telemetry consent. Defaults to false (opt-in). Persisted so the
   // user doesn't see the consent prompt on every boot.
   telemetry_consent?: boolean;
+  // Phase R — user-controlled module activation (progressive disclosure). Keyed
+  // by ModuleId. Local-only second axis on top of entitlements; survives logout
+  // (a user preference, not a session artifact). Brand-new installs start with
+  // the Starter set on (freshEmptyState); installs predating this field are
+  // migrated all-on so an update never hides pages a user already relied on
+  // (normaliseState).
+  module_activation?: Record<string, ModuleActivationRow>;
+  // ModuleIds the user has already "seen" in the catalog. Drives the "New" badge
+  // when a later release ships a module: newModuleIds = ALL_MODULE_IDS − seen.
+  modules_seen?: string[];
 }
 
 /**
@@ -220,6 +250,56 @@ export interface LocalDbState {
  * cap is more about disk hygiene than UI performance.
  */
 export const BRIEFING_HISTORY_CAP = 26;
+
+// Phase R — build the default module-activation map for a brand-new install:
+// the Starter set (DEFAULT_ACTIVE_MODULES) enabled, every other module off.
+function defaultModuleActivation(): Record<string, ModuleActivationRow> {
+  const out: Record<string, ModuleActivationRow> = {};
+  for (const id of ALL_MODULE_IDS) {
+    const on = (DEFAULT_ACTIVE_MODULES as readonly string[]).includes(id);
+    out[id] = { enabled: on, activatedAt: null, source: 'default' };
+  }
+  return out;
+}
+
+function isActivationSource(x: unknown): x is ModuleActivationSource {
+  return x === 'default' || x === 'user' || x === 'enable_all' || x === 'reset';
+}
+
+// Phase R — coerce the on-disk module-activation map + run the new-module
+// migration:
+//   - absent entirely → pre-feature install: enable EVERYTHING so an update
+//     never hides pages an existing user already used (brand-new installs go
+//     through freshEmptyState and get the Starter set instead);
+//   - present → validate each row, and fill any module id missing from disk with
+//     its registry default (a module added in a later release lands here
+//     off-by-default unless it's in the Starter set);
+//   - core modules are always forced enabled.
+function normaliseModuleActivation(raw: unknown): Record<string, ModuleActivationRow> {
+  const out: Record<string, ModuleActivationRow> = {};
+  const present = !!raw && typeof raw === 'object' && !Array.isArray(raw);
+  const src = (present ? raw : {}) as Record<string, unknown>;
+  for (const id of ALL_MODULE_IDS) {
+    const isCore = moduleById(id as ModuleId)?.core === true;
+    const starter = (DEFAULT_ACTIVE_MODULES as readonly string[]).includes(id);
+    const row = src[id];
+    if (row && typeof row === 'object') {
+      const r = row as Partial<ModuleActivationRow>;
+      out[id] = {
+        enabled: isCore ? true : typeof r.enabled === 'boolean' ? r.enabled : starter,
+        activatedAt: typeof r.activatedAt === 'string' ? r.activatedAt : null,
+        source: isActivationSource(r.source) ? r.source : 'default',
+      };
+    } else {
+      out[id] = {
+        enabled: isCore ? true : present ? starter : true,
+        activatedAt: null,
+        source: 'default',
+      };
+    }
+  }
+  return out;
+}
 
 // Fresh empty state. ВАЖНО: фабрика, а не shared-константа. Прежний
 // `EMPTY_STATE` ссылался на тот же объект `DEFAULT_AI_SETTINGS` /
@@ -249,6 +329,8 @@ function freshEmptyState(): LocalDbState {
     },
     weekly_briefings: [],
     next_briefing_id: 1,
+    module_activation: defaultModuleActivation(),
+    modules_seen: [...ALL_MODULE_IDS],
   };
 }
 
@@ -631,6 +713,15 @@ function normaliseState(parsed: Partial<LocalDbState>): LocalDbState {
       next_briefing_id: nextBriefingId,
       // Phase N — telemetry consent. Default false → opt-in.
       telemetry_consent: typeof parsed.telemetry_consent === 'boolean' ? parsed.telemetry_consent : false,
+      // Phase R — module activation (incl. new-module migration) + the seen-set.
+      module_activation: normaliseModuleActivation(
+        (parsed as { module_activation?: unknown }).module_activation,
+      ),
+      modules_seen: Array.isArray((parsed as { modules_seen?: unknown }).modules_seen)
+        ? ((parsed as { modules_seen?: unknown }).modules_seen as unknown[]).filter(
+            (s): s is string => typeof s === 'string',
+          )
+        : [...ALL_MODULE_IDS],
     };
   }
 }

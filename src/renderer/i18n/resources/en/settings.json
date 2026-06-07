@@ -7,6 +7,7 @@
   "tabs": {
     "ariaLabel": "Settings tab: {label}",
     "application": "Application",
+    "modules": "Modules",
     "books": "Books",
     "credentials": "Credentials",
     "profiles": "Profiles",
@@ -18,6 +19,66 @@
     "royalties": "Royalties",
     "stream": "Stream",
     "privacy": "Privacy"
+  },
+  "modules": {
+    "title": "Modules & features",
+    "subtitle": "Turn optional modules on as you need them — start simple and add power as you grow. Core modules are always on.",
+    "search": "Search modules…",
+    "enableAll": "Enable all",
+    "enabledAll": "All available modules enabled.",
+    "resetRecommended": "Reset to recommended",
+    "resetConfirm": "Reset all modules to the recommended starter set?",
+    "resetConfirmYes": "Reset",
+    "cancel": "Cancel",
+    "resetDone": "Modules reset to the recommended set.",
+    "alwaysOn": "Always on",
+    "recommended": "Recommended",
+    "new": "New",
+    "tierPro": "Pro",
+    "tierBusiness": "Business",
+    "lockedHint": "Available on {tier}",
+    "empty": "No modules match your search.",
+    "groups": {
+      "core": "Core",
+      "ads": "Ads",
+      "analytics": "Analytics",
+      "ai": "AI",
+      "publishing": "Publishing"
+    },
+    "items": {
+      "core": {
+        "label": "Core workspace",
+        "hint": "Dashboard, Books, Campaigns, Keywords and Settings — always available."
+      },
+      "ads_core": {
+        "label": "Search terms & negatives",
+        "hint": "The daily Ads workflow on top of your campaigns."
+      },
+      "ads_advanced": {
+        "label": "Automation & operations",
+        "hint": "Bid rules, bulk operations and the action center."
+      },
+      "analytics": {
+        "label": "Reports & comparison",
+        "hint": "Deeper analysis beyond the dashboard."
+      },
+      "alerts": {
+        "label": "Monitoring",
+        "hint": "Alerts when your metrics move."
+      },
+      "ai": {
+        "label": "AI assistant",
+        "hint": "Listing studio, weekly briefing and niche research."
+      },
+      "finance_royalty": {
+        "label": "Royalty",
+        "hint": "Your true KDP royalty — sales plus KENP pages read."
+      },
+      "finance_advanced": {
+        "label": "P&L & accounting",
+        "hint": "Profit/loss and bookkeeping on top of royalty."
+      }
+    }
   },
   "privacy": {
     "title": "Privacy & telemetry",

@@ -34,6 +34,8 @@ import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useGlobalFilters } from '../contexts/GlobalFiltersContext';
 import { useEntitlement } from '../hooks/useEntitlement';
+import { useModuleActivation } from '../hooks/useModuleActivation';
+import { moduleForView } from '../../shared/modules';
 import { aiApi } from '../api/ai';
 import { Sun, Filter } from 'lucide-react';
 
@@ -67,6 +69,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
   const theme = useTheme();
   const globalFilters = useGlobalFilters();
   const aiEnt = useEntitlement('ai.title_generator');
+  const { isModuleActive, setModuleActive } = useModuleActivation();
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
   // Phase L.5 — Ask AI panel state. Lives on the Palette so closing the
@@ -79,10 +82,18 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
 
   const goto = useCallback(
     (page: ViewId) => () => {
+      // Phase R — opening a view from the palette also reveals its module, so a
+      // page reached via ⌘K sticks in the sidebar afterwards (the palette is the
+      // discovery surface for hidden modules). Locked (un-entitled) modules stay
+      // gated by the resolver, so this is a visual no-op for them until upgrade.
+      const m = moduleForView(page);
+      if (m && !m.core && !isModuleActive(m.id)) {
+        void setModuleActive(m.id, true, 'user');
+      }
       navigate(page);
       onClose();
     },
-    [navigate, onClose],
+    [navigate, onClose, isModuleActive, setModuleActive],
   );
 
   const goLabel = useCallback(
