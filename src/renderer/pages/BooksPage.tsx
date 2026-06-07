@@ -5,6 +5,10 @@ import { ApiError } from '../api/client';
 import { metricsApi, BookMetric, BookSummary, CampaignAnalyticsItem } from '../api/metrics';
 import { ratingsApi, BookRating, Book } from '../api/books';
 import {
+  fetchLocalRoyaltyByBookRange,
+  type LocalRoyaltyByBook,
+} from '../api/localRoyalty';
+import {
   PageHeader,
   RangePicker,
   Card,
@@ -56,6 +60,21 @@ type SortKey = 'spend' | 'sales' | 'orders' | 'acos';
 
 type ModalType = 'edit' | 'delete' | 'addAsin' | 'uploadCover' | 'addChange' | null;
 
+// Resolve a book group's total local royalty. The cloud BookMetric carries no
+// ASIN, so at the group level we match by book_id (authoritative) then fall
+// back to lowercased title. Returns null when there's no local royalty for this
+// book → caller keeps the existing (cloud) value instead of zeroing it out.
+function localRoyaltyForGroup(
+  g: BookGroup,
+  local: LocalRoyaltyByBook,
+): number | null {
+  const byId = local.byBookId.get(g.book_id);
+  if (byId != null) return byId;
+  const byTitle = local.byTitle.get(g.title.toLowerCase());
+  if (byTitle != null) return byTitle;
+  return null;
+}
+
 export const BooksPage: React.FC = () => {
   const { t } = useTranslation('books');
   const toast = useToast();
@@ -70,6 +89,12 @@ export const BooksPage: React.FC = () => {
   const [sortKey, setSortKey] = useState<SortKey>('spend');
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [ratings, setRatings] = useState<BookRating[]>([]);
+  // Local royalty (stored on-device per Amazon ToS). Royalty/TACoS columns are
+  // sourced from here — the cloud summary's royalty is 0 once a user imports
+  // their KDP XLSX. Empty maps when the local store is unavailable (cloud-only).
+  const [localRoyalty, setLocalRoyalty] = useState<LocalRoyaltyByBook | null>(
+    null,
+  );
 
   // Drill state
   const [drillCampaigns, setDrillCampaigns] = useState<CampaignAnalyticsItem[]>([]);
@@ -87,7 +112,10 @@ export const BooksPage: React.FC = () => {
     () => async () => {
       setLoading(true);
       try {
-        const [data] = await Promise.all([
+        // Royalty lives on-device (local store). Fetch it alongside the cloud
+        // ads summary so Royalty/TACoS reflect the user's imported KDP report.
+        // fetchLocalRoyaltyByBookRange swallows its own errors → empty maps.
+        const [data, localRoy] = await Promise.all([
           metricsApi.summaryByBook({
             from,
             to,
@@ -97,8 +125,10 @@ export const BooksPage: React.FC = () => {
             bookIds: globalFilters.bookId != null ? [globalFilters.bookId] : undefined,
             accounts: globalFilters.accounts.length ? globalFilters.accounts : undefined,
           }),
+          fetchLocalRoyaltyByBookRange(from, to),
         ]);
         setSummary(data);
+        setLocalRoyalty(localRoy);
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : t('loadFailed'));
       } finally {
@@ -146,13 +176,22 @@ export const BooksPage: React.FC = () => {
       g.totals.clicks += row.clicks || 0;
     }
     for (const g of byBook.values()) {
+      // Royalty SOURCE OF TRUTH = local store (REPLACE cloud royalty, never add
+      // — adding would double-count). Match by book_id (most reliable), then
+      // lowercased-title fallback (see localRoyaltyForGroup). Leave the cloud
+      // value untouched when there's no local match (degrades gracefully if the
+      // user hasn't imported a royalty XLSX yet).
+      if (localRoyalty) {
+        const local = localRoyaltyForGroup(g, localRoyalty);
+        if (local != null) g.totals.royalty = local;
+      }
       g.acos = g.totals.sales > 0 ? (g.totals.cost / g.totals.sales) * 100 : 0;
       g.tacos =
         g.totals.royalty > 0 ? (g.totals.cost / g.totals.royalty) * 100 : 0;
       g.rows.sort((a, b) => b.cost - a.cost);
     }
     return [...byBook.values()];
-  }, [summary]);
+  }, [summary, localRoyalty]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
