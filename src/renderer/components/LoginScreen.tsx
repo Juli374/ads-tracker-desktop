@@ -41,7 +41,7 @@ type Mode = 'email' | 'token' | '2fa' | '2fa-setup';
  * `ads-tracker-desktop://callback?token=…&type=handoff` deep-link. Hardcoded
  * (not env) per the Phase 0 plan — the site domain is fixed for this release.
  */
-const SITE_BASE_URL = 'https://book-platform-bay.vercel.app';
+const SITE_BASE_URL = 'https://kdpbook.click';
 const CONNECT_DESKTOP_URL = `${SITE_BASE_URL}/connect-desktop`;
 
 /**
